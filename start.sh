@@ -1,0 +1,1 @@
+uvicorn auxiliary.asgi:application --reload

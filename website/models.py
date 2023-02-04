@@ -4,6 +4,13 @@ from auxiliary.base import BaseEntity
 
 
 # Create your models here.
+def get_search_params():
+    return {"免费": "spstate=2",
+            "2X": "spstate=3",
+            "2X免费": "spstate=4",
+            "50%": "spstate=5",
+            "2X 50%": "spstate=6", }
+
 
 class WebSite(BaseEntity):
     """    站点基本信息及信息抓取规则    """
@@ -91,8 +98,7 @@ class WebSite(BaseEntity):
     # 搜索
     search_params = models.JSONField(
         verbose_name='促销参数',
-        default='{"免费":"spstate=2","2X":"spstate=3",'
-                '"2X免费":"spstate=4","50%":"spstate=5","2X 50%":"spstate=6",}',
+        default=get_search_params,
         help_text='字典格式：{"accept":"application/json","c":"d"}',
         max_length=256
     )
@@ -201,7 +207,7 @@ class WebSite(BaseEntity):
 
 class UserLevelRule(BaseEntity):
     """    用户等级升级信息表    """
-    site = models.ForeignKey(verbose_name='站 点', to=WebSite, to_field='identity', on_delete=models.CASCADE)
+    site = models.ForeignKey(verbose_name='站 点', to=WebSite, to_field='id', on_delete=models.CASCADE)
     level_id = models.IntegerField(verbose_name='等级id', default=1)
     level = models.CharField(verbose_name='等 级', default='User', max_length=24, help_text='请去除空格')
     days = models.IntegerField(verbose_name='时 间', default=0, help_text='原样输入，单位：周')

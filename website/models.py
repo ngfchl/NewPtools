@@ -24,6 +24,8 @@ class WebSite(BaseEntity):
     limit_speed = models.IntegerField(verbose_name='上传速度限制',
                                       default=100,
                                       help_text='单种限速，单位：MB/S')
+    tags = models.CharField(verbose_name='站点标签', default='电影,电视剧', max_length=128,
+                            help_text='站点资源类型，以`,`分割')
     # 功能支持
     func_sign_in = models.BooleanField(verbose_name="签到支持", default=True)
     func_get_torrents = models.BooleanField(verbose_name="拉取种子", default=True)
@@ -62,25 +64,6 @@ class WebSite(BaseEntity):
     page_viewfilelist = models.CharField(verbose_name='文件列表链接',
                                          default='viewfilelist.php?id={}',
                                          max_length=64)
-    # 签到功能参数
-    sign_in_method = models.CharField(verbose_name='签到请求方法',
-                                      default='get',
-                                      help_text='get或post，请使用小写字母，默认get',
-                                      max_length=5)
-    sign_in_captcha = models.BooleanField(verbose_name='签到验证码',
-                                          default=False,
-                                          help_text='有签到验证码的站点请开启', )
-    sign_in_params = models.CharField(verbose_name='签到请求参数',
-                                      default='{}',
-                                      help_text='默认无参数',
-                                      max_length=128,
-                                      blank=True,
-                                      null=True)
-    sign_in_headers = models.CharField(verbose_name='签到请求头',
-                                       default='{}',
-                                       help_text='字典格式：{"accept":"application/json","c":"d"},默认无参数',
-                                       max_length=128)
-
     # 签到信息
     sign_info_title = models.CharField(verbose_name='签到消息标题',
                                        default='//td[@id="outer"]//td[@class="embedded"]/h2/text()',
@@ -96,7 +79,7 @@ class WebSite(BaseEntity):
     hr_time = models.IntegerField(verbose_name='HR时间', default=10, help_text='站点要求HR种子最短做种时间，单位：小时')
 
     # 搜索
-    search_params = models.JSONField(
+    search_params = models.CharField(
         verbose_name='促销参数',
         default=get_search_params,
         help_text='字典格式：{"accept":"application/json","c":"d"}',
@@ -131,7 +114,7 @@ class WebSite(BaseEntity):
         verbose_name='魔力值',
         default='//a[@href="mybonus.php"]/following-sibling::text()[1]',
         max_length=128)
-    hour_bonus_rule = models.CharField(
+    my_per_hour_bonus_rule = models.CharField(
         verbose_name='时魔',
         default='//div[contains(text(),"每小时能获取")]/text()[1]',
         max_length=128)
@@ -195,6 +178,116 @@ class WebSite(BaseEntity):
                                          default='//td[@class="text"]/div/a/following-sibling::div',
                                          help_text='获取公告内容',
                                          max_length=128)
+    # 列表页XPATH
+    torrents_rule = models.CharField(verbose_name='种子行信息',
+                                     default='//table[@class="torrents"]/tr',
+                                     max_length=128)
+    torrent_name_rule = models.CharField(verbose_name='种子名称',
+                                         default='.//td[@class="embedded"]/a/b/text()',
+                                         max_length=128)
+    torrent_title_rule = models.CharField(verbose_name='种子标题',
+                                          default='.//a[contains(@href,"detail")]/parent::td/text()[last()]',
+                                          max_length=128)
+    torrent_detail_url_rule = models.CharField(
+        verbose_name='种子详情',
+        default='.//td[@class="embedded"]/a[contains(@href,"detail")]/@href',
+        max_length=128)
+    torrent_category_rule = models.CharField(
+        verbose_name='分类',
+        default='.//td[@class="rowfollow nowrap"][1]/a[1]/img/@title',
+        max_length=128)
+    torrent_poster_rule = models.CharField(
+        verbose_name='海报',
+        default='.//table/tr/td[1]/img/@src',
+        max_length=128)
+    torrent_magnet_url_rule = models.CharField(
+        verbose_name='主页下载链接',
+        default='.//td/a[contains(@href,"download.php?id=")]/@href',
+        max_length=128)
+    torrent_size_rule = models.CharField(verbose_name='文件大小',
+                                         default='.//td[5]/text()',
+                                         max_length=128)
+    torrent_hr_rule = models.CharField(
+        verbose_name='H&R',
+        default='.//table/tr/td/img[@class="hitandrun"]/@title',
+        max_length=128)
+    torrent_sale_rule = models.CharField(
+        verbose_name='促销信息',
+        default='.//img[contains(@class,"free")]/@alt',
+        max_length=128
+    )
+    torrent_sale_expire_rule = models.CharField(
+        verbose_name='促销时间',
+        default='.//img[contains(@class,"free")]/following-sibling::font/span/@title',
+        max_length=128)
+    torrent_release_rule = models.CharField(
+        verbose_name='发布时间',
+        default='.//td[4]/span/@title',
+        max_length=128)
+    torrent_seeders_rule = models.CharField(
+        verbose_name='做种人数',
+        default='.//a[contains(@href,"#seeders")]/text()',
+        max_length=128)
+    torrent_leechers_rule = models.CharField(
+        verbose_name='下载人数',
+        default='.//a[contains(@href,"#leechers")]/text()',
+        max_length=128)
+    torrent_completers_rule = models.CharField(
+        verbose_name='完成人数',
+        default='.//a[contains(@href,"viewsnatches")]//text()',
+        max_length=128)
+    # 详情页种子信息
+    detail_title_rule = models.CharField(
+        verbose_name='详情页种子标题',
+        default='//h1/text()[1]',
+        max_length=128)
+    detail_subtitle_rule = models.CharField(
+        verbose_name='详情页种子副标题',
+        default='//td[contains(text(),"副标题")]/following-sibling::td/text()[1]',
+        max_length=128)
+    detail_download_url_rule = models.CharField(
+        verbose_name='详情页种子链接',
+        default='//a[@class="index" and contains(@href,"download.php")]/@href',
+        max_length=128)
+    detail_size_rule = models.CharField(
+        verbose_name='详情页种子大小',
+        default='//td//b[contains(text(),"大小")]/following::text()[1]',
+        max_length=128)
+    detail_category_rule = models.CharField(
+        verbose_name='详情页种子类型',
+        default='//td/b[contains(text(),"类型")]/following-sibling::text()[1]',
+        max_length=128)
+    detail_area_rule = models.CharField(
+        verbose_name='详情页种子地区',
+        default='//h1/following::td/b[contains(text(),"地区")]/text()',
+        max_length=128)
+    detail_count_files_rule = models.CharField(
+        verbose_name='详情页文件数',
+        default='//td/b[contains(text(),"文件数")]/following-sibling::text()[1]',
+        max_length=128)
+    # HASH RULE
+    detail_hash_rule = models.CharField(
+        verbose_name='详情页种子HASH',
+        default='//td/b[contains(text(),"Hash")]/following-sibling::text()[1]',
+        max_length=128)
+    detail_free_rule = models.CharField(
+        verbose_name='详情页促销标记',
+        default='//td//b[contains(text(),"大小")]/following::text()[1]',
+        max_length=128)
+    detail_free_expire_rule = models.CharField(
+        verbose_name='详情页促销时间',
+        default='//h1/b/font[contains(@class,"free")]/parent::b/following-sibling::b/span/@title',
+        max_length=128)
+    detail_douban_rule = models.CharField(
+        verbose_name='详情页豆瓣信息',
+        help_text='提取做种列表中文件大小计算总量',
+        default='//td/a[starts-with(@href,"https://movie.douban.com/subject/")][1]',
+        max_length=128)
+    detail_year_publish_rule = models.CharField(
+        verbose_name='详情页豆瓣信息',
+        help_text='提取做种列表中文件大小计算总量',
+        default='year_current_publish: //td/b[contains(text(),"发行版年份")]/text()',
+        max_length=128)
 
     class Meta:
         verbose_name = '站点信息'
@@ -221,7 +314,8 @@ class UserLevelRule(BaseEntity):
     seeding_delta = models.FloatField(verbose_name='做种时间', help_text='累计做种时间', default=0)
     keep_account = models.BooleanField(verbose_name='保 号', default=False)
     graduation = models.BooleanField(verbose_name='毕 业', default=False)
-    rights = models.TextField(verbose_name='权 利', max_length=256, help_text='当前等级所享有的权利与义务')
+    rights = models.TextField(verbose_name='权 利', max_length=256, help_text='当前等级所享有的权利与义务',
+                              default='无')
 
     def __str__(self):
         return f'{self.site.nickname}/{self.level}'

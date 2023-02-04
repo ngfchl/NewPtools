@@ -17,10 +17,12 @@ from django.contrib import admin
 from django.urls import path
 from ninja import NinjaAPI
 
+from my_site.views import router as mysite_router
 from website.views import router as website_router
 
 api_v1 = NinjaAPI(version='1.0.0')
 api_v1.add_router('/website', website_router)
+api_v1.add_router('/mysite', mysite_router)
 urlpatterns = [
     path("admin/", admin.site.urls),
     path("api/", api_v1.urls),

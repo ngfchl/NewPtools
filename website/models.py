@@ -219,6 +219,8 @@ class UserLevelRule(BaseEntity):
     torrents = models.IntegerField(verbose_name='发 种', help_text='发布种子数', default=0)
     leeches = models.IntegerField(verbose_name='吸血数', help_text='完成种子数', default=0)
     seeding_delta = models.FloatField(verbose_name='做种时间', help_text='累计做种时间', default=0)
+    keep_account = models.BooleanField(verbose_name='保 号', default=False)
+    graduation = models.BooleanField(verbose_name='毕 业', default=False)
     rights = models.TextField(verbose_name='权 利', max_length=256, help_text='当前等级所享有的权利与义务')
 
     def __str__(self):

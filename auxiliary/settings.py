@@ -38,6 +38,10 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     "website",
     "my_site",
+    "configuration",
+    "monkey",
+    "spider",
+    "toolbox",
 ]
 
 MIDDLEWARE = [

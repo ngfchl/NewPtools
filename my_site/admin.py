@@ -1,15 +1,20 @@
-from django.contrib import admin
-
-from website.models import *
-
-
-# Register your models here.
-
-@admin.register(WebSite)
-class WebSiteAdmin(admin.ModelAdmin):
-    pass
-
-
-@admin.register(UserLevelRule)
-class UserLevelRuleAdmin(admin.ModelAdmin):
-    pass
+# from django.contrib import admin
+#
+# from .models import *
+#
+#
+# # Register your models here.
+#
+# @admin.register(MySite)
+# class MySiteAdmin(admin.ModelAdmin):
+#     pass
+#
+#
+# @admin.register(SiteStatus)
+# class SiteStatusAdmin(admin.ModelAdmin):
+#     pass
+#
+#
+# @admin.register(SignIn)
+# class SignInAdmin(admin.ModelAdmin):
+#     pass

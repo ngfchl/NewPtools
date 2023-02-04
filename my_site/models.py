@@ -36,6 +36,7 @@ class MySite(BaseEntity):
     class Meta:
         verbose_name = '我的站点'
         verbose_name_plural = verbose_name
+        db_table = 'my_site_mysite'
 
 
 # 站点信息
@@ -62,6 +63,7 @@ class SiteStatus(BaseEntity):
     class Meta:
         verbose_name = '我的数据'
         verbose_name_plural = verbose_name
+        db_table = 'my_site_sitestatus'
 
     def __str__(self):
         return self.site.site.name
@@ -75,6 +77,7 @@ class SignIn(BaseEntity):
     class Meta:
         verbose_name = '签到'
         verbose_name_plural = verbose_name
+        db_table = 'my_site_signin'
 
     def __str__(self):
         return self.site.site.name

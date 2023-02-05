@@ -20,7 +20,6 @@ from auxiliary.base import TorrentBaseInfo
 from my_site.models import MySite, SignIn, SiteStatus, TorrentInfo
 from toolbox import views as toolbox
 from toolbox.schema import CommonResponse
-from toolbox.views import FileSizeConvert
 from website.models import WebSite
 
 # Create your views here.
@@ -1047,7 +1046,7 @@ class PtSpider:
                             my_site.bonus_hour = ''.join(hour_sp_str)
                             seeding_size_str = self.parse(bonus_res,
                                                           '//*[@id="bprates_overview"]/tbody/tr/td[2]/text()')
-                            seeding_size = FileSizeConvert.parse_2_byte(''.join(seeding_size_str))
+                            seeding_size = toolbox.FileSizeConvert.parse_2_byte(''.join(seeding_size_str))
                             """
                             my_bonus = 0
                             bonus_hour = 0
@@ -1193,7 +1192,7 @@ class PtSpider:
                             seed_vol_size = seeding_str.split('&nbsp;')[-1].strip()
                         if 'No record' in seeding_str:
                             seed_vol_size = 0
-                        seed_vol_all = FileSizeConvert.parse_2_byte(seed_vol_size)
+                        seed_vol_all = toolbox.FileSizeConvert.parse_2_byte(seed_vol_size)
                 elif site.url in [
                     'https://monikadesign.uk/',
                     'https://pt.hdpost.top/',
@@ -1209,13 +1208,13 @@ class PtSpider:
                     seed_vol_size = ''.join(
                         seeding_html.xpath(site.my_seed_vol_rule)
                     ).replace('i', '').replace('&nbsp;', ' ')
-                    seed_vol_all = FileSizeConvert.parse_2_byte(seed_vol_size)
+                    seed_vol_all = toolbox.FileSizeConvert.parse_2_byte(seed_vol_size)
                     logger.info(f'做种信息: {seed_vol_all}')
                 elif 'club.hares.top' in site.url:
                     logger.info(f'白兔做种信息：{seeding_html}')
                     seed_vol_size = seeding_html.get('size')
                     logger.info(f'白兔做种信息：{seed_vol_size}')
-                    seed_vol_all = FileSizeConvert.parse_2_byte(seed_vol_size)
+                    seed_vol_all = toolbox.FileSizeConvert.parse_2_byte(seed_vol_size)
                     logger.info(f'白兔做种信息：{seed_vol_all}')
 
                 else:
@@ -1246,7 +1245,7 @@ class PtSpider:
 
                         # logger.info(vol)
                         if not len(vol) <= 0:
-                            size = FileSizeConvert.parse_2_byte(
+                            size = toolbox.FileSizeConvert.parse_2_byte(
                                 vol.replace('i', '')  # U2返回字符串为mib，gib
                             )
                             if size:
@@ -1260,7 +1259,7 @@ class PtSpider:
                         else:
                             # seed_vol_all = 0
                             pass
-                logger.info('做种体积：{}'.format(FileSizeConvert.parse_2_file_size(seed_vol_all)))
+                logger.info('做种体积：{}'.format(toolbox.FileSizeConvert.parse_2_file_size(seed_vol_all)))
                 # logger.info(''.join(seed_vol_list).strip().split('：'))
                 # logger.info(title)
                 # logger.info(etree.tostring(details_html))
@@ -1287,8 +1286,8 @@ class PtSpider:
                 if 'hdchina' in site.url:
                     downloaded = downloaded.split('(')[0].replace(':', '').strip()
                     uploaded = uploaded.split('(')[0].replace(':', '').strip()
-                downloaded = FileSizeConvert.parse_2_byte(downloaded)
-                uploaded = FileSizeConvert.parse_2_byte(uploaded)
+                downloaded = toolbox.FileSizeConvert.parse_2_byte(downloaded)
+                uploaded = toolbox.FileSizeConvert.parse_2_byte(uploaded)
 
                 invitation = ''.join(
                     details_html.xpath(site.my_invitation_rule)
@@ -1776,7 +1775,7 @@ class PtSpider:
                             'FREE', 'Free'
                         ).replace('免费', 'Free').replace(' ', '')
                         # # 下载链接，下载链接已存在则跳过
-                        href = ''.join(tr.xpath(site.magnet_url_rule))
+                        href = ''.join(tr.xpath(site.torrent_magnet_url_rule))
                         logger.info('href: {}'.format(href))
                         magnet_url = '{}{}'.format(
                             site.url,
@@ -1790,13 +1789,13 @@ class PtSpider:
                         logger.info('download_url: {}'.format(download_url))
 
                         # 如果种子有HR，则为否 HR绿色表示无需，红色表示未通过HR考核
-                        hr = False if tr.xpath(site.hr_rule) else True
+                        hr = False if tr.xpath(site.torrent_hr_rule) else True
                         # H&R 种子有HR且站点设置不下载HR种子,跳过，
                         if not hr and not my_site.hr:
                             logger.info('hr种子，未开启HR跳过')
                             continue
                         # # 促销到期时间
-                        sale_expire = ''.join(tr.xpath(site.sale_expire_rule))
+                        sale_expire = ''.join(tr.xpath(site.torrent_sale_expire_rule))
                         if site.url in [
                             'https://www.beitai.pt/',
                             'http://www.oshen.win/',
@@ -1830,26 +1829,26 @@ class PtSpider:
                         sale_expire = '无限期' if not sale_expire else sale_expire
                         # logger.info(torrent_info.sale_expire)
                         # # 发布时间
-                        on_release = ''.join(tr.xpath(site.release_rule))
+                        on_release = ''.join(tr.xpath(site.torrent_release_rule))
                         # # 做种人数
-                        seeders = ''.join(tr.xpath(site.seeders_rule))
+                        seeders = ''.join(tr.xpath(site.torrent_seeders_rule))
                         # # # 下载人数
-                        leechers = ''.join(tr.xpath(site.leechers_rule))
+                        leechers = ''.join(tr.xpath(site.torrent_leechers_rule))
                         # # # 完成人数
-                        completers = ''.join(tr.xpath(site.completers_rule))
+                        completers = ''.join(tr.xpath(site.torrent_completers_rule))
                         # 存在则更新，不存在就创建
                         # logger.info(type(seeders), type(leechers), type(completers), )
                         # logger.info(seeders, leechers, completers)
                         # logger.info(''.join(tr.xpath(site.title_rule)))
-                        category = ''.join(tr.xpath(site.category_rule))
-                        file_parse_size = ''.join(tr.xpath(site.size_rule))
+                        category = ''.join(tr.xpath(site.torrent_category_rule))
+                        file_parse_size = ''.join(tr.xpath(site.torrent_size_rule))
                         # file_parse_size = ''.join(tr.xpath(''))
                         logger.info(file_parse_size)
-                        file_size = FileSizeConvert.parse_2_byte(file_parse_size)
+                        file_size = toolbox.FileSizeConvert.parse_2_byte(file_parse_size)
                         # subtitle = subtitle if subtitle else title
-                        poster_url = ''.join(tr.xpath(site.poster_rule))  # 海报链接
+                        poster_url = ''.join(tr.xpath(site.torrent_poster_rule))  # 海报链接
                         detail_url = site.url + ''.join(
-                            tr.xpath(site.detail_url_rule)
+                            tr.xpath(site.torrent_detail_url_rule)
                         ).replace(site.url, '').lstrip('/')
                         logger.info('title：{}'.format(site))
                         logger.info('size{}'.format(file_size))

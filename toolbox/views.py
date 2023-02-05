@@ -11,6 +11,7 @@ import dateutil.parser
 import toml as toml
 
 from my_site.models import MySite, SiteStatus
+from spider.views import PtSpider
 from toolbox.models import BaiduOCR
 from toolbox.schema import CommonResponse
 from website.models import WebSite
@@ -108,7 +109,7 @@ def baidu_ocr_captcha(img_url):
         return CommonResponse.error(msg=msg)
 
 
-def parse_ptpp_cookies(self, data_list):
+def parse_ptpp_cookies(data_list):
     # 解析前端传来的数据
     datas = json.loads(data_list.get('cookies'))
     info_list = json.loads(data_list.get('info'))
@@ -142,7 +143,7 @@ def parse_ptpp_cookies(self, data_list):
 
 
 # @transaction.atomic
-def get_uid_and_passkey(self, cookie: dict):
+def get_uid_and_passkey(cookie: dict):
     url = cookie.get('url')
     host = cookie.get('host')
     site = WebSite.objects.filter(url__contains=host).first()
@@ -161,17 +162,15 @@ def get_uid_and_passkey(self, cookie: dict):
         try:
             logger.info('备份文件未获取到User_id，尝试获取中')
             scraper = cloudscraper.create_scraper(browser={
-                'browser': self.browser,
-                'platform': self.platform,
-                'mobile': False
+                'browser': 'chrome',
+                'platform': 'darwin',
             })
             response = scraper.get(
                 url=site.url + site.page_index,
                 cookies=cookie.get('cookies'),
             )
             logger.info(response.text)
-            uid = ''.join(self.parse(site, response, site.my_uid_rule)).split('=')[-1]
-            # passkey = self.parse(site, response, site.my_passkey_rule)[0]
+            uid = ''.join(PtSpider.parse(site, response, site.my_uid_rule)).split('=')[-1]
             logger.info(f'uid:{uid}')
         except Exception as e:
             passkey_msg = f'{site.name} Uid获取失败，请手动添加！'

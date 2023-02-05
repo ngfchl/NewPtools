@@ -1,4 +1,4 @@
-from ninja import ModelSchema
+from ninja import ModelSchema, Schema
 from ninja.orm import create_schema
 
 from my_site.models import *
@@ -6,6 +6,7 @@ from my_site.models import *
 
 class MySiteSchemaOut(ModelSchema):
     """    站点基本信息及信息抓取规则    """
+
     # site: create_schema(WebSite, fields=['id', 'name'])
 
     class Config:
@@ -49,3 +50,9 @@ class SignInSchemaIn(ModelSchema):
     class Config:
         model = SignIn
         model_exclude = ['created_at', 'updated_at']
+
+
+class ImportSchema(Schema):
+    info: str
+    cookies: str
+    userdata: str

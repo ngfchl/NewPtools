@@ -5,6 +5,7 @@ from django.shortcuts import get_object_or_404
 from ninja import Router
 
 from my_site.schema import *
+from toolbox import views as toolbox
 from toolbox.views import FileSizeConvert
 
 # Create your views here.
@@ -98,3 +99,39 @@ def today_data(self):
     logger.info(incremental)
     # todo
     # self.send_text(title='通知：今日数据', message=incremental)
+
+
+@router.post('/import', response=SignInSchemaOut, description='PTPP备份导入')
+def import_from_ptpp(request, data: ImportSchema):
+    res = toolbox.parse_ptpp_cookies(data)
+    if res.code == 0:
+        cookies = res.data
+        # logger.info(cookies)
+    else:
+        return res.to_dict()
+    message_list = []
+    for data in cookies:
+        try:
+            # logger.info(data)
+            res = toolbox.get_uid_and_passkey(data)
+            msg = res.msg
+            logger.info(msg)
+            if res.code == 0:
+                message_list.append({
+                    'msg': msg,
+                    'tag': 'success'
+                })
+            else:
+                message_list.append({
+                    'msg': msg,
+                    'tag': 'error'
+                })
+        except Exception as e:
+            message = '{} 站点导入失败！{}  \n'.format(data.get('domain'), str(e))
+            message_list.append({
+                'msg': message,
+                'tag': 'warning'
+            })
+            # raise
+        logger.info(message_list)
+    return message_list

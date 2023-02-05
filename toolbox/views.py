@@ -19,10 +19,15 @@ from website.models import WebSite
 logger = logging.getLogger('ptools')
 
 
-def parse_token(cmd):
+def parse_toml(cmd) -> dict:
     """从配置文件解析获取相关项目"""
     data = toml.load('db/ptools.toml')
     return data.get(cmd)
+
+
+def check_token(token) -> bool:
+    own_token = parse_toml('token').get(token)
+    return own_token == token
 
 
 def cookie2dict(source_str: str) -> dict:

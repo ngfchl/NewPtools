@@ -13,10 +13,11 @@ import toml
 from django.db.models import QuerySet
 from django.shortcuts import get_object_or_404
 from lxml import etree
-from requests import ReadTimeout
+from requests import ReadTimeout, Response
 from urllib3.exceptions import NewConnectionError, ConnectTimeoutError
 
-from my_site.models import MySite, SignIn, SiteStatus
+from auxiliary.base import TorrentBaseInfo
+from my_site.models import MySite, SignIn, SiteStatus, TorrentInfo
 from toolbox import views as toolbox
 from toolbox.schema import CommonResponse
 from toolbox.views import FileSizeConvert
@@ -1675,4 +1676,228 @@ class PtSpider:
             logger.error(traceback.format_exc(limit=3))
             return CommonResponse.success(msg=message, data=0)
 
+    def send_torrent_info_request(self, my_site: MySite):
+        site = get_object_or_404(WebSite, my_site.site)
+        url = site.url + site.page_index.lstrip('/')
+        logger.info(f'种子页面链接：{url}')
+        try:
+            response = self.send_request(my_site, url)
+            logger.info(site.name)
+            if response.status_code == 200:
+                return CommonResponse.success(data=response)
+            elif response.status_code == 503:
+                return CommonResponse.error(msg="我可能碰上CF盾了")
+            else:
+                return CommonResponse.error(msg="网站访问失败")
+        except Exception as e:
+            # raise
+            title = f'{site.name} 网站访问失败'
+            msg = '{} 网站访问失败！原因：{}'.format(site.name, e)
+            # 打印异常详细信息
+            logger.error(msg)
+            logger.error(traceback.format_exc(limit=3))
+            # self.send_text(title=title, message=msg)
+            return CommonResponse.error(msg=msg)
 
+    # @transaction.atomic
+    def get_torrent_info_list(self, my_site: MySite, response: Response):
+        count = 0
+        new_count = 0
+        site = get_object_or_404(WebSite, my_site.site)
+        # if not my_site.passkey:
+        #     return CommonResponse.error(msg='{}站点未设置Passkey，无法拼接种子链接！'.format(site.name))
+        # logger.info(response.text.encode('utf8'))
+        try:
+            with lock:
+                if site.url == 'https://www.hd.ai/':
+                    # logger.info(response.text)
+                    torrent_info_list = response.json().get('data').get('items')
+                    logger.info('海带首页种子数目：{}'.format(len(torrent_info_list)))
+                    for torrent_json_info in torrent_info_list:
+                        # logger.info(torrent_json_info.get('download'))
+                        magnet_url = site.url + torrent_json_info.get('download')
+                        sale_num = torrent_json_info.get('promotion_time_type')
+                        # logger.info(type(sale_status))
+                        if sale_num == 1:
+                            continue
+                        # logger.info(type(sale_num))
+                        title = torrent_json_info.get('title')
+                        subtitle = torrent_json_info.get('small_descr')
+                        download_url = site.url + torrent_json_info.get('download').lstrip('/')
+                        result = TorrentInfo.objects.update_or_create(download_url=download_url, defaults={
+                            'category': torrent_json_info.get('category'),
+                            'site': site,
+                            'title': title,
+                            'subtitle': subtitle if subtitle != '' else title,
+                            'magnet_url': magnet_url,
+                            'poster_url': torrent_json_info.get('poster'),
+                            'detail_url': torrent_json_info.get('details'),
+                            'sale_status': TorrentBaseInfo.sale_list.get(sale_num),
+                            'sale_expire': torrent_json_info.get('promotion_until'),
+                            'hr': True,
+                            'on_release': torrent_json_info.get('added'),
+                            'size': int(torrent_json_info.get('size')),
+                            'seeders': torrent_json_info.get('seeders'),
+                            'leechers': torrent_json_info.get('leechers'),
+                            'completers': torrent_json_info.get('times_completed'),
+                            'save_path': '/downloads/brush'
+                        })
+                        # logger.info(result[0].site.url)
+                        if not result[1]:
+                            count += 1
+                        else:
+                            new_count += 1
+                            # logger.info(torrent_info)
+                else:
+                    # response = self.send_request()
+                    trs = self.parse(site, response, site.torrents_rule)
+                    # logger.info(f'种子页面：{response.text}')
+                    # logger.info(trs)
+                    logger.info(len(trs))
+                    print('=' * 50)
+                    for tr in trs:
+                        logger.info(tr)
+                        # logger.info(etree.tostring(tr))
+                        sale_status = ''.join(tr.xpath(site.torrent_sale_rule))
+                        logger.info('sale_status: {}'.format(sale_status))
+                        # 非免费种子跳过
+                        if not sale_status:
+                            logger.info('非免费种子跳过')
+                            continue
+                        title_list = tr.xpath(site.torrent_subtitle_rule)
+                        logger.info(title_list)
+                        subtitle = ''.join(title_list).strip().strip('剩余时间：').strip('剩餘時間：').strip('()')
+                        title = ''.join(tr.xpath(site.torrent_title_rule))
+                        if not title and not subtitle:
+                            logger.info('无名无姓？跳过')
+                            continue
+                        # sale_status = ''.join(re.split(r'[^\x00-\xff]', sale_status))
+                        sale_status = sale_status.replace('tStatus ', '').upper().replace(
+                            'FREE', 'Free'
+                        ).replace('免费', 'Free').replace(' ', '')
+                        # # 下载链接，下载链接已存在则跳过
+                        href = ''.join(tr.xpath(site.magnet_url_rule))
+                        logger.info('href: {}'.format(href))
+                        magnet_url = '{}{}'.format(
+                            site.url,
+                            href.replace('&type=zip', '').replace(site.url, '').lstrip('/')
+                        )
+                        logger.info('magnet_url: {}'.format(magnet_url))
+                        if href.count('passkey') <= 0 and href.count('&sign=') <= 0:
+                            download_url = '{}&passkey={}'.format(magnet_url, my_site.passkey)
+                        else:
+                            download_url = magnet_url
+                        logger.info('download_url: {}'.format(download_url))
+
+                        # 如果种子有HR，则为否 HR绿色表示无需，红色表示未通过HR考核
+                        hr = False if tr.xpath(site.hr_rule) else True
+                        # H&R 种子有HR且站点设置不下载HR种子,跳过，
+                        if not hr and not my_site.hr:
+                            logger.info('hr种子，未开启HR跳过')
+                            continue
+                        # # 促销到期时间
+                        sale_expire = ''.join(tr.xpath(site.sale_expire_rule))
+                        if site.url in [
+                            'https://www.beitai.pt/',
+                            'http://www.oshen.win/',
+                            'https://www.hitpt.com/',
+                            'https://hdsky.me/',
+                            'https://pt.keepfrds.com/',
+                            # 'https://totheglory.im/',
+                        ]:
+                            """
+                            由于备胎等站优惠结束日期格式特殊，所以做特殊处理,使用正则表达式获取字符串中的时间
+                            """
+                            sale_expire = ''.join(
+                                re.findall(r'\d{4}\D\d{2}\D\d{2}\D\d{2}\D\d{2}\D', ''.join(sale_expire)))
+
+                        if site.url in [
+                            'https://totheglory.im/',
+                        ]:
+                            # javascript: alert('Freeleech将持续到2022年09月20日13点46分,加油呀~')
+                            # 获取时间数据
+                            time_array = re.findall(r'\d+', ''.join(sale_expire))
+                            # 不组9位
+                            time_array.extend([0, 0, 0, 0])
+                            # 转化为标准时间字符串
+                            sale_expire = time.strftime(
+                                "%Y-%m-%d %H:%M:%S",
+                                time.struct_time(tuple([int(x) for x in time_array]))
+                            )
+                        #     pass
+                        # logger.info(sale_expire)
+                        # 如果促销结束时间为空，则为无限期
+                        sale_expire = '无限期' if not sale_expire else sale_expire
+                        # logger.info(torrent_info.sale_expire)
+                        # # 发布时间
+                        on_release = ''.join(tr.xpath(site.release_rule))
+                        # # 做种人数
+                        seeders = ''.join(tr.xpath(site.seeders_rule))
+                        # # # 下载人数
+                        leechers = ''.join(tr.xpath(site.leechers_rule))
+                        # # # 完成人数
+                        completers = ''.join(tr.xpath(site.completers_rule))
+                        # 存在则更新，不存在就创建
+                        # logger.info(type(seeders), type(leechers), type(completers), )
+                        # logger.info(seeders, leechers, completers)
+                        # logger.info(''.join(tr.xpath(site.title_rule)))
+                        category = ''.join(tr.xpath(site.category_rule))
+                        file_parse_size = ''.join(tr.xpath(site.size_rule))
+                        # file_parse_size = ''.join(tr.xpath(''))
+                        logger.info(file_parse_size)
+                        file_size = FileSizeConvert.parse_2_byte(file_parse_size)
+                        # subtitle = subtitle if subtitle else title
+                        poster_url = ''.join(tr.xpath(site.poster_rule))  # 海报链接
+                        detail_url = site.url + ''.join(
+                            tr.xpath(site.detail_url_rule)
+                        ).replace(site.url, '').lstrip('/')
+                        logger.info('title：{}'.format(site))
+                        logger.info('size{}'.format(file_size))
+                        logger.info('category：{}'.format(category))
+                        logger.info('download_url：{}'.format(download_url))
+                        logger.info('magnet_url：{}'.format(magnet_url))
+                        logger.info('subtitle：{}'.format(subtitle))
+                        logger.info('poster_url：{}'.format(poster_url))
+                        logger.info('detail_url：{}'.format(detail_url))
+                        logger.info('sale_status：{}'.format(sale_status))
+                        logger.info('sale_expire：{}'.format(sale_expire))
+                        logger.info('seeders：{}'.format(seeders))
+                        logger.info('leechers：{}'.format(leechers))
+                        logger.info('H&R：{}'.format(hr))
+                        logger.info('completers：{}'.format(completers))
+                        result = TorrentInfo.objects.update_or_create(site=site, detail_url=detail_url, defaults={
+                            'category': category,
+                            'download_url': download_url,
+                            'magnet_url': magnet_url,
+                            'title': title,
+                            'subtitle': subtitle,
+                            'poster_url': poster_url,  # 海报链接
+                            'detail_url': detail_url,
+                            'sale_status': sale_status,
+                            'sale_expire': sale_expire,
+                            'hr': hr,
+                            'on_release': on_release,
+                            'size': file_size,
+                            'seeders': seeders if seeders else '0',
+                            'leechers': leechers if leechers else '0',
+                            'completers': completers if completers else '0',
+                            'save_path': '/downloads/brush'
+                        })
+                        logger.info('拉取种子：{} {}'.format(site.name, result[0]))
+                        # time.sleep(0.5)
+                        if not result[1]:
+                            count += 1
+                        else:
+                            new_count += 1
+                            # logger.info(torrent_info)
+                if count + new_count <= 0:
+                    return CommonResponse.error(msg='抓取失败或无促销种子！')
+                return CommonResponse.success(data=(new_count, count))
+        except Exception as e:
+            # raise
+            title = f'{site.name} 解析种子信息：失败！'
+            msg = '解析种子页面失败！{}'.format(e)
+            # self.send_text(title=title, message=msg)
+            logger.error(msg)
+            logger.error(traceback.format_exc(limit=3))
+            return CommonResponse.error(msg=msg)

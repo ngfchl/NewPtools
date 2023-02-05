@@ -71,7 +71,7 @@ class FileSizeConvert:
             byte = byte / size
 
 
-def baidu_ocr_captcha(self, img_url):
+def baidu_ocr_captcha(img_url):
     """百度OCR高精度识别，传入图片URL"""
     # 获取百度识别结果
     ocr = BaiduOCR.objects.filter(enable=True).first()
@@ -99,7 +99,7 @@ def baidu_ocr_captcha(self, img_url):
         msg = '百度OCR识别失败：{}'.format(e)
         logger.info(traceback.format_exc(limit=3))
         # raise
-        self.send_text(title='OCR识别出错咯', message=msg)
+        # self.send_text(title='OCR识别出错咯', message=msg)
         return CommonResponse.error(msg=msg)
 
 
@@ -237,3 +237,26 @@ def get_uid_and_passkey(self, cookie: dict):
         # status=StatusCodeEnum.NO_PASSKEY_WARNING,
         msg=site.name + (' 信息导入成功！' if result[1] else ' 信息更新成功！ ') + passkey_msg
     )
+
+
+def parse_school_location(text: list):
+    logger.info('解析学校访问链接：{}'.format(text))
+    list1 = [x.strip().strip('"') for x in text[0].split('+')]
+    list2 = ''.join(list1).split('=', 1)[1]
+    return list2.strip(';').strip('"')
+
+
+def parse_message_num(messages: str):
+    """
+    解析网站消息条数
+    :param messages:
+    :return:
+    """
+    list1 = messages.split('(')
+    if len(list1) > 1:
+        count = re.sub(u"([^(\u0030-\u0039])", "", list1[1])
+    elif len(list1) == 1:
+        count = messages
+    else:
+        count = 0
+    return int(count)

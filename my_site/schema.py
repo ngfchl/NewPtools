@@ -6,7 +6,7 @@ from my_site.models import *
 
 class MySiteSchemaOut(ModelSchema):
     """    站点基本信息及信息抓取规则    """
-    site: create_schema(WebSite, fields=['id', 'name'])
+    # site: create_schema(WebSite, fields=['id', 'name'])
 
     class Config:
         model = MySite
@@ -14,7 +14,7 @@ class MySiteSchemaOut(ModelSchema):
 
 
 class MySiteSchemaIn(ModelSchema):
-    site: create_schema(WebSite, fields=['id', 'name'])
+    # site: create_schema(WebSite, fields=['id', 'name'])
 
     class Config:
         model = MySite

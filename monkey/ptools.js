@@ -141,37 +141,17 @@ var i = 1;
     'use strict';
     if (i == 1) {
         if (window.top != window.self) return;  //don't run on frames or iframes
+        if (!localStorage.getItem(token)) {
+            getSite()
+        }
         // GM_addStyle(GM_getResourceText("bootstrap"));
-        main()
+        addStyle()
         // getDownloaders()
+        main()
         i++
     }
 })();
 
-/**
- * 初始化函数
- * @returns {Promise<unknown>}
- */
-async function main() {
-    await addStyle()
-    await getSite()
-    await action()
-
-    // var data = await getData();
-    // console.log(data)
-    // if (data == false) {
-    //     return;
-    // } else {
-    //     return await ajax_post(data).then(res => {
-    //         return res
-    //     })
-    // }
-}
-
-/**
- * 获取站点基础信息
- * @returns {Promise<unknown>}
- */
 async function getSite() {
     return new Promise((resolve, reject) => {
         GM_xmlhttpRequest({
@@ -185,7 +165,7 @@ async function getSite() {
                     console.log(res.msg)
                     resolve(false)
                 }
-                localStorage.setItem(location.host, JSON.stringify(res))
+                localStorage.setItem(token, JSON.stringify(res))
                 resolve(res)
             },
             onerror: function (response) {
@@ -197,7 +177,7 @@ async function getSite() {
 }
 
 /**
- * 获取站点全部Cookie
+ * 获取Cookie
  * @returns {Promise<unknown>}
  */
 async function getCookie() {
@@ -213,47 +193,62 @@ async function getCookie() {
 }
 
 /**
- * 获取添加站点需要的数据
- * @returns {Promise<string>}
+ * 组装站点信息
+ * @returns
  */
-async function getData() {
-    var site_info = await getSite()
+async function getSiteData() {
+    var site_info = JSON.parse(localStorage.getItem(token))
     console.log(site_info)
     if (site_info === false) {
         alert('ptools服务器连接失败！')
-        return;
+        return false;
     }
-    console.log(site_info.uid_xpath)
+    console.log(site_info.my_uid_rule)
     //获取cookie与useragent
     let user_agent = window.navigator.userAgent
     let cookie = await getCookie()
     //获取UID
-    let href = document.evaluate(site_info.uid_xpath, document).iterateNext().textContent
+    let href = document.evaluate(site_info.my_uid_rule, document).iterateNext().textContent
     console.log(href)
     let user_id = href.split('=')
     console.log(user_id)
-    return `user_id=${user_id[user_id.length - 1]}&site_id=${site_info.site_id}&cookie=${cookie}&token=${token}&user_agent=${user_agent}`
+    // &token=${token}
+    return `user_id=${user_id[user_id.length - 1]}&nickname=${site_info.name}&site=${site_info.id}&cookie=${cookie}&user_agent=${user_agent}`
 }
-
 
 /**
  * 保存站点信息到PTools
+ * @returns {Promise<unknown>}
+ */
+async function sync_cookie() {
+    await getSite()
+    var data = await getSiteData();
+    console.log(data)
+    if (data) {
+        return await send_site_info(data).then(res => {
+            return res
+        })
+    }
+}
+
+/**
+ * 发送站点信息到PTools
  * @param data
  * @returns {Promise<unknown>}
  */
-async function ajax_post(data) {
+async function send_site_info(data) {
     return new Promise((resolve, reject) => {
         GM_xmlhttpRequest({
-            url: `${ptools}${path}`,
+            url: `${ptools}api/monkey/save_site/${token}`,
             method: "POST",
-            responseType: "json",
+            // responseType: "json",
             headers: {"Content-Type": "application/x-www-form-urlencoded"},
             data: data,
             onload: function (response) {
                 console.log(response)
-                let res = response.response
+                let res = JSON.parse(response.response)
                 console.log(res)
-                if (res.code) {
+                if (res.code == 0) {
                     console.log(res.msg)
                     resolve(false)
                 }
@@ -330,10 +325,10 @@ async function showDownloaders(downloaders, flag) {
 }
 
 /**
- * 在页面添加浮窗，显示操作按钮
+ * 显示页面悬浮窗
  * @returns {Promise<void>}
  */
-async function action() {
+async function main() {
     var wrap = document.createElement("div");
     var first = document.body.firstChild;
     wrap.innerHTML = `<img src="${ptools}static/logo4.png" style="width: 100%;"><br>
@@ -343,13 +338,13 @@ async function action() {
     </div>`
     wrap.className = 'wrap'
     var wraphtml = document.body.insertBefore(wrap, first);
-
-    if (location.pathname.search(/details\w+.php/) > 0
-        || location.pathname.includes('/torrent.php')
-        || location.pathname.search(/torrents\D*\d+/) > 0
-    ) {
-        let downloader_list = await getDownloaders()
-        console.log(downloader_list)
+    /**
+     if (location.pathname.search(/details\w+.php/) > 0
+     || location.pathname.includes('/torrent.php')
+     || location.pathname.search(/torrents\D*\d+/) > 0
+     ) {
+            let downloader_list = await getDownloaders()
+    console.log(downloader_list)
         console.log('当前为种子详情页')
         let downloaders = await showDownloaders(downloader_list, true)
         $('.action').append(downloaders)
@@ -359,12 +354,12 @@ async function action() {
         })
     }
 
-    if (location.pathname.search(/torrents\D*$/) > 0
-        || location.pathname.search(/t$/) > 0
-        || location.pathname.includes('/music.php')
-        || location.pathname.includes('/torrents.php')) {
-        let downloader_list = await getDownloaders()
-        console.log(downloader_list)
+     if (location.pathname.search(/torrents\D*$/) > 0
+     || location.pathname.search(/t$/) > 0
+     || location.pathname.includes('/music.php')
+     || location.pathname.includes('/torrents.php')) {
+            let downloader_list = await getDownloaders()
+    console.log(downloader_list)
         console.log('当前为种子列表页')
         let downloaders = await showDownloaders(downloader_list, false)
         $('.action').append(downloaders)
@@ -377,9 +372,10 @@ async function action() {
             await download_free(downloader_id)
         })
     }
-
+     **/
     $('#sync_cookie').on('click', async function () {
-        await getSite()
+        await sync_cookie()
+        // await send_site_info()
         // await main()
     })
     // document.getElementById("sync_cookie").onclick = function () {
@@ -414,10 +410,9 @@ async function copy_link() {
 }
 
 /**
- * 添加bootstrap中的部分CSS类，美化页面
- * @returns {Promise<void>}
+ * 添加bootstrap美化悬浮窗
  */
-async function addStyle() {
+function addStyle() {
     let css = `
         .wrap {
         z-index:99999;

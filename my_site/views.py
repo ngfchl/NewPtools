@@ -12,7 +12,7 @@ router = Router(tags=['mysite'])
 
 @router.get('/mysite', response=List[MySiteSchemaOut], description='我的站点-列表')
 def get_mysite_list(request):
-    return MySite.objects.order_by('id').select_related('site')
+    return MySite.objects.order_by('id')
 
 
 @router.get('/mysite/{int:mysite_id}', response=MySiteSchemaOut, description='我的站点-单个')

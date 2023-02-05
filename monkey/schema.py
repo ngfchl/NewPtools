@@ -1,6 +1,5 @@
 from ninja import ModelSchema, Schema
 
-from my_site.models import MySite
 from website.models import *
 
 
@@ -25,10 +24,13 @@ class WebSiteMonkeySchemaOut(ModelSchema):
         ]
 
 
-class MySiteSchemaIn(ModelSchema):
-    class Config:
-        model = MySite
-        model_exclude = ['created_at', 'updated_at']
+class MySiteSchemaIn(Schema):
+    user_id: str
+    site: int
+    cookie: str
+    user_agent: str
+    nickname: str
+    # token: str
 
 
 class SiteAndTokenSchemaIn(Schema):
@@ -39,4 +41,3 @@ class SiteAndTokenSchemaIn(Schema):
 class CommonMessage(Schema):
     msg: str = ''
     code: int = 0
-

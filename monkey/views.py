@@ -1,9 +1,10 @@
 import logging
 import traceback
 
-from ninja import Router
+from ninja import Router, Form
 from ninja.responses import codes_4xx
 
+from my_site.models import MySite
 from toolbox import views as toolbox
 from .schema import *
 
@@ -30,23 +31,26 @@ def get_site_by_host(request, token: str, host: str):
     return 404, {'msg': '站点信息获取失败！', 'code': -1}
 
 
-def save_site_by_monkey(request):
-    own_token = toolbox.parse_token('token').data
-    logger.info(request.POST)
-    my_site_params = request.POST.copy()
-    logger.info(my_site_params)
-    token = my_site_params.get('token')
-    if len(token) > 0 and token != own_token.get('token'):
-        return CommonResponse.error(msg='Token认证失败！').to_dict()
-    site_id = my_site_params.get('site_id')
-    logger.info(site_id)
-    my_site_params.pop('token')
+@router.post('save_site/{token}', response=CommonMessage)
+def save_site_by_monkey(request, token: str, mysite: MySiteSchemaIn = Form(...)):
     try:
-        res_my_site = MySite.objects.update_or_create(site_id=site_id, defaults=my_site_params)
+        own_token = toolbox.parse_token('token')
+        logger.info(request.POST)
+        logger.info(request.body)
+        my_site_params = request.POST.copy()
+        logger.info(my_site_params)
+        # token = mysite.token
+        if len(token) > 0 and token != own_token.get('token'):
+            return {'msg': 'Token认证失败！', 'code': -1}
+        logger.info(mysite)
+        # print(site)
+        res_my_site = MySite.objects.using('default').update_or_create(site=mysite.site, defaults=mysite.dict())
         logger.info(res_my_site[1])
-        return CommonResponse.success(
-            msg=f'{res_my_site[0].site.name} Cookie信息 {"添加成功！" if res_my_site[1] else "更新成功！"}'
-        ).to_dict()
-    except:
+        # todo 结果保存后获取一次数据，并更新一次注册时间
+        return {
+            'code': 0,
+            'msg': f'{res_my_site[0].nickname} Cookie信息 {"添加成功！" if res_my_site[1] else "更新成功！"}'
+        }
+    except Exception as e:
         logger.info(traceback.format_exc(3))
-        return CommonResponse.error(msg='站点信息添加失败！').to_dict()
+        return {'msg': f'添加站点信息失败！{e}', 'code': -1}

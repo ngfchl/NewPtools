@@ -9,7 +9,9 @@ from website.models import WebSite
 # Create your models here.
 
 class MySite(BaseEntity):
-    site = models.OneToOneField(verbose_name='站点', to=WebSite, on_delete=models.CASCADE)
+    # site = models.OneToOneField(verbose_name='站点', to=WebSite, on_delete=models.CASCADE)
+    site = models.IntegerField(verbose_name='站点', unique=True)
+    nickname = models.CharField(verbose_name='站点昵称', max_length=16, default=' ')
     sort_id = models.IntegerField(verbose_name='排序', default=1)
     # 用户信息
     user_id = models.CharField(verbose_name='用户ID', max_length=16,
@@ -27,11 +29,11 @@ class MySite(BaseEntity):
     search = models.BooleanField(verbose_name='开启搜索', default=True, help_text='是否开启搜索')
     # 用户数据 自动拉取
     time_join = models.DateTimeField(verbose_name='注册时间',
-                                     default=datetime.strptime('2023-01-01 12:30:00', '%Y-%m-%d %H:%M:%S'),
+                                     default=datetime(2023, 1, 1, 12, 30, 00),
                                      help_text='请务必填写此项！')
 
     def __str__(self):
-        return self.site.name
+        return self.nickname
 
     class Meta:
         verbose_name = '我的站点'
@@ -66,7 +68,7 @@ class SiteStatus(BaseEntity):
         db_table = 'my_site_sitestatus'
 
     def __str__(self):
-        return self.site.site.name
+        return self.site.nickname
 
 
 class SignIn(BaseEntity):
@@ -80,4 +82,4 @@ class SignIn(BaseEntity):
         db_table = 'my_site_signin'
 
     def __str__(self):
-        return self.site.site.name
+        return self.site.nickname

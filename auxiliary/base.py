@@ -7,3 +7,10 @@ class BaseEntity(models.Model):
 
     class Meta:
         abstract = True
+
+
+class DownloaderCategory(models.TextChoices):
+    # 下载器名称
+    # Deluge = 'De', 'Deluge'
+    Transmission = 'Tr', 'Transmission'
+    qBittorrent = 'Qb', 'qBittorrent'

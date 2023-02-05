@@ -42,6 +42,8 @@ INSTALLED_APPS = [
     "monkey",
     "spider",
     "toolbox",
+    "download",
+    "repeat",
 ]
 
 MIDDLEWARE = [

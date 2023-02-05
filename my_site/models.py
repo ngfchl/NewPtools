@@ -3,6 +3,7 @@ from datetime import datetime
 from django.db import models
 
 from auxiliary.base import BaseEntity
+from download.models import Downloader
 from website.models import WebSite
 
 
@@ -83,3 +84,41 @@ class SignIn(BaseEntity):
 
     def __str__(self):
         return self.site.nickname
+
+
+# 种子信息
+class TorrentInfo(BaseEntity):
+    site = models.ForeignKey(to=MySite, to_field='site', on_delete=models.CASCADE, verbose_name='所属站点', null=True)
+    title = models.CharField(max_length=256, verbose_name='种子名称', default='')
+    subtitle = models.CharField(max_length=256, verbose_name='标题', default='')
+    category = models.CharField(max_length=128, verbose_name='分类', default='')
+    poster_url = models.URLField(max_length=512, verbose_name='海报链接', default='')
+    detail_url = models.URLField(max_length=512, verbose_name='种子详情', default='')
+    magnet_url = models.URLField(verbose_name='下载链接', unique=True)
+    size = models.IntegerField(verbose_name='文件大小', default=0)
+    hr = models.BooleanField(verbose_name='H&R考核', default=True, help_text='绿色为通过或无需HR考核')
+    sale_status = models.CharField(verbose_name='优惠状态', default='无促销', max_length=16)
+    sale_expire = models.CharField(verbose_name='到期时间', default='无限期', max_length=32)
+    on_release = models.CharField(verbose_name='发布时间', default='', max_length=32)
+    seeders = models.CharField(verbose_name='做种人数', default='0', max_length=8)
+    leechers = models.CharField(verbose_name='下载人数', default='0', max_length=8)
+    completers = models.CharField(verbose_name='完成人数', default='0', max_length=8)
+    hash_string = models.CharField(max_length=128, verbose_name='Info_hash', default='')
+    filelist = models.CharField(max_length=128, verbose_name='文件列表', default='')
+    douban_url = models.URLField(verbose_name='豆瓣链接', default='')
+    year_publish = models.CharField(max_length=16, verbose_name='发行年份', default='')
+    files_count = models.IntegerField(verbose_name='文件数目', default=0)
+    peer_list_speed = models.FloatField(max_length=128, verbose_name='平均上传速度', default=0)
+    save_path = models.FilePathField(verbose_name='保存路径', default='/downloads/')
+    state = models.BooleanField(max_length=16, verbose_name='推送状态', default=False)
+    downloader = models.ForeignKey(to=Downloader,
+                                   on_delete=models.CASCADE,
+                                   verbose_name='下载器',
+                                   blank=True, null=True)
+
+    class Meta:
+        verbose_name = '种子管理'
+        verbose_name_plural = verbose_name
+
+    def __str__(self):
+        return self.title

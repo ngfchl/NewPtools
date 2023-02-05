@@ -182,12 +182,12 @@ class WebSite(BaseEntity):
     torrents_rule = models.CharField(verbose_name='种子行信息',
                                      default='//table[@class="torrents"]/tr',
                                      max_length=128)
-    torrent_name_rule = models.CharField(verbose_name='种子名称',
-                                         default='.//td[@class="embedded"]/a/b/text()',
-                                         max_length=128)
-    torrent_title_rule = models.CharField(verbose_name='种子标题',
-                                          default='.//a[contains(@href,"detail")]/parent::td/text()[last()]',
+    torrent_title_rule = models.CharField(verbose_name='种子名称',
+                                          default='.//td[@class="embedded"]/a/b/text()',
                                           max_length=128)
+    torrent_subtitle_rule = models.CharField(verbose_name='种子标题',
+                                             default='.//a[contains(@href,"detail")]/parent::td/text()[last()]',
+                                             max_length=128)
     torrent_detail_url_rule = models.CharField(
         verbose_name='种子详情',
         default='.//td[@class="embedded"]/a[contains(@href,"detail")]/@href',
@@ -284,9 +284,8 @@ class WebSite(BaseEntity):
         default='//td/a[starts-with(@href,"https://movie.douban.com/subject/")][1]',
         max_length=128)
     detail_year_publish_rule = models.CharField(
-        verbose_name='详情页豆瓣信息',
-        help_text='提取做种列表中文件大小计算总量',
-        default='year_current_publish: //td/b[contains(text(),"发行版年份")]/text()',
+        verbose_name='发行年份',
+        default='//td/b[contains(text(),"发行版年份")]/text()',
         max_length=128)
 
     class Meta:

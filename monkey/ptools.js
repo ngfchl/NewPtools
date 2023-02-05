@@ -152,6 +152,10 @@ var i = 1;
     }
 })();
 
+/**
+ * 获取站点相关规则并写入本地存储
+ * @returns {Promise<unknown>}
+ */
 async function getSite() {
     return new Promise((resolve, reject) => {
         GM_xmlhttpRequest({
@@ -331,7 +335,7 @@ async function showDownloaders(downloaders, flag) {
 async function main() {
     var wrap = document.createElement("div");
     var first = document.body.firstChild;
-    wrap.innerHTML = `<img src="${ptools}static/logo4.png" style="width: 100%;"><br>
+    wrap.innerHTML = `<img src="${ptools}static/logo.png" style="width: 100%;"><br>
     <div class="btn-group-vertical btn-block action">
     <button type="button" class="btn btn-outline-warning btn-sm btn-block text-nowrap" style="font-size: 12px;" id="sync_cookie">同步Cookie</button>
     <button type="button" class="btn btn-outline-warning btn-sm btn-block text-nowrap" style="font-size: 12px;" id="copy_link">复制链接</button>

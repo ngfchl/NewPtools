@@ -1,11 +1,14 @@
+import logging
 from typing import List
 
 from django.shortcuts import get_object_or_404
 from ninja import Router
 
 from my_site.schema import *
+from toolbox.views import FileSizeConvert
 
 # Create your views here.
+logger = logging.getLogger('ptools')
 
 router = Router(tags=['mysite'])
 
@@ -55,3 +58,43 @@ def get_signin_list(request):
 @router.get('/signin/{int:signin_id}', response=SignInSchemaOut, description='每日状态-单个')
 def get_signin(request, signin_id):
     return get_object_or_404(SignIn, id=signin_id)
+
+
+def today_data(self):
+    """获取当日相较于前一日上传下载数据增长量"""
+    today_site_status_list = SiteStatus.objects.filter(created_at__date=datetime.today())
+    # yesterday_site_status_list = SiteStatus.objects.filter(
+    #     created_at__day=datetime.today() - timedelta(days=1))
+    increase_list = []
+    total_upload = 0
+    total_download = 0
+    for site_state in today_site_status_list:
+        my_site = site_state.site
+        yesterday_site_status_list = SiteStatus.objects.filter(site=my_site)
+        if len(yesterday_site_status_list) >= 2:
+            yesterday_site_status = SiteStatus.objects.filter(site=my_site).order_by('-created_at')[1]
+            uploaded_increase = site_state.uploaded - yesterday_site_status.uploaded
+            downloaded_increase = site_state.downloaded - yesterday_site_status.downloaded
+        else:
+            uploaded_increase = site_state.uploaded
+            downloaded_increase = site_state.downloaded
+        if uploaded_increase + downloaded_increase <= 0:
+            continue
+        total_upload += uploaded_increase
+        total_download += downloaded_increase
+        increase_list.append(f'\n\n- 站点：{my_site.site.name}'
+                             f'\n\t\t上传：{FileSizeConvert.parse_2_file_size(uploaded_increase)}'
+                             f'\n\t\t下载：{FileSizeConvert.parse_2_file_size(downloaded_increase)}')
+    # incremental = {
+    #     '总上传': FileSizeConvert.parse_2_file_size(total_upload),
+    #     '总下载': FileSizeConvert.parse_2_file_size(total_download),
+    #     '说明': '数据均相较于本站今日之前最近的一条数据，可能并非昨日',
+    #     '数据列表': increase_list,
+    # }
+    incremental = f'#### 总上传：{FileSizeConvert.parse_2_file_size(total_upload)}\n' \
+                  f'#### 总下载：{FileSizeConvert.parse_2_file_size(total_download)}\n' \
+                  f'> 说明: 数据均相较于本站今日之前最近的一条数据，可能并非昨日\n' \
+                  f'#### 数据列表：{"".join(increase_list)}'
+    logger.info(incremental)
+    # todo
+    # self.send_text(title='通知：今日数据', message=incremental)

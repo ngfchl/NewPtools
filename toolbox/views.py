@@ -1,6 +1,8 @@
 import json
 import logging
+import os
 import re
+import subprocess
 import time
 import traceback
 from datetime import datetime
@@ -8,8 +10,10 @@ from datetime import datetime
 import aip
 import cloudscraper
 import dateutil.parser
+import git
 import toml as toml
 
+from auxiliary.settings import BASE_DIR
 from my_site.models import MySite, SiteStatus
 from spider.views import PtSpider
 from toolbox.models import BaiduOCR
@@ -264,3 +268,45 @@ def parse_message_num(messages: str):
     else:
         count = 0
     return int(count)
+
+
+def get_git_log(branch, n=20):
+    repo = git.Repo(path='.')
+    # 拉取仓库更新记录元数据
+    repo.remote().fetch()
+    # commits更新记录
+    logger.info('当前分支{}'.format(branch))
+    return [{
+        'date': log.committed_datetime.strftime('%Y-%m-%d %H:%M:%S'),
+        'data': log.message,
+        'hexsha': log.hexsha[:16],
+    } for log in list(repo.iteipr_commits(branch, max_count=n))]
+
+
+def generate_config_file():
+    file_path = os.path.join(BASE_DIR, 'db/ptools.toml')
+    try:
+        if not os.path.exists(file_path):
+            with open(file_path, 'w') as toml_f:
+                toml_f.write('')
+                toml.dump({}, toml_f)
+                logger.info(f'配置文件生成成功！')
+                return CommonResponse.success(
+                    msg='配置文件生成成功！',
+                )
+        return CommonResponse.success(msg='配置文件文件已存在！', )
+    except Exception as e:
+        return CommonResponse.error(msg=f'初始化失败！{e}', )
+
+
+def exec_command(commands):
+    """执行命令行命令"""
+    result = []
+    for key, command in commands.items():
+        p = subprocess.run(command, shell=True)
+        logger.info('{} 命令执行结果：\n{}'.format(key, p))
+        result.append({
+            'command': key,
+            'res': p.returncode
+        })
+    return result

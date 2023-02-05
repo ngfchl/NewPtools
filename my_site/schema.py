@@ -22,6 +22,14 @@ class MySiteSchemaIn(ModelSchema):
         model_exclude = ['created_at', 'updated_at']
 
 
+class MySiteSortSchemaIn(ModelSchema):
+    # site: create_schema(WebSite, fields=['id', 'name'])
+
+    class Config:
+        model = MySite
+        model_exclude = ['id', 'sort']
+
+
 class SiteStatusSchemaOut(ModelSchema):
     """    站点基本信息及信息抓取规则    """
     site: create_schema(model=MySite, fields=['id'])
@@ -56,3 +64,6 @@ class ImportSchema(Schema):
     info: str
     cookies: str
     userdata: str
+
+
+

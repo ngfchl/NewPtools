@@ -1,3 +1,4 @@
+import logging
 from typing import List
 
 from django.shortcuts import get_object_or_404
@@ -5,9 +6,13 @@ from ninja import Router
 from ninja.responses import codes_4xx
 
 from monkey.schema import CommonMessage
+from my_site.models import MySite
 from website.schema import *
 
 # Create your views here.
+
+logger = logging.getLogger('ptools')
+
 router = Router(tags=['website'])
 
 
@@ -71,3 +76,13 @@ def get_trackers(request):
     """从已支持的站点获取tracker关键字列表"""
     tracker_list = WebSite.objects.all()
     return tracker_list
+
+
+@router.get('/website/list/{site_id}', response=List[WebSiteSchemaOut])
+def get_site_list(request, site_id: int):
+    logger.info(site_id)
+    if int(site_id) == 0:
+        return [site for site in WebSite.objects.all().order_by('id') if
+                MySite.objects.filter(site=site.get('id')).count() < 1]
+    else:
+        return WebSite.objects.filter(id=site_id).order_by('id')

@@ -44,6 +44,7 @@ INSTALLED_APPS = [
     "toolbox",
     "download",
     "repeat",
+    "autopt",
 ]
 
 MIDDLEWARE = [

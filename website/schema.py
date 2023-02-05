@@ -27,6 +27,12 @@ class UserLevelRuleSchemaOut(ModelSchema):
         model_exclude = ['created_at', 'updated_at']
 
 
+class TrackerSchema(ModelSchema):
+    class Config:
+        model = WebSite
+        model_fields = ['id', 'name', 'tracker']
+
+
 class UserLevelRuleSchemaIn(ModelSchema):
     class Config:
         model = UserLevelRule

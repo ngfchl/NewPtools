@@ -2,7 +2,9 @@ from typing import List
 
 from django.shortcuts import get_object_or_404
 from ninja import Router
+from ninja.responses import codes_4xx
 
+from monkey.schema import CommonMessage
 from website.schema import *
 
 # Create your views here.
@@ -61,3 +63,11 @@ def edit_rule(request, rule_id):
 def remove_rule(request, rule_id):
     count = UserLevelRule.objects.filter(id=rule_id).delete()
     return f'remove/{count}'
+
+
+@router.get('/trackers', response={200: List[TrackerSchema], codes_4xx: CommonMessage},
+            description='下载器列表')
+def get_trackers(request):
+    """从已支持的站点获取tracker关键字列表"""
+    tracker_list = WebSite.objects.all()
+    return tracker_list

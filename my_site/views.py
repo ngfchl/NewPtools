@@ -6,6 +6,7 @@ from django.shortcuts import get_object_or_404
 from ninja import Router
 
 from autopt import views as autopt
+from auxiliary.base import MessageTemplate
 from my_site.schema import *
 from spider.views import PtSpider
 from toolbox import views as toolbox
@@ -16,13 +17,6 @@ from toolbox.views import FileSizeConvert
 logger = logging.getLogger('ptools')
 pt_spider = PtSpider()
 router = Router(tags=['mysite'])
-
-
-class MessageTemplate:
-    """消息模板"""
-    status_message_template = "{} 等级：{} 魔力：{} 时魔：{} 积分：{} 分享率：{} " \
-                              "做种量：{} 上传量：{} 下载量：{} 上传数：{} 下载数：{} " \
-                              "邀请：{} H&R：{}\n"
 
 
 @router.get('/mysite', response=List[MySiteSchemaOut], description='我的站点-列表')
@@ -159,7 +153,7 @@ def import_from_ptpp(request, data: ImportSchema):
     return message_list
 
 
-@router.get('/status/{site_id}', response=CommonResponse, description='站点数据展示')
+@router.get('/status/chart/{site_id}', response=CommonResponse, description='站点数据展示')
 def site_data_api(request, site_id: int):
     """站点数据(柱状图)"""
     # my_site_id = request.GET.get('id')
@@ -213,7 +207,7 @@ def site_data_api(request, site_id: int):
             # print(len(diff_info_list))
             diff_info_list = sorted(diff_info_list.items(), key=lambda x: x[0])
             diff_list.append({
-                'name': my_site.site.name,
+                'name': my_site.nickname,
                 'type': 'bar',
                 'large': 'true',
                 'stack': 'increment',
@@ -227,18 +221,23 @@ def site_data_api(request, site_id: int):
     my_site = MySite.objects.filter(id=site_id).first()
     if not my_site:
         return CommonResponse.error(
-            msg='访问出错咯！'
+            msg='访问出错咯！没有这个站点...'
         )
     site_info_list = my_site.sitestatus_set.order_by('created_at').all()
+    if len(site_info_list) <= 0:
+        return CommonResponse.error(
+            msg='你还没有获取过这个站点的数据...'
+        )
     # logger.info(site_info_list)
     site_status_list = []
-    site = {
+    site = get_object_or_404(WebSite, id=my_site.site)
+    my_site_info = {
         'id': my_site.id,
-        'name': my_site.site.name,
-        'icon': my_site.site.logo,
-        'url': my_site.site.url,
-        'class': my_site.my_level,
-        'last_active': datetime.strftime(my_site.updated_at, '%Y/%m/%d %H:%M:%S'),
+        'name': site.name,
+        'icon': site.logo,
+        'url': site.url,
+        'class': site_info_list.first().my_level,
+        'last_active': datetime.strftime(site_info_list.first().updated_at, '%Y/%m/%d %H:%M:%S'),
     }
     for site_info in site_info_list:
         my_site_status = {
@@ -258,7 +257,7 @@ def site_data_api(request, site_id: int):
     logger.info(site)
     # logger.info(site_status_list)
     return CommonResponse.success(
-        data={'site': site, 'site_status_list': site_status_list}
+        data={'site': my_site_info, 'site_status_list': site_status_list}
     )
 
 
@@ -331,7 +330,7 @@ def update_site_api(request, site_id: int):
 def show_sign_api(request, site_id: int):
     try:
         my_site = MySite.objects.filter(id=site_id).first()
-        site = get_object_or_404(WebSite, my_site.site)
+        site = get_object_or_404(WebSite, id=my_site.site)
         sign_in_list = my_site.signin_set.order_by('-pk')[:15]
         sign_in_list = [
             {'created_at': sign_in.created_at.strftime('%Y-%m-%d %H:%M:%S'), 'sign_in_info': sign_in.sign_in_info}
@@ -352,11 +351,11 @@ def show_sign_api(request, site_id: int):
         )
 
 
-@router.get('/sign/show/{site_id}/{sort}', response=CommonResponse, description='站点排序')
-def site_sort_api(request, site_id: int, sort: int):
+@router.get('/sign/show/{id}/{sort_id}', response=CommonResponse, description='站点排序')
+def site_sort_api(request, id: int, sort_id: int):
     try:
-        my_site = MySite.objects.filter(id=site_id).first()
-        my_site.sort_id += int(sort)
+        my_site = MySite.objects.filter(id=id).first()
+        my_site.sort_id += int(sort_id)
 
         if int(my_site.sort_id) <= 0:
             my_site.sort_id = 0

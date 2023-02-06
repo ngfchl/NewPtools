@@ -83,3 +83,10 @@ class PushConfig(models.TextChoices):
     pushdeer_push = 'pushdeer_push', 'PushDeer通知'
     bark_push = 'bark_push', 'Bark通知'
     iyuu_push = 'iyuu_push', '爱语飞飞'
+
+
+class MessageTemplate:
+    """消息模板"""
+    status_message_template = "{} 等级：{} 魔力：{} 时魔：{} 积分：{} 分享率：{} " \
+                              "做种量：{} 上传量：{} 下载量：{} 上传数：{} 下载数：{} " \
+                              "邀请：{} H&R：{}\n"

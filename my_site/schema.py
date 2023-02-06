@@ -27,7 +27,7 @@ class MySiteSortSchemaIn(ModelSchema):
 
     class Config:
         model = MySite
-        model_exclude = ['id', 'sort']
+        model_exclude = ['id', 'sort_id']
 
 
 class SiteStatusSchemaOut(ModelSchema):

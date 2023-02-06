@@ -87,7 +87,7 @@ class PtSpider:
             return etree.HTML(response.content).xpath(rules)
 
     def sign_in_52pt(self, my_site: MySite):
-        site = get_object_or_404(WebSite, my_site.site)
+        site = get_object_or_404(WebSite, id=my_site.site)
         url = site.url + site.page_sign_in.lstrip('/')
         result = self.send_request(my_site=my_site, url=url, )
         # sign_str = self.parse(result, '//font[contains(text(),"签过到")]/text()')
@@ -122,7 +122,7 @@ class PtSpider:
             return CommonResponse.success(msg=f'签到成功！{"".join(sign_str)}')
 
     def sign_in_hdupt(self, my_site: MySite):
-        site = get_object_or_404(WebSite, my_site.site)
+        site = get_object_or_404(WebSite, id=my_site.site)
         url = site.url + site.page_control_panel.lstrip('/')
         result = self.send_request(
             my_site=my_site,
@@ -151,7 +151,7 @@ class PtSpider:
             )
 
     def sign_in_hd4fans(self, my_site: MySite):
-        site = get_object_or_404(WebSite, my_site.site)
+        site = get_object_or_404(WebSite, id=my_site.site)
         url = site.url + site.page_control_panel.lstrip('/')
         result = self.send_request(
             my_site=my_site,
@@ -176,7 +176,7 @@ class PtSpider:
         )
 
     def sign_in_hdc(self, my_site: MySite):
-        site = get_object_or_404(WebSite, my_site.site)
+        site = get_object_or_404(WebSite, id=my_site.site)
         url = site.url + site.page_control_panel.lstrip('/')
         # result = self.send_request(
         #     my_site=my_site,
@@ -232,7 +232,7 @@ class PtSpider:
             return CommonResponse.error(msg=msg)
 
     def sign_in_u2(self, my_site: MySite):
-        site = get_object_or_404(WebSite, my_site.site)
+        site = get_object_or_404(WebSite, id=my_site.site)
         url = site.url + site.page_sign_in.lstrip('/')
         result = self.send_request(my_site=my_site, url=url, )
         sign_str = ''.join(self.parse(site, result, '//a[@href="showup.php"]/text()'))
@@ -283,7 +283,7 @@ class PtSpider:
 
     def sign_in_opencd(self, my_site: MySite):
         """皇后签到"""
-        site = get_object_or_404(WebSite, my_site.site)
+        site = get_object_or_404(WebSite, id=my_site.site)
         check_url = site.url + site.page_user
         res_check = self.send_request(
             my_site=my_site,
@@ -325,7 +325,7 @@ class PtSpider:
 
     def sign_in_hdsky(self, my_site: MySite):
         """HDSKY签到"""
-        site = get_object_or_404(WebSite, my_site.site)
+        site = get_object_or_404(WebSite, id=my_site.site)
         url = site.url + site.page_sign_in.lstrip('/')
         # sky无需验证码时使用本方案
         # if not captcha:
@@ -384,7 +384,7 @@ class PtSpider:
         :param my_site:
         :return:
         """
-        site = get_object_or_404(WebSite, my_site.site)
+        site = get_object_or_404(WebSite, id=my_site.site)
         url = site.url + site.page_user.format(my_site.user_id)
         logger.info(site.name + '个人主页：' + url)
         try:
@@ -465,7 +465,7 @@ class PtSpider:
     # @transaction.atomic
     def sign_in(self, my_site: MySite):
         """签到"""
-        site = get_object_or_404(WebSite, my_site.site)
+        site = get_object_or_404(WebSite, id=my_site.site)
         logger.info(site.name + '开始签到')
         signin_today = my_site.signin_set.filter(created_at__date__gte=datetime.today()).first()
         # 如果已有签到记录
@@ -758,7 +758,7 @@ class PtSpider:
 
     def send_status_request(self, my_site: MySite):
         """请求抓取数据相关页面"""
-        site = get_object_or_404(WebSite, my_site.site)
+        site = get_object_or_404(WebSite, id=my_site.site)
         user_detail_url = site.url + site.page_user.lstrip('/').format(my_site.user_id)
         logger.info(user_detail_url)
         # uploaded_detail_url = site.url + site.page_uploaded.lstrip('/').format(my_site.user_id)
@@ -997,7 +997,7 @@ class PtSpider:
 
     def parse_status_html(self, my_site: MySite, result: dict):
         """解析个人状态"""
-        site = get_object_or_404(WebSite, my_site.site)
+        site = get_object_or_404(WebSite, id=my_site.site)
         with lock:
             details_html = result.get('details_html')
             seeding_html = result.get('seeding_html')
@@ -1610,7 +1610,7 @@ class PtSpider:
 
     def get_hour_sp(self, my_site: MySite):
         """获取时魔"""
-        site = get_object_or_404(WebSite, my_site.site)
+        site = get_object_or_404(WebSite, id=my_site.site)
         url = site.url + site.page_mybonus
         if site.url in [
             'https://monikadesign.uk/',
@@ -1676,7 +1676,7 @@ class PtSpider:
             return CommonResponse.success(msg=message, data=0)
 
     def send_torrent_info_request(self, my_site: MySite):
-        site = get_object_or_404(WebSite, my_site.site)
+        site = get_object_or_404(WebSite, id=my_site.site)
         url = site.url + site.page_index.lstrip('/')
         logger.info(f'种子页面链接：{url}')
         try:
@@ -1702,7 +1702,7 @@ class PtSpider:
     def get_torrent_info_list(self, my_site: MySite, response: Response):
         count = 0
         new_count = 0
-        site = get_object_or_404(WebSite, my_site.site)
+        site = get_object_or_404(WebSite, id=my_site.site)
         # if not my_site.passkey:
         #     return CommonResponse.error(msg='{}站点未设置Passkey，无法拼接种子链接！'.format(site.name))
         # logger.info(response.text.encode('utf8'))

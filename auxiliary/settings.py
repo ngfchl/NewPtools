@@ -45,6 +45,8 @@ INSTALLED_APPS = [
     "download",
     "repeat",
     "autopt",
+    "django_celery_beat",
+    "django_celery_results",
 ]
 
 MIDDLEWARE = [
@@ -186,3 +188,21 @@ LOGGING = {
         },
     }
 }
+
+# ----Celery redis 配置----- #
+# Broker配置，使用Redis作为消息中间件
+broker_url = 'redis://127.0.0.1:6379/0'
+
+# BACKEND配置，使用redis
+result_backend = 'django-db'
+
+accept_content = ['json']
+task_serializer = 'json'
+# 结果序列化方案
+result_serializer = 'json'
+
+# 任务结果过期时间，秒
+result_expires = 60 * 60 * 24
+timezone = "Asia/Shanghai"
+# 定时任务数据库配置
+beat_scheduler = 'django_celery_beat.schedulers.DatabaseScheduler'

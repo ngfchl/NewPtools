@@ -5,6 +5,7 @@ from typing import List
 from django.shortcuts import get_object_or_404
 from ninja import Router
 
+from .tasks import send_sms
 from autopt import views as autopt
 from auxiliary.base import MessageTemplate
 from my_site.schema import *
@@ -363,6 +364,18 @@ def site_sort_api(request, id: int, sort_id: int):
             return CommonResponse.success(msg='排序已经最靠前啦，不要再点了！')
         my_site.save()
         return CommonResponse.success(msg='排序成功！')
+    except Exception as e:
+        logger.error(f'数据更新失败：{e}')
+        logger.error(traceback.format_exc(limit=3))
+        return CommonResponse.error(msg=f'数据更新失败：{e}')
+
+
+@router.get('/test/send_sms/{mobile}', response=CommonResponse, description='站点排序')
+def send_sms_exec(request, mobile: str):
+    try:
+        res = send_sms.delay(mobile)
+        print(type(res))
+        return CommonResponse.success(data=res.id)
     except Exception as e:
         logger.error(f'数据更新失败：{e}')
         logger.error(traceback.format_exc(limit=3))

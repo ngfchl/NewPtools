@@ -11,12 +11,17 @@ import aip
 import cloudscraper
 import dateutil.parser
 import git
+import requests
 import toml as toml
+from pypushdeer import PushDeer
+from wechat_push import WechatPush
+from wxpusher import WxPusher
 
+from auxiliary.base import PushConfig
 from auxiliary.settings import BASE_DIR
 from my_site.models import MySite, SiteStatus
 from spider.views import PtSpider
-from toolbox.models import BaiduOCR
+from toolbox.models import BaiduOCR, Notify
 from toolbox.schema import CommonResponse
 from website.models import WebSite
 
@@ -310,3 +315,66 @@ def exec_command(commands):
             'res': p.returncode
         })
     return result
+
+
+def send_text(message: str, title: str = '', url: str = None):
+    """通知分流"""
+    notifies = Notify.objects.filter(enable=True).all()
+    res = '你还没有配置通知参数哦！'
+    if len(notifies) <= 0:
+        return res
+    try:
+        for notify in notifies:
+            if notify.name == PushConfig.wechat_work_push:
+                """企业微信通知"""
+                notify_push = WechatPush(
+                    corp_id=notify.corpid,
+                    secret=notify.corpsecret,
+                    agent_id=notify.agentid, )
+                res = notify_push.send_text(
+                    text=message,
+                    to_uid=notify.touser if notify.touser else '@all'
+                )
+                msg = '企业微信通知：{}'.format(res)
+                logger.info(msg)
+
+            if notify.name == PushConfig.wxpusher_push:
+                """WxPusher通知"""
+                res = WxPusher.send_message(
+                    content=message,
+                    url=url,
+                    uids=notify.touser.split(','),
+                    token=notify.corpsecret,
+                    content_type=3,  # 1：文本，2：html，3：markdown
+                )
+                msg = 'WxPusher通知{}'.format(res)
+                logger.info(msg)
+
+            if notify.name == PushConfig.pushdeer_push:
+                pushdeer = PushDeer(
+                    server=notify.custom_server,
+                    pushkey=notify.corpsecret)
+                # res = pushdeer.send_text(text, desp="optional description")
+                res = pushdeer.send_markdown(text=message,
+                                             desp=title)
+                msg = 'pushdeer通知{}'.format(res)
+                logger.info(msg)
+
+            if notify.name == PushConfig.bark_push:
+                url = f'{notify.custom_server}{notify.corpsecret}/{title}/{message}'
+                res = requests.get(url=url)
+                msg = 'bark通知{}'.format(res)
+                logger.info(msg)
+
+            if notify.name == PushConfig.iyuu_push:
+                url = notify.custom_server + '{}.send'.format(notify.corpsecret)
+                # text = '# '
+                res = requests.post(
+                    url=url,
+                    data={
+                        'text': title,
+                        'desp': message
+                    })
+                logger.info('爱语飞飞通知：{}'.format(res))
+    except Exception as e:
+        logger.info('通知发送失败，{} {}'.format(res, traceback.format_exc(limit=3)))

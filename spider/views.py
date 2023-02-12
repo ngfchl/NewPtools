@@ -424,44 +424,6 @@ class PtSpider:
         # logger.info('res_list:', len(res_list))
         return '0' if len(res_list) == 0 else res_list[0]
 
-    def do_sign_in(self, pool, queryset: QuerySet[MySite]):
-        message_list = []
-        if datetime.now().hour < 9:
-            # U2/52PT 每天九点前不签到
-            queryset = [my_site for my_site in queryset if WebSite.objects.get(my_site.site).url not in [
-                'https://u2.dmhy.org/',
-                # 'https://52pt.site/'
-            ] and my_site.signin_set.filter(created_at__date__gte=datetime.today()).count() <= 0
-                        and my_site.cookie]
-            message = '站点：`U2` 早上九点之前不执行签到任务哦！ \n\n'
-            logger.info(message)
-            message_list.append(message)
-        else:
-            queryset = [my_site for my_site in queryset if my_site.cookie and
-                        my_site.signin_set.filter(created_at__date__gte=datetime.today(),
-                                                  sign_in_today=True).count() <= 0]
-        logger.info(len(queryset))
-        if len(queryset) <= 0:
-            message_list = ['已全部签到或无需签到！ \n\n']
-            logger.info(message_list)
-            return 0
-        # results = pool.map(pt_spider.sign_in, site_list)
-        with lock:
-            results = pool.map(self.sign_in, queryset)
-            for my_site, result in zip(queryset, results):
-                # logger.info('自动签到：{}, {}'.format(my_site, result))
-                # if result.code == 0:
-                #     msg = f'{my_site.nickname} 签到成功！{result.msg} \n\n'
-                #     logger.info(msg)
-                #     message_list.append(msg)
-                # else:
-                #     message = f'{my_site.nickname}签到失败：{result.msg} \n\n'
-                #     message_list.insert(0, message)
-                #     logger.error(message)
-                message_list.append({my_site.nickname: result.to_dict()})
-            logger.info(message_list)
-            return message_list
-
     # @transaction.atomic
     def sign_in(self, my_site: MySite):
         """签到"""

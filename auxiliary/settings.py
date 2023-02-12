@@ -169,7 +169,7 @@ LOGGING = {
             'level': 'DEBUG',  # 输出等级为“INFO”
             # 新增内容
             'class': 'logging.handlers.TimedRotatingFileHandler',
-            'filename': os.path.join(BASE_DIR, 'db/current.log'),
+            'filename': os.path.join(BASE_DIR, 'logs/logs.log'),
             'when': 'm',
             'interval': 10,
             'backupCount': 10,

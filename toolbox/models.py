@@ -13,7 +13,7 @@ class BaiduOCR(BaseEntity):
     api_key = 'TUoKvq3w1d'
     secret_key = 'XojLDC9s5qc'
     """
-    name = models.CharField(verbose_name='OCR', default='百度OCR', editable=False, max_length=64)
+    name = models.CharField(verbose_name='OCR', default='百度OCR', editable=False, max_length=64, unique=True)
     enable = models.BooleanField(verbose_name='启用', default=False)
     api_key = models.CharField(verbose_name='API-Key',
                                max_length=64,

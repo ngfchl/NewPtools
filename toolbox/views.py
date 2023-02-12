@@ -14,7 +14,7 @@ import git
 import requests
 import toml as toml
 from pypushdeer import PushDeer
-from wechat_push import WechatPush
+from .wechat_push import WechatPush
 from wxpusher import WxPusher
 
 from auxiliary.base import PushConfig

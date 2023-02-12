@@ -44,7 +44,6 @@ INSTALLED_APPS = [
     "toolbox",
     "download",
     "repeat",
-    "autopt",
     "django_celery_beat",
     "django_celery_results",
 ]
@@ -191,7 +190,7 @@ LOGGING = {
 
 # ----Celery redis 配置----- #
 # Broker配置，使用Redis作为消息中间件
-broker_url = 'redis://127.0.0.1:6379/0'
+broker_url = 'redis://127.0.0.1:6379/15'
 
 # BACKEND配置，使用redis
 result_backend = 'django-db'

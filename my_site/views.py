@@ -5,14 +5,12 @@ from typing import List
 from django.shortcuts import get_object_or_404
 from ninja import Router
 
-from .tasks import send_sms
-from autopt import views as autopt
 from auxiliary.base import MessageTemplate
 from my_site.schema import *
 from spider.views import PtSpider
 from toolbox import views as toolbox
 from toolbox.schema import CommonResponse
-from toolbox.views import FileSizeConvert
+from . import tasks as autopt
 
 # Create your views here.
 logger = logging.getLogger('ptools')
@@ -269,9 +267,9 @@ def update_site_api(request, site_id: int):
                     status.bonus_hour,
                     status.my_score,
                     status.ratio,
-                    FileSizeConvert.parse_2_file_size(status.seed_volume),
-                    FileSizeConvert.parse_2_file_size(status.uploaded),
-                    FileSizeConvert.parse_2_file_size(status.downloaded),
+                    toolbox.FileSizeConvert.parse_2_file_size(status.seed_volume),
+                    toolbox.FileSizeConvert.parse_2_file_size(status.uploaded),
+                    toolbox.FileSizeConvert.parse_2_file_size(status.downloaded),
                     status.seed,
                     status.leech,
                     status.invitation,
@@ -333,7 +331,7 @@ def site_sort_api(request, id: int, sort_id: int):
 @router.get('/test/send_sms/{mobile}', response=CommonResponse, description='站点排序')
 def send_sms_exec(request, mobile: str):
     try:
-        res = send_sms.delay(mobile)
+        res = autopt.auto_push_to_downloader.delay()
         print(type(res))
         return CommonResponse.success(data=res.id)
     except Exception as e:

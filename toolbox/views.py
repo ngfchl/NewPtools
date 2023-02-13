@@ -6,7 +6,7 @@ import traceback
 from datetime import datetime
 
 import aip
-import git
+# import git
 import requests
 import toml as toml
 from pypushdeer import PushDeer
@@ -136,17 +136,17 @@ def parse_message_num(messages: str):
     return int(count)
 
 
-def get_git_log(branch, n=20):
-    repo = git.Repo(path='.')
-    # 拉取仓库更新记录元数据
-    repo.remote().fetch()
-    # commits更新记录
-    logger.info('当前分支{}'.format(branch))
-    return [{
-        'date': log.committed_datetime.strftime('%Y-%m-%d %H:%M:%S'),
-        'data': log.message,
-        'hexsha': log.hexsha[:16],
-    } for log in list(repo.iteipr_commits(branch, max_count=n))]
+# def get_git_log(branch, n=20):
+#     repo = git.Repo(path='.')
+#     # 拉取仓库更新记录元数据
+#     repo.remote().fetch()
+#     # commits更新记录
+#     logger.info('当前分支{}'.format(branch))
+#     return [{
+#         'date': log.committed_datetime.strftime('%Y-%m-%d %H:%M:%S'),
+#         'data': log.message,
+#         'hexsha': log.hexsha[:16],
+#     } for log in list(repo.iteipr_commits(branch, max_count=n))]
 
 
 def generate_config_file():

@@ -6,11 +6,11 @@ from django.shortcuts import get_object_or_404
 from ninja import Router
 
 from auxiliary.base import MessageTemplate
+from my_site import tasks as autopt
 from my_site.schema import *
 from spider.views import PtSpider
 from toolbox import views as toolbox
 from toolbox.schema import CommonResponse
-from my_site import tasks as autopt
 
 # Create your views here.
 logger = logging.getLogger('ptools')
@@ -71,27 +71,15 @@ def get_signin_list(request):
     return SignIn.objects.order_by('id').select_related('site')
 
 
-@router.post('/signin/do_signin/', response=CommonResponse, description='每日签到-列表')
-def do_sign_in(request, site_list: List[int] = []):
-    """自动签到"""
-    # start = time.time()
-
-    autopt.do_sign_in.delay(site_list)
-    # autopt.do_sign_in.consume()
-    # end = time.time()
-    # consuming = '> <font  color="blue">{} 任务运行成功！耗时：{}完成时间：{}  </font>\n'.format(
-    #     '自动签到', end - start,
-    #     time.strftime("%Y-%m-%d %H:%M:%S")
-    # )
-
-    # if message_list == 0:
-    #     logger.info('已经全部签到咯！！')
-    # else:
-    # logger.info(message_list + consuming)
-    # message = message_list + consuming
-    # toolbox.send_text(title='通知：自动签到', message=message)
-    # logger.info('{} 任务运行成功！完成时间：{}'.format('自动签到', time.strftime("%Y-%m-%d %H:%M:%S")))
-    return CommonResponse.success(msg=f'签到任务执行中，任务ID:')
+@router.post('/sign/do/', response=CommonResponse, description='每日签到')
+def sign_in_api(request, site_list: List[int] = []):
+    try:
+        res = autopt.do_sign_in.delay(site_list)
+        return CommonResponse.success(msg=f'签到指令已发送，请注意查收推送消息！任务id：{res.id}')
+    except Exception as e:
+        logger.error(f'签到失败：{e}')
+        logger.error(traceback.format_exc(limit=3))
+        return CommonResponse.error(msg=f'签到失败：{e}')
 
 
 @router.get('/signin/{int:signin_id}', response=SignInSchemaOut, description='每日状态-单个')
@@ -241,28 +229,6 @@ def site_data_api(request, site_id: int):
     return CommonResponse.success(
         data={'site': my_site_info, 'site_status_list': site_status_list}
     )
-
-
-@router.get('/sign/do/{site_id}', response=CommonResponse, description='站点签到')
-def sign_in_api(request, site_id: int):
-    try:
-        if int(site_id) == 0:
-            autopt.auto_sign_in()
-            return CommonResponse.success(
-                msg='签到指令已发送，请注意查收推送消息！'
-            )
-        my_site = MySite.objects.filter(id=site_id).first()
-        sign_state = pt_spider.sign_in(my_site)
-        logger.info(sign_state.to_dict())
-        # if sign_state.code == StatusCodeEnum.OK.code:
-        #     return JsonResponse(data=CommonResponse.success(
-        #         msg=sign_state.msg
-        #     ).to_dict(), safe=False)
-        return sign_state.to_dict()
-    except Exception as e:
-        logger.error(f'签到失败：{e}')
-        logger.error(traceback.format_exc(limit=3))
-        return CommonResponse.error(msg=f'签到失败：{e}')
 
 
 @router.get('/status/do/{site_id}', response=CommonResponse, description='刷新站点数据')

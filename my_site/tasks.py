@@ -30,7 +30,7 @@ pt_spider = PtSpider()
 
 # @boost('do_sign_in', broker_kind=BrokerEnum.REDIS_STREAM)
 @app.task
-def do_sign_in(site_list: List[int] = []):
+def auto_sign_in(site_list: List[int] = []):
     """执行签到"""
     start = time.time()
     logger.info('开始执行签到任务')

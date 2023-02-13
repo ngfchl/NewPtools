@@ -195,7 +195,7 @@ CELERY_BROKER_URL = 'redis://127.0.0.1:6379/15'
 # BACKEND配置，使用redis
 CELERY_RESULT_BACKEND = 'django-db'
 
-CELERY_accept_content = ['json']
+# CELERY_accept_content = ['json']
 
 CELERY_TASK_SERIALIZER = 'json'
 

@@ -74,7 +74,7 @@ def get_signin_list(request):
 @router.post('/sign/do/', response=CommonResponse, description='每日签到')
 def sign_in_api(request, site_list: List[int] = []):
     try:
-        res = autopt.do_sign_in.delay(site_list)
+        res = autopt.auto_sign_in.delay(site_list)
         return CommonResponse.success(msg=f'签到指令已发送，请注意查收推送消息！任务id：{res.id}')
     except Exception as e:
         logger.error(f'签到失败：{e}')

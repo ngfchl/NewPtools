@@ -4,13 +4,14 @@ import subprocess
 import time
 from datetime import datetime
 from multiprocessing.dummy import Pool as ThreadPool
+from typing import List
 
 import requests
 import toml
 from celery import shared_task
-from django.db.models import QuerySet
 from lxml import etree
 
+from auxiliary.background import celery_app
 from auxiliary.base import MessageTemplate
 from my_site.models import MySite, TorrentInfo
 from spider.views import PtSpider, toolbox
@@ -25,30 +26,34 @@ pt_spider = PtSpider()
 
 
 @shared_task
-def do_sign_in(self, queryset: QuerySet[MySite]):
+def do_sign_in(site_list: List[int] = []):
     """执行签到"""
     message_list = []
-    if datetime.now().hour < 9:
+    # 获取工具支持且本人开启签到的所有站点
+    websites = WebSite.objects.all()
+    sign_list = MySite.objects.filter(
+        sign_in=True) if len(site_list) == 0 else MySite.objects.filter(sign_in=True, id__in=site_list)
+    # 获取已配置Cookie 且站点支持签到，今日无签到数据的站点列表
+    queryset = [my_site for my_site in sign_list if my_site.cookie and websites.get(id=my_site.site).func_sign_in
+                and my_site.signin_set.filter(created_at__date__gte=datetime.today(), sign_in_today=True).count() <= 0]
+    if datetime.now().hour < 9 and len(queryset) > 0:
+        print(queryset)
+        print(type(queryset))
         # U2/52PT 每天九点前不签到
-        queryset = [my_site for my_site in queryset if WebSite.objects.get(my_site.site).url not in [
+        queryset = [my_site for my_site in queryset if WebSite.objects.get(id=my_site.site).url not in [
             'https://u2.dmhy.org/',
             # 'https://52pt.site/'
-        ] and my_site.signin_set.filter(created_at__date__gte=datetime.today()).count() <= 0
-                    and my_site.cookie]
+        ]]
         message = '站点：`U2` 早上九点之前不执行签到任务哦！ \n\n'
         logger.info(message)
         message_list.append(message)
-    else:
-        queryset = [my_site for my_site in queryset if my_site.cookie and
-                    my_site.signin_set.filter(created_at__date__gte=datetime.today(),
-                                              sign_in_today=True).count() <= 0]
     logger.info(len(queryset))
     if len(queryset) <= 0:
         message_list = ['已全部签到或无需签到！ \n\n']
         logger.info(message_list)
-        return 0
-    # results = pool.map(pt_spider.sign_in, site_list)
-    results = pool.map(self.sign_in, queryset)
+        toolbox.send_text('\n'.join(message_list))
+        return message_list
+    results = pool.map(pt_spider.sign_in, queryset)
     for my_site, result in zip(queryset, results):
         # logger.info('自动签到：{}, {}'.format(my_site, result))
         # if result.code == 0:
@@ -59,31 +64,12 @@ def do_sign_in(self, queryset: QuerySet[MySite]):
         #     message = f'{my_site.nickname}签到失败：{result.msg} \n\n'
         #     message_list.insert(0, message)
         #     logger.error(message)
-        message_list.append({my_site.nickname: result.to_dict()})
+        message_list.append({
+            my_site.nickname: result.to_dict()
+        })
     logger.info(message_list)
+    toolbox.send_text('\n'.join(message_list))
     return message_list
-
-
-@shared_task
-def auto_sign_in():
-    """自动签到"""
-    start = time.time()
-    # 获取工具支持且本人开启签到的所有站点
-    queryset = MySite.objects.filter(site__sign_in_support=True).filter(sign_in=True).all()
-    message_list = do_sign_in(pool, queryset)
-    end = time.time()
-    consuming = '> <font  color="blue">{} 任务运行成功！耗时：{}完成时间：{}  </font>\n'.format(
-        '自动签到', end - start,
-        time.strftime("%Y-%m-%d %H:%M:%S")
-    )
-
-    if message_list == 0:
-        logger.info('已经全部签到咯！！')
-    else:
-        logger.info(message_list + consuming)
-        message = message_list + consuming
-        toolbox.send_text(title='通知：自动签到', message=message)
-    logger.info('{} 任务运行成功！完成时间：{}'.format('自动签到', time.strftime("%Y-%m-%d %H:%M:%S")))
 
 
 @shared_task
@@ -190,7 +176,7 @@ def auto_update_torrents():
     toolbox.send_text(title='通知：拉取最新种子', message=message)
 
 
-@shared_task
+@celery_app.task
 def auto_remove_expire_torrents():
     """
     删除过期种子
@@ -234,7 +220,7 @@ def auto_remove_expire_torrents():
     toolbox.send_text(title='通知：清除种子任务', message=message)
 
 
-@shared_task
+@celery_app.task
 def auto_push_to_downloader():
     """推送到下载器"""
     start = time.time()
@@ -244,7 +230,7 @@ def auto_push_to_downloader():
     toolbox.send_text(title='通知：推送种子任务', message=message)
 
 
-@shared_task
+@celery_app.task
 def auto_get_torrent_hash():
     """自动获取种子HASH"""
     start = time.time()
@@ -255,7 +241,7 @@ def auto_get_torrent_hash():
     toolbox.send_text(title='通知：自动获取种子HASH', message=message)
 
 
-@shared_task
+@celery_app.task
 def exec_command(commands):
     """执行命令行命令"""
     result = []
@@ -269,7 +255,7 @@ def exec_command(commands):
     return result
 
 
-@shared_task
+@celery_app.task
 def auto_upgrade():
     """程序更新"""
     try:
@@ -304,7 +290,7 @@ def auto_upgrade():
         )
 
 
-@shared_task
+@celery_app.task
 def auto_update_license():
     """auto_update_license"""
     res = toolbox.generate_config_file()

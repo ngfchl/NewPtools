@@ -44,9 +44,9 @@ def edit_mysite(request, my_site_id: int, my_site_params: MySiteSchemaIn):
         return CommonResponse.success(
             msg=f'{my_site_res} 信息更新成功！'
         )
-    except:
+    except Exception as e:
         return CommonResponse.error(
-            msg=f'{my_site_params.nickname} 参数有误，请确认后重试！'
+            msg=f'{my_site_params.nickname} 参数有误，请确认后重试！{e}'
         )
 
 
@@ -71,6 +71,27 @@ def get_signin_list(request):
     return SignIn.objects.order_by('id').select_related('site')
 
 
+@router.post('/signin/do_signin/', response=CommonResponse, description='每日签到-列表')
+def do_signin(request, site_list: List[int] = []):
+    """自动签到"""
+    # start = time.time()
+    res = autopt.do_sign_in.delay(site_list)
+    # end = time.time()
+    # consuming = '> <font  color="blue">{} 任务运行成功！耗时：{}完成时间：{}  </font>\n'.format(
+    #     '自动签到', end - start,
+    #     time.strftime("%Y-%m-%d %H:%M:%S")
+    # )
+
+    # if message_list == 0:
+    #     logger.info('已经全部签到咯！！')
+    # else:
+    # logger.info(message_list + consuming)
+    # message = message_list + consuming
+    # toolbox.send_text(title='通知：自动签到', message=message)
+    # logger.info('{} 任务运行成功！完成时间：{}'.format('自动签到', time.strftime("%Y-%m-%d %H:%M:%S")))
+    return CommonResponse.success(msg=f'签到任务执行中，任务ID:{res}')
+
+
 @router.get('/signin/{int:signin_id}', response=SignInSchemaOut, description='每日状态-单个')
 def get_signin(request, signin_id):
     return get_object_or_404(SignIn, id=signin_id)
@@ -78,7 +99,7 @@ def get_signin(request, signin_id):
 
 @router.post('/import', response=SignInSchemaOut, description='PTPP备份导入')
 def import_from_ptpp(request, data: ImportSchema):
-    res = toolbox.parse_ptpp_cookies(data)
+    res = pt_spider.parse_ptpp_cookies(data)
     if res.code == 0:
         cookies = res.data
         # logger.info(cookies)
@@ -88,7 +109,7 @@ def import_from_ptpp(request, data: ImportSchema):
     for data in cookies:
         try:
             # logger.info(data)
-            res = toolbox.get_uid_and_passkey(data)
+            res = pt_spider.get_uid_and_passkey(data)
             msg = res.msg
             logger.info(msg)
             if res.code == 0:
@@ -126,20 +147,20 @@ def site_data_api(request, site_id: int):
         ])
         date_list = list(date_list)
         date_list.sort()
-        # print(f'日期列表：{date_list}')
-        print(f'日期数量：{len(date_list)}')
+        # logger.info(f'日期列表：{date_list}')
+        logger.info(f'日期数量：{len(date_list)}')
 
         for my_site in my_site_list:
             # 每个站点获取自己站点的所有信息
             site_status_list = my_site.sitestatus_set.order_by('created_at').all()
-            # print(f'站点数据条数：{len(site_status_list)}')
+            # logger.info(f'站点数据条数：{len(site_status_list)}')
             info_list = [
                 {
                     'uploaded': site_info.uploaded,
                     'date': site_info.created_at.date().strftime('%Y-%m-%d')
                 } for site_info in site_status_list
             ]
-            # print(f'提取完后站点数据条数：{len(info_list)}')
+            # logger.info(f'提取完后站点数据条数：{len(info_list)}')
 
             # 生成本站点的增量列表，并标注时间
             '''
@@ -158,12 +179,12 @@ def site_data_api(request, site_id: int):
                 (index, info) in enumerate(info_list) if 0 < index < len(info_list)
 
             }
-            # print(f'处理完后站点数据条数：{len(info_list)}')
+            # logger.info(f'处理完后站点数据条数：{len(info_list)}')
             for date in date_list:
                 if not diff_info_list.get(date):
                     diff_info_list[date] = 0
-            # print(diff_info_list)
-            # print(len(diff_info_list))
+            # logger.info(diff_info_list)
+            # logger.info(len(diff_info_list))
             diff_info_list = sorted(diff_info_list.items(), key=lambda x: x[0])
             diff_list.append({
                 'name': my_site.nickname,
@@ -310,10 +331,10 @@ def show_sign_api(request, site_id: int):
         )
 
 
-@router.get('/sign/show/{id}/{sort_id}', response=CommonResponse, description='站点排序')
-def site_sort_api(request, id: int, sort_id: int):
+@router.get('/sign/show/{site_id}/{sort_id}', response=CommonResponse, description='站点排序')
+def site_sort_api(request, site_id: int, sort_id: int):
     try:
-        my_site = MySite.objects.filter(id=id).first()
+        my_site = MySite.objects.filter(id=site_id).first()
         my_site.sort_id += int(sort_id)
 
         if int(my_site.sort_id) <= 0:
@@ -332,7 +353,7 @@ def site_sort_api(request, id: int, sort_id: int):
 def send_sms_exec(request, mobile: str):
     try:
         res = autopt.auto_push_to_downloader.delay()
-        print(type(res))
+        logger.info(type(res))
         return CommonResponse.success(data=res.id)
     except Exception as e:
         logger.error(f'数据更新失败：{e}')

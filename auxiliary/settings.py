@@ -190,18 +190,24 @@ LOGGING = {
 
 # ----Celery redis 配置----- #
 # Broker配置，使用Redis作为消息中间件
-broker_url = 'redis://127.0.0.1:6379/15'
+CELERY_BROKER_URL = 'redis://127.0.0.1:6379/15'
 
 # BACKEND配置，使用redis
-result_backend = 'django-db'
+CELERY_RESULT_BACKEND = 'django-db'
 
-accept_content = ['json']
-task_serializer = 'json'
+CELERY_accept_content = ['json']
+
+CELERY_TASK_SERIALIZER = 'json'
+
+CELERY_TASK_TRACK_STARTED = True
+
+CELERY_TASK_TIME_LIMIT = 30 * 60
+
 # 结果序列化方案
-result_serializer = 'json'
+CELERY_RESULT_SERIALIZER = 'json'
 
 # 任务结果过期时间，秒
-result_expires = 60 * 60 * 24
-timezone = "Asia/Shanghai"
+CELERY_RESULT_EXPIRES = 60 * 60 * 24
+CELERY_TIMEZONE = "Asia/Shanghai"
 # 定时任务数据库配置
-beat_scheduler = 'django_celery_beat.schedulers.DatabaseScheduler'
+CELERY_BEAT_SCHEDULER = 'django_celery_beat.schedulers.DatabaseScheduler'

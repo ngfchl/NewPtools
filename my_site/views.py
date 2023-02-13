@@ -10,7 +10,7 @@ from my_site.schema import *
 from spider.views import PtSpider
 from toolbox import views as toolbox
 from toolbox.schema import CommonResponse
-from . import tasks as autopt
+from my_site import tasks as autopt
 
 # Create your views here.
 logger = logging.getLogger('ptools')
@@ -72,10 +72,12 @@ def get_signin_list(request):
 
 
 @router.post('/signin/do_signin/', response=CommonResponse, description='每日签到-列表')
-def do_signin(request, site_list: List[int] = []):
+def do_sign_in(request, site_list: List[int] = []):
     """自动签到"""
     # start = time.time()
-    res = autopt.do_sign_in.delay(site_list)
+
+    autopt.do_sign_in.delay(site_list)
+    # autopt.do_sign_in.consume()
     # end = time.time()
     # consuming = '> <font  color="blue">{} 任务运行成功！耗时：{}完成时间：{}  </font>\n'.format(
     #     '自动签到', end - start,
@@ -89,7 +91,7 @@ def do_signin(request, site_list: List[int] = []):
     # message = message_list + consuming
     # toolbox.send_text(title='通知：自动签到', message=message)
     # logger.info('{} 任务运行成功！完成时间：{}'.format('自动签到', time.strftime("%Y-%m-%d %H:%M:%S")))
-    return CommonResponse.success(msg=f'签到任务执行中，任务ID:{res}')
+    return CommonResponse.success(msg=f'签到任务执行中，任务ID:')
 
 
 @router.get('/signin/{int:signin_id}', response=SignInSchemaOut, description='每日状态-单个')

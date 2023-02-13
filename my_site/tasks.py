@@ -1,18 +1,20 @@
+from __future__ import absolute_import, unicode_literals
+
 import logging
 import os
 import subprocess
 import time
+from concurrent.futures.thread import ThreadPoolExecutor
 from datetime import datetime
-from multiprocessing.dummy import Pool as ThreadPool
 from typing import List
 
 import requests
 import toml
-from celery import shared_task
+from celery.app import shared_task
 from lxml import etree
 
-from auxiliary.background import celery_app
 from auxiliary.base import MessageTemplate
+from auxiliary.celery import app
 from my_site.models import MySite, TorrentInfo
 from spider.views import PtSpider, toolbox
 from toolbox.schema import CommonResponse
@@ -21,11 +23,12 @@ from website.models import WebSite
 # 引入日志
 logger = logging.getLogger('ptools')
 # 引入线程池
-pool = ThreadPool(4)
+pool = ThreadPoolExecutor(4)
 pt_spider = PtSpider()
 
 
-@shared_task
+# @boost('do_sign_in', broker_kind=BrokerEnum.REDIS_STREAM)
+@app.task
 def do_sign_in(site_list: List[int] = []):
     """执行签到"""
     message_list = []
@@ -53,6 +56,11 @@ def do_sign_in(site_list: List[int] = []):
         logger.info(message_list)
         toolbox.send_text('\n'.join(message_list))
         return message_list
+    # for my_site in queryset:
+    #     res = pt_spider.sign_in(my_site)
+    #     message_list.append({
+    #         my_site.nickname: res.to_dict()
+    #     })
     results = pool.map(pt_spider.sign_in, queryset)
     for my_site, result in zip(queryset, results):
         # logger.info('自动签到：{}, {}'.format(my_site, result))
@@ -64,9 +72,7 @@ def do_sign_in(site_list: List[int] = []):
         #     message = f'{my_site.nickname}签到失败：{result.msg} \n\n'
         #     message_list.insert(0, message)
         #     logger.error(message)
-        message_list.append({
-            my_site.nickname: result.to_dict()
-        })
+        message_list.append(f'{my_site.nickname}: {result.msg}')
     logger.info(message_list)
     toolbox.send_text('\n'.join(message_list))
     return message_list
@@ -176,7 +182,7 @@ def auto_update_torrents():
     toolbox.send_text(title='通知：拉取最新种子', message=message)
 
 
-@celery_app.task
+@app.task
 def auto_remove_expire_torrents():
     """
     删除过期种子
@@ -220,7 +226,7 @@ def auto_remove_expire_torrents():
     toolbox.send_text(title='通知：清除种子任务', message=message)
 
 
-@celery_app.task
+@shared_task
 def auto_push_to_downloader():
     """推送到下载器"""
     start = time.time()
@@ -230,7 +236,7 @@ def auto_push_to_downloader():
     toolbox.send_text(title='通知：推送种子任务', message=message)
 
 
-@celery_app.task
+@shared_task
 def auto_get_torrent_hash():
     """自动获取种子HASH"""
     start = time.time()
@@ -241,7 +247,7 @@ def auto_get_torrent_hash():
     toolbox.send_text(title='通知：自动获取种子HASH', message=message)
 
 
-@celery_app.task
+@shared_task
 def exec_command(commands):
     """执行命令行命令"""
     result = []
@@ -255,7 +261,7 @@ def exec_command(commands):
     return result
 
 
-@celery_app.task
+@shared_task
 def auto_upgrade():
     """程序更新"""
     try:
@@ -290,7 +296,7 @@ def auto_upgrade():
         )
 
 
-@celery_app.task
+@shared_task
 def auto_update_license():
     """auto_update_license"""
     res = toolbox.generate_config_file()

@@ -543,7 +543,7 @@ class PtSpider:
                 site.url + site.page_sign_in,
                 method='post',
                 data=params)
-            logger.info(resp.text)
+            logger.info(f'{my_site.nickname}: {resp.content.decode("utf8")}')
             return CommonResponse.success(msg=resp.content.decode('utf8'))
         except Exception as e:
             # 打印异常详细信息
@@ -740,7 +740,7 @@ class PtSpider:
                 logger.info(res.text)
             else:
                 res = self.send_request(my_site=my_site, method='post', url=url)
-            logger.info(res)
+            logger.info(f'{my_site.nickname}: {res}')
             if 'pterclub.com' in site.url:
                 logger.info(f'猫站签到返回值：{res.json()}')
                 status = res.json().get('status')
@@ -823,8 +823,8 @@ class PtSpider:
                 #         '//p[contains(text(),"本次签到获得魅力")]/preceding-sibling::h1[1]/span/text()'
                 #     )
                 #     content_parse = self.parse(site, res, '//p[contains(text(),"本次签到获得魅力")]/text()')
-                logger.info(f'签到信息标题：{content_parse}')
-                logger.info(f'签到信息：{content_parse}')
+                logger.info(f'{my_site.nickname}: 签到信息标题：{content_parse}')
+                logger.info(f'{my_site.nickname}: 签到信息：{content_parse}')
                 title = ''.join(title_parse).strip()
                 content = ''.join(content_parse).strip().replace('\n', '')
                 message = title + '，' + content
@@ -835,7 +835,7 @@ class PtSpider:
                 signin_today.sign_in_today = True
                 signin_today.sign_in_info = message
                 signin_today.save()
-                logger.info(site.name + message)
+                logger.info(f'{my_site.nickname}: {message}')
                 return CommonResponse.success(msg=message)
             else:
                 return CommonResponse.error(msg='请确认签到是否成功？？网页返回码：' + str(res.status_code))

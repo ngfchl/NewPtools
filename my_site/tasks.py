@@ -31,6 +31,9 @@ pt_spider = PtSpider()
 @app.task
 def do_sign_in(site_list: List[int] = []):
     """执行签到"""
+    start = time.time()
+    logger.info('开始执行签到任务')
+    logger.info('筛选需要签到的站点')
     message_list = []
     # 获取工具支持且本人开启签到的所有站点
     websites = WebSite.objects.all()
@@ -62,6 +65,7 @@ def do_sign_in(site_list: List[int] = []):
     #         my_site.nickname: res.to_dict()
     #     })
     results = pool.map(pt_spider.sign_in, queryset)
+    logger.info('开始执行签到任务')
     for my_site, result in zip(queryset, results):
         # logger.info('自动签到：{}, {}'.format(my_site, result))
         # if result.code == 0:
@@ -73,6 +77,9 @@ def do_sign_in(site_list: List[int] = []):
         #     message_list.insert(0, message)
         #     logger.error(message)
         message_list.append(f'{my_site.nickname}: {result.msg}')
+    message = f'签到任务执行完毕，耗费时间：{time.time() - start}'
+    message_list.append(message)
+    logger.info(message)
     logger.info(message_list)
     toolbox.send_text('\n'.join(message_list))
     return message_list

@@ -1,5 +1,6 @@
 from __future__ import absolute_import, unicode_literals
 
+import gc
 import logging
 import os
 import subprocess
@@ -23,7 +24,7 @@ from website.models import WebSite
 # 引入日志
 logger = logging.getLogger('ptools')
 # 引入线程池
-pool = ThreadPoolExecutor(4)
+pool = ThreadPoolExecutor(10)
 pt_spider = PtSpider()
 
 
@@ -82,6 +83,8 @@ def do_sign_in(site_list: List[int] = []):
     logger.info(message)
     logger.info(message_list)
     toolbox.send_text('\n'.join(message_list))
+    # 释放内存
+    gc.collect()
     return message_list
 
 
@@ -143,6 +146,8 @@ def auto_get_status():
     logger.info(message_list + consuming)
     message = message_list + consuming
     toolbox.send_text(title='通知：更新个人数据', message=message)
+    # 释放内存
+    gc.collect()
 
 
 @shared_task
@@ -187,6 +192,8 @@ def auto_update_torrents():
     logger.info(message_list + consuming)
     message = message_list + consuming
     toolbox.send_text(title='通知：拉取最新种子', message=message)
+    # 释放内存
+    gc.collect()
 
 
 @app.task
@@ -231,6 +238,8 @@ def auto_remove_expire_torrents():
     end = time.time()
     message = f'> 清除种子 任务运行成功！共清除过期种子{count}个，耗时：{end - start}  \n{time.strftime("%Y-%m-%d %H:%M:%S")}'
     toolbox.send_text(title='通知：清除种子任务', message=message)
+    # 释放内存
+    gc.collect()
 
 
 @shared_task
@@ -241,6 +250,8 @@ def auto_push_to_downloader():
     end = time.time()
     message = f'> 签到 任务运行成功！耗时：{end - start}  \n{time.strftime("%Y-%m-%d %H:%M:%S")}'
     toolbox.send_text(title='通知：推送种子任务', message=message)
+    # 释放内存
+    gc.collect()
 
 
 @shared_task
@@ -252,6 +263,8 @@ def auto_get_torrent_hash():
     end = time.time()
     message = f'> 获取种子HASH 任务运行成功！耗时：{end - start}  \n{time.strftime("%Y-%m-%d %H:%M:%S")}'
     toolbox.send_text(title='通知：自动获取种子HASH', message=message)
+    # 释放内存
+    gc.collect()
 
 
 @shared_task
@@ -265,6 +278,8 @@ def exec_command(commands):
             'command': key,
             'res': p.returncode
         })
+    # 释放内存
+    gc.collect()
     return result
 
 
@@ -301,6 +316,9 @@ def auto_upgrade():
         return CommonResponse.error(
             msg=msg
         )
+    finally:
+        # 释放内存
+        gc.collect()
 
 
 @shared_task
@@ -357,6 +375,8 @@ def auto_update_license():
         return CommonResponse.success(
             data=result
         )
+    # 释放内存
+    gc.collect()
     return CommonResponse.error(
         msg=f'License更新失败！'
     )

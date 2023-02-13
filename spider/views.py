@@ -562,7 +562,7 @@ class PtSpider:
         """签到"""
         site = get_object_or_404(WebSite, id=my_site.site)
         logger.info(site.name + '开始签到')
-        signin_today = my_site.signin_set.filter(created_at__date__gte=datetime.today()).first()
+        signin_today = my_site.signin_set.filter(created_at__date__gte=datetime.today(), sign_in_today=False)
         # 如果已有签到记录
         if signin_today:
             if signin_today.sign_in_today is True:
@@ -635,9 +635,7 @@ class PtSpider:
                         signin_today.sign_in_today = True
                         signin_today.sign_in_info = message
                         signin_today.save()
-                        return CommonResponse.success(
-                            msg=message
-                        )
+                        return CommonResponse.success(msg=message)
                     elif res_json.get('message') == 'invalid_imagehash':
                         # 验证码错误
                         return CommonResponse.error(msg='验证码错误')
@@ -728,9 +726,7 @@ class PtSpider:
                     signin_today.sign_in_today = True
                     signin_today.sign_in_info = message
                     signin_today.save()
-                    return CommonResponse.success(
-                        msg=message
-                    )
+                    return CommonResponse.success(msg=message)
                 else:
                     return CommonResponse.error(msg='签到失败！')
             if site.url in [

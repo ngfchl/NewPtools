@@ -30,7 +30,8 @@ def parse_toml(cmd) -> dict:
 
 
 def check_token(token) -> bool:
-    own_token = parse_toml('token').get(token)
+    own_token = parse_toml('token').get('token')
+    logger.info(f'{own_token}=={token}')
     return own_token == token
 
 
@@ -183,8 +184,8 @@ def send_text(message: str, title: str = '', url: str = None):
     res = '你还没有配置通知参数哦！'
     if len(notifies) <= 0:
         return res
-    try:
-        for notify in notifies:
+    for notify in notifies:
+        try:
             if notify.name == PushConfig.wechat_work_push:
                 """企业微信通知"""
                 notify_push = WechatPush(
@@ -236,8 +237,8 @@ def send_text(message: str, title: str = '', url: str = None):
                         'desp': message
                     })
                 logger.info('爱语飞飞通知：{}'.format(res))
-    except Exception as e:
-        logger.info('通知发送失败，{} {}'.format(res, traceback.format_exc(limit=3)))
+        except Exception as e:
+            logger.info('通知发送失败，{} {}'.format(res, traceback.format_exc(limit=3)))
 
 
 def today_data():

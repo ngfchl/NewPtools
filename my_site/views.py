@@ -5,11 +5,9 @@ from typing import List
 from django.shortcuts import get_object_or_404
 from ninja import Router
 
-from auxiliary.base import MessageTemplate
 from my_site import tasks as autopt
 from my_site.schema import *
 from spider.views import PtSpider
-from toolbox import views as toolbox
 from toolbox.schema import CommonResponse
 
 # Create your views here.
@@ -231,43 +229,11 @@ def site_data_api(request, site_id: int):
     )
 
 
-@router.get('/status/do/{site_id}', response=CommonResponse, description='刷新站点数据')
-def update_site_api(request, site_id: int):
+@router.post('/status/do', response=CommonResponse, description='刷新站点数据')
+def update_site_api(request, site_list: List[int] = []):
     try:
-        if int(site_id) == 0:
-            autopt.auto_get_status()
-            return CommonResponse.success(
-                msg='更新指令已发送，请注意查收推送消息！'
-            )
-        my_site = MySite.objects.filter(id=site_id).first()
-        res_status = pt_spider.send_status_request(my_site)
-        message_template = MessageTemplate.status_message_template
-        if res_status.code == 0:
-            res = pt_spider.parse_status_html(my_site, res_status.data)
-            logger.info(f'{my_site.site.name}数据获取结果：{res.to_dict()}')
-            if res.code != 0:
-                return res.to_dict()
-            status = res.data[0]
-            if isinstance(status, SiteStatus):
-                message = message_template.format(
-                    my_site.site.name,
-                    my_site.my_level,
-                    status.my_bonus,
-                    status.bonus_hour,
-                    status.my_score,
-                    status.ratio,
-                    toolbox.FileSizeConvert.parse_2_file_size(status.seed_volume),
-                    toolbox.FileSizeConvert.parse_2_file_size(status.uploaded),
-                    toolbox.FileSizeConvert.parse_2_file_size(status.downloaded),
-                    status.seed,
-                    status.leech,
-                    status.invitation,
-                    my_site.my_hr
-                )
-                return CommonResponse.success(msg=message)
-            return CommonResponse.error(msg=res.msg)
-        else:
-            return res_status.to_dict()
+        res = autopt.auto_get_status.delay(site_list)
+        return CommonResponse.success(msg=f'数据更新指令已发送，请注意查收推送消息！任务id：{res}')
     except Exception as e:
         logger.error(f'数据更新失败：{e}')
         logger.error(traceback.format_exc(limit=3))

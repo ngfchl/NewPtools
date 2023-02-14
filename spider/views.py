@@ -15,7 +15,6 @@ import toml
 from django.shortcuts import get_object_or_404
 from lxml import etree
 from requests import ReadTimeout, Response
-from urllib3.exceptions import NewConnectionError, ConnectTimeoutError
 
 from auxiliary.base import TorrentBaseInfo
 from my_site.models import MySite, SignIn, SiteStatus, TorrentInfo
@@ -1068,7 +1067,7 @@ class PtSpider:
                 'seeding_html': seeding_html,
                 # 'leeching_html': leeching_html
             })
-        except NewConnectionError as nce:
+        except TimeoutError as nce:
             logger.error(traceback.format_exc(limit=3))
             return CommonResponse.error(msg=f'与网站建立连接失败，请检查网络？？{nce}')
         except requests.exceptions.SSLError as e:
@@ -1077,9 +1076,9 @@ class PtSpider:
         except ReadTimeout as e:
             logger.error(traceback.format_exc(limit=3))
             return CommonResponse.error(msg=f'网站访问超时，请检查网站是否维护？？{e}')
-        except ConnectTimeoutError as e:
-            logger.error(traceback.format_exc(limit=3))
-            return CommonResponse.error(msg=f'网站连接超时，请稍后重试？？{e}')
+        # except ConnectTimeoutError as e:
+        #     logger.error(traceback.format_exc(limit=3))
+        #     return CommonResponse.error(msg=f'网站连接超时，请稍后重试？？{e}')
         except Exception as e:
             message = f'{my_site.nickname} 访问个人主页信息：失败！原因：{e}'
             logger.error(message)
@@ -1179,6 +1178,7 @@ class PtSpider:
             elif 'zhuque.in' in site.url:
                 try:
                     my_site.time_join = datetime.fromtimestamp(details_html.get(site.my_time_join_rule))
+                    my_site.save()
                     downloaded = details_html.get(site.my_downloaded_rule)
                     uploaded = details_html.get(site.my_uploaded_rule)
                     seeding_size = details_html.get(site.my_seed_vol_rule)
@@ -1190,7 +1190,13 @@ class PtSpider:
                     leech = details_html.get(site.my_leech_rule)
                     mail = details_html.get(site.my_mailbox_rule)
                     bonus_hour = details_html.get(site.my_per_hour_bonus_rule)
-                    my_site.save()
+                    if mail > 0:
+                        msg = f'{site.name} 有{mail}条新消息，请注意查收！'
+                        # todo 发消息
+                        # self.send_text(title=msg, message=msg)
+                    if float(ratio) < 1:
+                        msg = f'{site.name} 分享率 {ratio} 过低，请注意'
+                        # self.send_text(title=msg, message=msg)
                     res_zhuque = SiteStatus.objects.update_or_create(
                         site=my_site,
                         created_at__date__gte=datetime.today(),
@@ -1209,13 +1215,7 @@ class PtSpider:
                             # 做种体积
                             'seed_volume': seeding_size,
                         })
-                    if my_site.mail > 0:
-                        msg = f'{site.name} 有{my_site.mail}条新消息，请注意查收！'
-                        # todo 发消息
-                        # self.send_text(title=msg, message=msg)
-                    if float(ratio) < 1:
-                        msg = f'{site.name} 分享率 {ratio} 过低，请注意'
-                        # self.send_text(title=msg, message=msg)
+
                     return CommonResponse.success(data=res_zhuque)
                 except Exception as e:
                     # 打印异常详细信息
@@ -1418,6 +1418,8 @@ class PtSpider:
                         details_html.xpath(site.my_time_join_rule)
                     ).strip())
                     my_site.time_join = ''.join(time_join)
+                my_site.latest_active = datetime.now()
+                my_site.save()
                 # 去除字符串中的中文
                 my_level_1 = ''.join(
                     details_html.xpath(site.my_level_rule)
@@ -1470,24 +1472,20 @@ class PtSpider:
                     invitation = 0
                 elif '/' in invitation:
                     invitation_list = [int(n) for n in invitation.split('/')]
-                    # my_site.invitation = int(invitation) if invitation else 0
                     invitation = sum(invitation_list)
                 elif '(' in invitation:
                     invitation_list = [int(toolbox.get_decimals(n)) for n in invitation.split('(')]
-                    # my_site.invitation = int(invitation) if invitation else 0
                     invitation = sum(invitation_list)
                 elif not invitation:
                     invitation = 0
                 else:
                     invitation = int(re.sub('\D', '', invitation))
-                my_site.latest_active = datetime.now()
                 my_level = my_level.strip(" ") if my_level != '' else ' '
                 seed = int(toolbox.get_decimals(seed)) if seed else 0
                 logger.info(f'当前下载数：{leech}')
                 leech = int(toolbox.get_decimals(leech)) if leech else 0
 
                 logger.info('站点：{}'.format(site))
-                logger.info('等级：{}'.format(my_level))
                 logger.info('魔力：{}'.format(my_bonus))
                 logger.info('积分：{}'.format(my_score if my_score else 0))
                 # logger.info('分享率：{}'.format(ratio))
@@ -1500,38 +1498,39 @@ class PtSpider:
                 logger.info('上传数：{}'.format(seed))
                 logger.info('下载数：{}'.format(leech))
                 try:
-                    ratio = ''.join(
-                        details_html.xpath(site.my_ratio_rule)
-                    ).lower().replace(',', '').replace('无限', 'inf').replace('∞', 'inf'). \
-                        replace('inf.', 'inf').replace(
-                        'null', 'inf').replace('---', 'inf').replace('-', 'inf').replace('\xa0', '').strip(
-                        ']:').strip('：').strip()
-                    logger.info(f'分享率：{details_html.xpath(site.my_ratio_rule)}')
-                    if not ratio:
-                        ratio = ''.join(
-                            details_html.xpath('//font[@class="color_ratio"][1]/following-sibling::font[1]/text()[1]'))
-                    if ratio.count('上传量') > 0 and site.url == 'https://totheglory.im/':
-                        # 适配TTG inf分享率
-                        ratio = ''.join(
-                            details_html.xpath(
-                                '//font[contains(text(),"分享率 ")][1]/following-sibling::text()[1]')) \
-                            .replace('\xa0', '').replace('.', '').strip()
-                    # 分享率告警通知
-                    logger.info('ratio：{}'.format(ratio))
-                    try:
-                        # 获取的分享率无法转为数字时，自行计算分享率
-                        ratio = float(ratio)
-                    except:
-                        if int(downloaded) == 0:
-                            ratio = 'inf'
-                        else:
-                            ratio = round(int(uploaded) / int(downloaded), 3)
-                    if ratio and ratio != 'inf' and float(ratio) <= 1:
+                    # ratio = ''.join(
+                    #     details_html.xpath(site.my_ratio_rule)
+                    # ).lower().replace(',', '').replace('无限', 'inf').replace('∞', 'inf'). \
+                    #     replace('inf.', 'inf').replace(
+                    #     'null', 'inf').replace('---', 'inf').replace('-', 'inf').replace('\xa0', '').strip(
+                    #     ']:').strip('：').strip()
+                    # logger.info(f'分享率：{details_html.xpath(site.my_ratio_rule)}')
+                    # if not ratio:
+                    #     ratio = ''.join(
+                    #         details_html.xpath('//font[@class="color_ratio"][1]/following-sibling::font[1]/text()[1]'))
+                    # if ratio.count('上传量') > 0 and site.url == 'https://totheglory.im/':
+                    #     # 适配TTG inf分享率
+                    #     ratio = ''.join(
+                    #         details_html.xpath(
+                    #             '//font[contains(text(),"分享率 ")][1]/following-sibling::text()[1]')) \
+                    #         .replace('\xa0', '').replace('.', '').strip()
+                    # # 分享率告警通知
+                    # logger.info('ratio：{}'.format(ratio))
+                    # try:
+                    #     # 获取的分享率无法转为数字时，自行计算分享率
+                    #     ratio = float(ratio)
+                    # except:
+                    if float(downloaded) == 0:
+                        ratio = float('inf')
+                    else:
+                        ratio = round(int(uploaded) / int(downloaded), 3)
+                    if ratio <= 1:
                         title = f'{site.name}  站点分享率告警：{ratio}'
                         message = f'{title}  \n'
                         # todo
-                        # self.send_text(title=title, message=message)
+                        toolbox.send_text(title=title, message=message)
                     # 检查邮件
+                    mail = 0
                     mail_check = len(details_html.xpath(site.my_mailbox_rule))
                     notice_check = len(details_html.xpath(site.my_notice_rule))
                     logger.info(f'公告：{notice_check} 短消息：{mail_check}')
@@ -1629,12 +1628,8 @@ class PtSpider:
                             mail = len(mail_list)
                         else:
                             mail = mail_count + notice_count
-                        my_site.mail = mail
                         title = f'{site.name} 有{mail}条新消息，请注意及时查收！'
-                        # todo
-                        # self.send_text(title=title, message=message_list)
-                    else:
-                        my_site.mail = 0
+                        toolbox.send_text(title=title, message=message_list)
                     if site.url in [
                         'https://nextpt.net/',
                     ]:
@@ -1659,14 +1654,10 @@ class PtSpider:
                     else:
                         res_bonus_hour = self.get_hour_sp(my_site=my_site)
                         if res_bonus_hour.code != 0:
-                            logger.error(f'{site.name}  {res_bonus_hour.msg}')
+                            logger.error(f'{site.name}： {res_bonus_hour.msg}')
                         else:
                             bonus_hour = res_bonus_hour.data
-                    # 保存上传下载等信息
-                    my_site.save()
-                    # 外键反向查询
-                    # status = my_site.sitestatus_set.filter(updated_at__date__gte=datetime.datetime.today())
-                    # logger.info(status)
+                    logger.info('等级：{}'.format(my_level))
                     result = SiteStatus.objects.update_or_create(
                         site=my_site, created_at__date__gte=datetime.today(),
                         defaults={

@@ -39,7 +39,8 @@ def auto_sign_in(site_list: List[int] = []):
     # 获取工具支持且本人开启签到的所有站点
     websites = WebSite.objects.all()
     sign_list = MySite.objects.filter(
-        sign_in=True) if len(site_list) == 0 else MySite.objects.filter(sign_in=True, id__in=site_list)
+        sign_in=True
+    ) if len(site_list) == 0 else MySite.objects.filter(sign_in=True, id__in=site_list)
     # 获取已配置Cookie 且站点支持签到，今日无签到数据的站点列表
     queryset = [my_site for my_site in sign_list if my_site.cookie and websites.get(id=my_site.site).func_sign_in
                 and my_site.signin_set.filter(created_at__date__gte=datetime.today(), sign_in_today=True).count() <= 0]
@@ -89,14 +90,17 @@ def auto_sign_in(site_list: List[int] = []):
 
 
 @shared_task
-def auto_get_status():
+def auto_get_status(site_list: List[int] = []):
     """
     更新个人数据
     """
     start = time.time()
     message_list = '# 更新个人数据  \n\n'
-    queryset = MySite.objects.all()
-    site_list = [my_site for my_site in queryset if my_site.site.get_userinfo_support]
+    websites = WebSite.objects.all()
+    queryset = MySite.objects.filter(
+        get_info=True
+    ) if len(site_list) == 0 else MySite.objects.filter(get_info=True, id__in=site_list)
+    site_list = [my_site for my_site in queryset if websites.get(id=my_site.site).func_get_userinfo]
     results = pool.map(pt_spider.send_status_request, site_list)
     message_template = MessageTemplate.status_message_template
     for my_site, result in zip(site_list, results):
@@ -122,22 +126,22 @@ def auto_get_status():
                 )
                 logger.info('组装Message：{}'.format(message))
                 message_list += (
-                        '> <font color="orange">' + my_site.site.name + '</font> 信息更新成功！' + message + '  \n\n')
+                    f'> <font color="orange">{my_site.nickname} </font> 信息更新成功！{message}\n\n')
                 # toolbox.send_text(my_site.site.name + ' 信息更新成功！' + message)
                 logger.info(my_site.site.name + '信息更新成功！' + message)
             else:
                 print(res)
-                message = '> <font color="red">' + my_site.site.name + ' 信息更新失败！原因：' + res.msg + '</font>  \n\n'
+                message = f'> <font color="red">{my_site.nickname} 信息更新失败！原因：{res.msg}</font>  \n\n'
                 message_list = message + message_list
                 # toolbox.send_text(my_site.site.name + ' 信息更新失败！原因：' + str(res[0]))
-                logger.warning(my_site.site.name + '信息更新失败！原因：' + res.msg)
+                logger.warning(f'{my_site.nickname} 信息更新失败！原因：{res.msg}')
         else:
             # toolbox.send_text(my_site.site.name + ' 信息更新失败！原因：' + str(result[1]))
-            message = '> <font color="red">' + my_site.site.name + ' 信息更新失败！原因：' + result.msg + '</font>  \n\n'
+            message = f'> <font color="red"> {my_site.nickname}  信息更新失败！原因： {result.msg}  </font>  \n\n'
             message_list = message + message_list
-            logger.warning(my_site.site.name + '信息更新失败！原因：' + result.msg)
+            logger.warning(message)
     # 发送今日数据
-    toolbox.today_data()
+    # toolbox.today_data()
     end = time.time()
     consuming = '> <font color="blue">{} 任务运行成功！耗时：{} 完成时间：{}  </font>  \n'.format(
         '自动更新个人数据', end - start,

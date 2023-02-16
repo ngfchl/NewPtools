@@ -334,9 +334,8 @@ def auto_update_license():
         return CommonResponse.error(
             msg=res.msg
         )
-    with open('db/ptools.toml', 'r') as f:
-        data = toml.load(f)
-        print(data)
+    data = toml.load('db/ptools.toml')
+    print(data)
     pt_helper = data.get('pt_helper')
     if len(pt_helper) <= 0:
         return CommonResponse.error(

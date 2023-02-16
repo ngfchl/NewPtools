@@ -110,25 +110,25 @@ def auto_get_status(site_list: List[int] = []):
             if res.code == 0:
                 status = res.data[0]
                 message = message_template.format(
-                    my_site.site.name,
-                    my_site.my_level,
-                    status.my_sp,
-                    status.sp_hour,
+                    my_site.nickname,
+                    status.my_level,
                     status.my_bonus,
+                    status.bonus_hour,
+                    status.my_score,
                     status.ratio,
-                    toolbox.FileSizeConvert.parse_2_file_size(status.seed_vol),
+                    toolbox.FileSizeConvert.parse_2_file_size(status.seed_volume),
                     toolbox.FileSizeConvert.parse_2_file_size(status.uploaded),
                     toolbox.FileSizeConvert.parse_2_file_size(status.downloaded),
                     status.seed,
                     status.leech,
                     status.invitation,
-                    my_site.my_hr
+                    status.my_hr,
                 )
                 logger.info('组装Message：{}'.format(message))
-                message_list += (
-                    f'> <font color="orange">{my_site.nickname} </font> 信息更新成功！{message}\n\n')
+                message = f'> <font color="orange">{my_site.nickname} </font> 信息更新成功！{message}\n\n'
+                message_list += message
                 # toolbox.send_text(my_site.site.name + ' 信息更新成功！' + message)
-                logger.info(my_site.site.name + '信息更新成功！' + message)
+                logger.info(message)
             else:
                 print(res)
                 message = f'> <font color="red">{my_site.nickname} 信息更新失败！原因：{res.msg}</font>  \n\n'

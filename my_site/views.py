@@ -283,6 +283,17 @@ def site_sort_api(request, site_id: int, sort_id: int):
         return CommonResponse.error(msg=f'数据更新失败：{e}')
 
 
+@router.post('/torrents/get/', response=CommonResponse, description='获取种子')
+def site_sort_api(request, site_list: List[int] = []):
+    try:
+        res = autopt.auto_update_torrents.delay(site_list)
+        return CommonResponse.success(msg=f'抓取种子指令已发送，请注意查收推送消息！任务id：{res}')
+    except Exception as e:
+        logger.error(f'抓取种子失败：{e}')
+        logger.error(traceback.format_exc(limit=3))
+        return CommonResponse.error(msg=f'抓取种子失败：{e}')
+
+
 @router.get('/test/send_sms/{mobile}', response=CommonResponse, description='站点排序')
 def send_sms_exec(request, mobile: str):
     try:

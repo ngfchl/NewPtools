@@ -105,41 +105,36 @@ def auto_get_status(site_list: List[int] = []):
     message_template = MessageTemplate.status_message_template
     for my_site, result in zip(site_list, results):
         if result.code == 0:
-            res = pt_spider.parse_status_html(my_site, result.data)
-            logger.info('自动更新个人数据: {}, {}'.format(my_site.nickname, res))
-            if res.code == 0:
-                status = res.data[0]
-                message = message_template.format(
-                    my_site.nickname,
-                    status.my_level,
-                    status.my_bonus,
-                    status.bonus_hour,
-                    status.my_score,
-                    status.ratio,
-                    toolbox.FileSizeConvert.parse_2_file_size(status.seed_volume),
-                    toolbox.FileSizeConvert.parse_2_file_size(status.uploaded),
-                    toolbox.FileSizeConvert.parse_2_file_size(status.downloaded),
-                    status.seed,
-                    status.leech,
-                    status.invitation,
-                    status.my_hr,
-                )
-                logger.info('组装Message：{}'.format(message))
-                message = f'> <font color="orange">{my_site.nickname} </font> 信息更新成功！{message}\n\n'
-                message_list += message
-                # toolbox.send_text(my_site.nickname + ' 信息更新成功！' + message)
-                logger.info(message)
-            else:
-                print(res)
-                message = f'> <font color="red">{my_site.nickname} 信息更新失败！原因：{res.msg}</font>  \n\n'
-                message_list = message + message_list
-                # toolbox.send_text(my_site.nickname + ' 信息更新失败！原因：' + str(res[0]))
-                logger.warning(f'{my_site.nickname} 信息更新失败！原因：{res.msg}')
+            # res = pt_spider.parse_status_html(my_site, result.data)
+            logger.info('自动更新个人数据: {}, {}'.format(my_site.nickname, result))
+            # if res.code == 0:
+            status = result.data[0]
+            message = message_template.format(
+                my_site.nickname,
+                status.my_level,
+                status.my_bonus,
+                status.bonus_hour,
+                status.my_score,
+                status.ratio,
+                toolbox.FileSizeConvert.parse_2_file_size(status.seed_volume),
+                toolbox.FileSizeConvert.parse_2_file_size(status.uploaded),
+                toolbox.FileSizeConvert.parse_2_file_size(status.downloaded),
+                status.seed,
+                status.leech,
+                status.invitation,
+                status.my_hr,
+            )
+            logger.info('组装Message：{}'.format(message))
+            message = f'> <font color="orange">{my_site.nickname} </font> 信息更新成功！{message}\n\n'
+            message_list += message
+            toolbox.send_text(my_site.nickname + ' 信息更新成功！' + message)
+            logger.info(message)
         else:
-            # toolbox.send_text(my_site.nickname + ' 信息更新失败！原因：' + str(result[1]))
-            message = f'> <font color="red"> {my_site.nickname}  信息更新失败！原因： {result.msg}  </font>  \n\n'
+            print(result)
+            message = f'> <font color="red">{my_site.nickname} 信息更新失败！原因：{result.msg}</font>  \n\n'
             message_list = message + message_list
-            logger.warning(message)
+            toolbox.send_text(f'{my_site.nickname} 信息更新失败！原因：{message}')
+            logger.warning(f'{my_site.nickname} 信息更新失败！原因：{result.msg}')
     # 发送今日数据
     # toolbox.today_data()
     end = time.time()

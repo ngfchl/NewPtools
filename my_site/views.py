@@ -284,7 +284,7 @@ def site_sort_api(request, site_id: int, sort_id: int):
 
 
 @router.post('/torrents/get/', response=CommonResponse, description='获取种子')
-def site_sort_api(request, site_list: List[int] = []):
+def update_torrents(request, site_list: List[int] = []):
     try:
         res = autopt.auto_update_torrents.delay(site_list)
         return CommonResponse.success(msg=f'抓取种子指令已发送，请注意查收推送消息！任务id：{res}')

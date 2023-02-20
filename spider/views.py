@@ -1062,11 +1062,14 @@ class PtSpider:
                     seeding_html = etree.HTML(seeding_text)
             # leeching_html = etree.HTML(leeching_detail_res.text)
             # logger.info(seeding_detail_res.text.encode('utf8'))
-            return CommonResponse.success(data={
+            data = {
                 'details_html': details_html,
                 'seeding_html': seeding_html,
                 # 'leeching_html': leeching_html
-            })
+            }
+
+            return self.parse_status_html(my_site, data)
+            # return CommonResponse.success(data=data)
         except TimeoutError as nce:
             logger.error(traceback.format_exc(limit=3))
             return CommonResponse.error(msg=f'与网站建立连接失败，请检查网络？？{nce}')
@@ -1489,8 +1492,8 @@ class PtSpider:
                 logger.info('魔力：{}'.format(my_bonus))
                 logger.info('积分：{}'.format(my_score if my_score else 0))
                 # logger.info('分享率：{}'.format(ratio))
-                logger.info('下载量：{}'.format(downloaded))
-                logger.info('上传量：{}'.format(uploaded))
+                logger.info('下载量：{}'.format(toolbox.FileSizeConvert.parse_2_file_size(downloaded)))
+                logger.info('上传量：{}'.format(toolbox.FileSizeConvert.parse_2_file_size(uploaded)))
                 logger.info('邀请：{}'.format(invitation))
                 # logger.info('注册时间：{}'.format(time_join))
                 # logger.info('最后活动：{}'.format(latest_active))

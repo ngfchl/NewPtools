@@ -1,8 +1,11 @@
+import hashlib
+import json
 import logging
 import time
 from typing import List
 
 import qbittorrentapi
+import requests
 import transmission_rpc
 from ninja import Router
 from ninja.responses import codes_4xx
@@ -94,3 +97,55 @@ def control_torrent(request, downloader_id: int, control_command: ControlTorrent
     except Exception as e:
         logger.warning(e)
         return 500, {'msg': f'执行指令失败： {e}', 'code': -1}
+
+
+def get_hashes():
+    """返回下载器中所有种子的HASH列表"""
+    return []
+
+
+def get_torrents_hash_from_server():
+    """将本地HASH列表提交至服务器，请求返回可辅种数据"""
+    # 如果为IYUU支持的站点，先向IYUU请求数据
+    # 否则向ptools请求数据
+    # 将本地hash列表与返回数据进行去重，生成种子链接列表
+    return []
+
+
+def push_torrents_to_downloader():
+    """将辅种数据推送至下载器"""
+    # 暂停模式推送至下载器（包含参数，下载链接，Cookie，分类或者下载路径）
+    # 开始校验
+    # 验证校验结果，不为百分百的，暂停任务
+    return []
+
+
+def get_torrents_hash_from_iyuu():
+    # hash_list = get_hashes()
+    hash_list = ['ff06699c8bf1003f46ac07621b967d16e7baac78']
+    hash_list_str = json.dumps(hash_list)
+    hash_list_sha1 = hashlib.sha1(hash_list_str.encode('utf8'))
+    url = 'http://api.iyuu.cn/index.php?s=App.Api.Infohash'
+    data = {
+        # IYUU token
+        'sign': 'IYUU10227T6942484114699c63a6df9bc30f3c81f1bd1cd9b4',
+        # 当前时间戳
+        'timestamp': int(time.time()),
+        # 客户端版本
+        'version': '2.0.0',
+        # hash列表
+        'hash': hash_list_str,
+        # hash列表sha1
+        'sha1': hash_list_sha1.hexdigest()
+
+    }
+    res = requests.post(
+        url=url,
+        data=data
+    )
+    print(res.json())
+    return res.json()
+
+
+if __name__ == '__main__':
+    get_torrents_hash_from_iyuu()

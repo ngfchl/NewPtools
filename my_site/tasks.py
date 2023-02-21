@@ -8,7 +8,7 @@ import time
 from concurrent.futures.thread import ThreadPoolExecutor
 from datetime import datetime
 from typing import List
-
+from multiprocessing.dummy import Pool as ThreadPool
 import requests
 import toml
 from celery.app import shared_task
@@ -24,7 +24,7 @@ from website.models import WebSite
 # 引入日志
 logger = logging.getLogger('ptools')
 # 引入线程池
-pool = ThreadPoolExecutor(10)
+pool = ThreadPool(8)
 pt_spider = PtSpider()
 
 
@@ -34,6 +34,7 @@ def auto_sign_in(site_list: List[int] = []):
     """执行签到"""
     start = time.time()
     logger.info('开始执行签到任务')
+    toolbox.send_text(f'开始执行签到任务，当前时间：{datetime.fromtimestamp(start)}')
     logger.info('筛选需要签到的站点')
     message_list = []
     # 获取工具支持且本人开启签到的所有站点
@@ -67,6 +68,8 @@ def auto_sign_in(site_list: List[int] = []):
     #         my_site.nickname: res.to_dict()
     #     })
     results = pool.map(pt_spider.sign_in, queryset)
+    pool.join()
+    pool.close()
     logger.info('开始执行签到任务')
     for my_site, result in zip(queryset, results):
         # logger.info('自动签到：{}, {}'.format(my_site, result))
@@ -79,7 +82,8 @@ def auto_sign_in(site_list: List[int] = []):
         #     message_list.insert(0, message)
         #     logger.error(message)
         message_list.append(f'{my_site.nickname}: {result.msg}')
-    message = f'签到任务执行完毕，耗费时间：{time.time() - start}'
+    end = time.time()
+    message = f'签到任务执行完毕，当前时间：{datetime.fromtimestamp(end)},耗费时间：{end - start}'
     message_list.append(message)
     logger.info(message)
     logger.info(message_list)
@@ -150,7 +154,7 @@ def auto_get_status(site_list: List[int] = []):
 
 
 @shared_task
-def auto_update_torrents(site_list: List[int] = []):
+def auto_get_torrents(site_list: List[int] = []):
     """
     拉取最新种子
     """
@@ -284,7 +288,7 @@ def exec_command(commands):
 
 
 @shared_task
-def auto_upgrade():
+def auto_program_upgrade():
     """程序更新"""
     try:
         logger.info('开始自动更新')

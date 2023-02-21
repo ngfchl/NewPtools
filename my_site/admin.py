@@ -8,13 +8,17 @@ from .models import *
 @admin.register(MySite)
 class MySiteAdmin(admin.ModelAdmin):
     pass
+
+
 #
 #
-# @admin.register(SiteStatus)
-# class SiteStatusAdmin(admin.ModelAdmin):
-#     pass
+@admin.register(SiteStatus)
+class SiteStatusAdmin(admin.ModelAdmin):
+    pass
+
+
 #
 #
-# @admin.register(SignIn)
-# class SignInAdmin(admin.ModelAdmin):
-#     pass
+@admin.register(SignIn)
+class SignInAdmin(admin.ModelAdmin):
+    pass

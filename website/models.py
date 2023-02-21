@@ -26,6 +26,7 @@ class WebSite(BaseEntity):
                                       help_text='单种限速，单位：MB/S')
     tags = models.CharField(verbose_name='站点标签', default='电影,电视剧', max_length=128,
                             help_text='站点资源类型，以`,`分割')
+    iyuu = models.IntegerField(verbose_name='iyuu', default=0)
     # 功能支持
     func_sign_in = models.BooleanField(verbose_name="签到支持", default=True)
     func_get_torrents = models.BooleanField(verbose_name="拉取种子", default=True)

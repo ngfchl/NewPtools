@@ -10,3 +10,8 @@ class UpdateSchemaOut(Schema):
     update: str
     update_tip: str
     branch: str
+
+
+class UserIn(Schema):
+    username: str
+    password: str

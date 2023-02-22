@@ -5,12 +5,13 @@ import traceback
 from datetime import datetime
 
 import docker
+from django.contrib import auth
 from django.http import FileResponse
 from ninja import Router
 from ninja.responses import codes_4xx
 
 from auxiliary.settings import BASE_DIR
-from configuration.schema import UpdateSchemaOut
+from configuration.schema import UpdateSchemaOut, UserIn
 from monkey.schema import CommonMessage
 from toolbox import views as toolbox
 from toolbox.schema import CommonResponse
@@ -19,6 +20,14 @@ from toolbox.schema import CommonResponse
 logger = logging.getLogger('ptools')
 
 router = Router(tags=['config'])
+
+
+@router.post('/login', description='登录')
+def login(request, user_in: UserIn):
+    print(user_in)
+    res = auth.authenticate(request, username=user_in.username, password=user_in.password)
+    print(type(res))
+    return 'ok'
 
 
 @router.get('update/log', response={200: UpdateSchemaOut, codes_4xx: CommonMessage}, description='更新日志')

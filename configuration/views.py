@@ -5,6 +5,8 @@ import traceback
 from datetime import datetime
 
 import docker
+import jwt
+from django.conf import settings
 from django.contrib import auth
 from django.http import FileResponse
 from ninja import Router
@@ -22,12 +24,27 @@ logger = logging.getLogger('ptools')
 router = Router(tags=['config'])
 
 
-@router.post('/login', description='登录')
+@router.post('/login', response=CommonResponse, description='登录')
 def login(request, user_in: UserIn):
     print(user_in)
-    res = auth.authenticate(request, username=user_in.username, password=user_in.password)
-    print(type(res))
-    return 'ok'
+    user = auth.authenticate(request, **user_in.dict())
+    if not user:
+        return CommonResponse.error(msg='用户名或密码错误！')
+    logger.info(f'{user.username} 登录成功！')
+    payload = {
+        "id": user.id,
+        "username": user.username,
+    }
+    timeout = 60 * 24 * 30
+    token = toolbox.get_token(payload, timeout)
+    print(token)
+    salt = settings.SECRET_KEY
+    res = jwt.decode(token, salt, algorithms=["HS256"])
+    print(res)
+    return CommonResponse.success(msg=f'{user.username} 登录成功！', data={
+        'auth_token': token,
+        'user': user.username
+    })
 
 
 @router.get('update/log', response={200: UpdateSchemaOut, codes_4xx: CommonMessage}, description='更新日志')

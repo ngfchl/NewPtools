@@ -3,13 +3,17 @@ import os
 import re
 import subprocess
 import traceback
-from datetime import datetime
+from datetime import datetime, timedelta
 
 import aip
+import jwt
 # import git
 import requests
 import toml as toml
+from django.conf import settings
+from jwt import exceptions
 from pypushdeer import PushDeer
+from twisted.conch.endpoints import AuthenticationFailed
 from wxpusher import WxPusher
 
 from auxiliary.base import PushConfig
@@ -279,3 +283,29 @@ def today_data():
     logger.info(incremental)
     # todo
     # self.send_text(title='通知：今日数据', message=incremental)
+
+
+def get_token(payload, timeout):
+    salt = settings.SECRET_KEY
+    payload["exp"] = datetime.utcnow() + timedelta(minutes=timeout)  # 设置到期时间
+    # token = jwt.encode(payload=payload, key=salt, headers=headers).decode("utf-8")
+    token = jwt.encode(payload=payload, key=salt, algorithm="HS256")
+    return token
+
+
+def authenticate(request):
+    token = request.query_params.get("token")
+    salt = settings.SECRET_KEY
+    try:
+        result = jwt.decode(token, salt, algorithms="HS256")
+    except exceptions.ExpiredSignatureError:
+        msg = "token失效"
+        raise AuthenticationFailed({"code": 1001, "msg": msg})
+    except exceptions.DecodeError:
+        msg = "token认证失败"
+        raise AuthenticationFailed({"code": 1002, "msg": msg})
+    except exceptions.InvalidTokenError:
+        msg = "非法token"
+        raise AuthenticationFailed({"code": 1003, "msg": msg})
+
+    return result, token

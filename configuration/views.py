@@ -41,7 +41,7 @@ def login(request, user_in: UserIn):
     salt = settings.SECRET_KEY
     res = jwt.decode(token, salt, algorithms=["HS256"])
     print(res)
-    return CommonResponse.success(msg=f'{user.username} 登录成功！', data={
+    return CommonResponse.success(data={
         'auth_token': token,
         'user': user.username
     })

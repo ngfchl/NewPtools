@@ -36,6 +36,7 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
+    "corsheaders",
     "website",
     "my_site",
     "configuration",
@@ -50,10 +51,11 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
+    'corsheaders.middleware.CorsMiddleware',
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
-    # "auxiliary.middleware.AuthenticateMiddleware", # 测试阶段先关闭auth认证
+    "auxiliary.middleware.AuthenticateMiddleware", # 测试阶段先关闭auth认证
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
@@ -211,3 +213,9 @@ CELERY_RESULT_EXPIRES = 60 * 60 * 24
 CELERY_TIMEZONE = "Asia/Shanghai"
 # 定时任务数据库配置
 CELERY_BEAT_SCHEDULER = 'django_celery_beat.schedulers.DatabaseScheduler'
+
+#  cors
+CORS_ALLOWED_ORIGINS = [
+    "http://127.0.0.1:8080",
+    "http://localhost:8080",
+]

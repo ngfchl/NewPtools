@@ -47,6 +47,15 @@ def login(request, user_in: UserIn):
     })
 
 
+@router.get('/userinfo', response=CommonResponse, description='获取用户信息')
+def get_user_info(request):
+    user = request.user
+    print(user)
+    return CommonResponse.success(data={
+        'user': user.username
+    })
+
+
 @router.get('update/log', response={200: UpdateSchemaOut, codes_4xx: CommonMessage}, description='更新日志')
 def update_page(request):
     """更新日志"""

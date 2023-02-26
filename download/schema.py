@@ -11,6 +11,14 @@ class DownloaderSchemaOut(ModelSchema):
         model_fields = ['id', 'name', 'host', 'category']
 
 
+class DownloaderSchemaIn(ModelSchema):
+    """添加下载器"""
+
+    class Config:
+        model = Downloader
+        model_exclude = ['id', 'created_at', 'updated_at']
+
+
 class CategorySchema(Schema):
     """返回下载器分类/下载路径"""
     category: str

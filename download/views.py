@@ -7,6 +7,7 @@ from typing import List
 import qbittorrentapi
 import requests
 import transmission_rpc
+from django.shortcuts import get_object_or_404
 from ninja import Router
 from ninja.responses import codes_4xx
 
@@ -28,6 +29,27 @@ def get_downloaders(request):
     if len(downloaders) <= 0:
         return 404, {'msg': '还没有下载器，快去添加吧 ~', 'code': -1}
     return downloaders
+
+
+@router.get('/downloaders/{int:downloader_id}', response=DownloaderSchemaOut)
+def get_downloader(request, downloader_id):
+    return get_object_or_404(Downloader, id=downloader_id)
+
+
+@router.post('/downloaders')
+def add_downloader(request, downloader: DownloaderSchemaIn):
+    return 'add'
+
+
+@router.put('/downloaders/{int:downloader_id}')
+def edit_downloader(request, downloader_id):
+    return f'edit/{downloader_id}'
+
+
+@router.delete('/downloaders/{int:downloader_id}')
+def remove_downloader(request, downloader_id):
+    count = Downloader.objects.filter(id=downloader_id).delete()
+    return f'remove/{count}'
 
 
 def get_downloader_instance(downloader_id):

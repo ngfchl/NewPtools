@@ -11,22 +11,21 @@ from toolbox.schema import CommonResponse
 class AuthenticateMiddleware(MiddlewareMixin):
 
     def process_request(self, request):
-        print(request.META)
-        if request.META.get('PATH_INFO') in [
+        path: str = request.META.get('PATH_INFO')
+        if path in [
             '/',
             '/api/config/login',
             '/api/docs',
             '/api/openapi.json',
-        ]:
+        ] or path.startswith('/monkey') or path.startswith('/admin'):
             return None
         token = request.META.get("HTTP_AUTHORIZATION")
-        print(token)
         if not token:
-            return JsonResponse(data=CommonResponse.error(msg='认证失败，请重新登陆！').dict(), safe=False)
+            return JsonResponse(data=CommonResponse.error(msg='未登录，等先登录后重试！').dict(), safe=False)
         salt = settings.SECRET_KEY
         try:
-            res = jwt.decode(token[7:], salt, algorithms=["HS256"])
-            user = User.objects.filter(id=res.get('id'), username=res.get('username'))
+            res = jwt.decode(token, salt, algorithms=["HS256"])
+            user = User.objects.get(id=res.get('id'), username=res.get('username'))
             request.user = user
         except exceptions.PyJWTError:
             return JsonResponse(data=CommonResponse.error(msg='认证失败，请重新登陆！').dict(), safe=False, status=403)

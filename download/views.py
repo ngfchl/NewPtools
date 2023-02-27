@@ -14,6 +14,7 @@ from ninja.responses import codes_4xx
 from auxiliary.base import DownloaderCategory
 from download.schema import *
 from monkey.schema import CommonMessage
+from toolbox.schema import CommonResponse
 
 # Create your views here.
 
@@ -22,13 +23,14 @@ logger = logging.getLogger('ptools')
 router = Router(tags=['download'])
 
 
-@router.get('/downloaders', response={200: List[DownloaderSchemaOut], codes_4xx: CommonMessage},
+@router.get('/downloaders', response=CommonResponse[List[DownloaderSchemaOut]],
             description='下载器列表')
 def get_downloaders(request):
     downloaders = Downloader.objects.all()
+    print(downloaders)
     if len(downloaders) <= 0:
-        return 404, {'msg': '还没有下载器，快去添加吧 ~', 'code': -1}
-    return downloaders
+        return CommonResponse.error(msg='还没有下载器，快去添加吧 ~')
+    return CommonResponse.success(data=list(downloaders))
 
 
 @router.get('/downloaders/{int:downloader_id}', response=DownloaderSchemaOut)

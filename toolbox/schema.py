@@ -1,14 +1,18 @@
 from ninja import Schema
+from pydantic.generics import GenericModel
 from pydantic.schema import Optional
 
+from typing import Generic, TypeVar
 
 # class BaseResponse(Schema):
 
+T = TypeVar('T')
 
-class CommonResponse(Schema):
+
+class CommonResponse(GenericModel, Generic[T]):
     code: int
-    data: object
     msg: Optional[str]
+    data: T
 
     """
     统一的json返回格式
@@ -17,7 +21,7 @@ class CommonResponse(Schema):
     def __init__(self, code: int = 0, data: object = None, msg: str = ''):
         super().__init__(code=code, data=data, msg=msg)
         # self.data = data
-        # self.code = code
+        # self.code = code.3333
         # if msg is None:
         #     self.msg = ''
         # else:

@@ -60,10 +60,13 @@ class SignInSchemaIn(ModelSchema):
         model_exclude = ['created_at', 'updated_at']
 
 
+class TorrentInfoSchemaOut(ModelSchema):
+    class Config:
+        model = SignIn
+        model_exclude = ['created_at', 'updated_at']
+
+
 class ImportSchema(Schema):
     info: str
     cookies: str
     userdata: str
-
-
-

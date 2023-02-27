@@ -283,6 +283,11 @@ def site_sort_api(request, site_id: int, sort_id: int):
         return CommonResponse.error(msg=f'数据更新失败：{e}')
 
 
+@router.get('/torrents', response=CommonResponse[List[TorrentInfoSchemaOut]], description='获取种子')
+def torrents(request):
+    return CommonResponse.success(data=list(TorrentInfo.objects.all()))
+
+
 @router.post('/torrents/get/', response=CommonResponse, description='获取种子')
 def update_torrents(request, site_list: List[int] = []):
     try:

@@ -55,7 +55,7 @@ MIDDLEWARE = [
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
-    "auxiliary.middleware.AuthenticateMiddleware", # 测试阶段先关闭auth认证
+    "auxiliary.middleware.AuthenticateMiddleware",  # 测试阶段先关闭auth认证
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
@@ -219,3 +219,6 @@ CORS_ALLOWED_ORIGINS = [
     "http://127.0.0.1:8080",
     "http://localhost:8080",
 ]
+
+# 调整POST传输数据文件大小限制
+DATA_UPLOAD_MAX_MEMORY_SIZE = 10 * 1024 * 1024

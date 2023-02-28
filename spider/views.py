@@ -1063,7 +1063,8 @@ class PtSpider:
             # my_site.expires = datetime.now() + timedelta(minutes=30)
             my_site.cookie = cookies
             my_site.save()
-        return CommonResponse.success(data=etree.HTML(details_html))
+        self.parse_userinfo_html(my_site=my_site, details_html=details_html)
+        return CommonResponse.success(data=details_html)
 
     def get_seeding_html(self, my_site: MySite, headers: dict, details_html=None):
         """请求做种数据相关页面"""
@@ -1075,7 +1076,7 @@ class PtSpider:
             'https://greatposterwall.com/', 'https://dicmusic.club/'
         ]:
             seeding_detail_res = self.send_request(my_site=my_site, url=site.url + site.page_mybonus).json()
-            if seeding_detail_res.get('status')!='success':
+            if seeding_detail_res.get('status') != 'success':
                 return CommonResponse.error(
                     msg=f'{site.name} 做种信息访问错误，错误：{seeding_detail_res.get("status")}')
             seeding_html = seeding_detail_res.get('response')
@@ -1143,6 +1144,7 @@ class PtSpider:
                 seeding_html = etree.HTML(seeding_text)
             else:
                 seeding_html = etree.HTML(seeding_detail_res.text)
+        self.parse_seeding_html(my_site=my_site, seeding_html=seeding_html)
         return CommonResponse.success(data=seeding_html)
 
     def get_m_team_seeding(self, my_site, seeding_detail_res):
@@ -1196,25 +1198,19 @@ class PtSpider:
             if seeding_html.code != 0:
                 return seeding_html
             # 请求时魔页面,信息写入数据库
-            self.get_hour_sp(my_site)
+            hour_bonus = self.get_hour_sp(my_site)
+            if hour_bonus.code != 0:
+                return hour_bonus
             # 请求邮件页面，直接推送通知到手机
-            self.get_mail_info(my_site, details_html.data)
+            self.get_mail_info(my_site, details_html.data, header=headers)
             # 请求公告信息，直接推送通知到手机
             self.get_notice_info(my_site, details_html.data)
             # return self.parse_status_html(my_site, data)
-            # return CommonResponse.success(data=data)
+            status = SiteStatus.objects.filter(created_at__date=datetime.today()).first()
+            return CommonResponse.success(data=status)
         except RequestException as nce:
             logger.error(traceback.format_exc(limit=3))
-            return CommonResponse.error(msg=f'与网站建立连接失败，请检查网络？？{nce}')
-        # except requests.exceptions.SSLError as e:
-        #     logger.error(traceback.format_exc(limit=3))
-        #     return CommonResponse.error(msg=f'网站证书验证失败！！{e}')
-        # except ReadTimeout as e:
-        #     logger.error(traceback.format_exc(limit=3))
-        #     return CommonResponse.error(msg=f'网站访问超时，请检查网站是否维护？？{e}')
-        # except ConnectTimeoutError as e:
-        #     logger.error(traceback.format_exc(limit=3))
-        #     return CommonResponse.error(msg=f'网站连接超时，请稍后重试？？{e}')
+            return CommonResponse.error(msg=f'与网站建立连接失败，请检查网络？？')
         except Exception as e:
             message = f'{my_site.nickname} 访问个人主页信息：失败！原因：{e}'
             logger.error(message)
@@ -1290,7 +1286,6 @@ class PtSpider:
                     seed = community.get('seeding')
                     leech = community.get('leeching')
                     # ajax.php?action=index
-
                     my_site.save()
                     res_gpw = SiteStatus.objects.update_or_create(
                         site=my_site,
@@ -1351,7 +1346,6 @@ class PtSpider:
                             msg='请检查Cookie是否过期？'
                         )
                     # seed = len(seed_vol_list)
-
                     downloaded = ''.join(
                         details_html.xpath(site.my_downloaded_rule)
                     ).replace(':', '').replace('\xa0\xa0', '').replace('i', '').replace(',', '').strip(' ')
@@ -1681,54 +1675,57 @@ class PtSpider:
             url = url.format(my_site.user_id)
         logger.info(f'魔力页面链接：{url}')
         try:
-            if site.url in [
-                'https://hdchina.org/',
-                'https://hudbt.hust.edu.cn/',
-                # 'https://wintersakura.net/',
-            ]:
-                # 单独发送请求，解决冬樱签到问题
-                response = requests.get(url=url, verify=False,
-                                        cookies=toolbox.cookie2dict(my_site.cookie),
-                                        headers={
-                                            'user-agent': my_site.user_agent
-                                        })
+            if 'iptorrents' in site.url:
+                hour_sp = 0
             else:
-                response = self.send_request(my_site=my_site, url=url, header=headers)
-            # print(response.text.encode('utf8'))
-            """
-            if 'btschool' in site.url:
-                # logger.info(response.text.encode('utf8'))
-                url = self.parse(response, '//form[@id="challenge-form"]/@action[1]')
-                data = {
-                    'md': ''.join(self.parse(response, '//form[@id="challenge-form"]/input[@name="md"]/@value')),
-                    'r': ''.join(self.parse(response, '//form[@id="challenge-form"]/input[@name="r"]/@value'))
-                }
-                logger.info(data)
-                logger.info('学校时魔页面url：', url)
-                response = self.send_request(
-                    my_site=my_site,
-                    url=site.url + ''.join(url).lstrip('/'),
-                    method='post',
-                    # headers=headers,
-                    data=data,
-                    delay=60
-                )
+                if site.url in [
+                    'https://hdchina.org/',
+                    'https://hudbt.hust.edu.cn/',
+                    # 'https://wintersakura.net/',
+                ]:
+                    # 单独发送请求，解决冬樱签到问题
+                    response = requests.get(url=url, verify=False,
+                                            cookies=toolbox.cookie2dict(my_site.cookie),
+                                            headers={
+                                                'user-agent': my_site.user_agent
+                                            })
+                else:
+                    response = self.send_request(my_site=my_site, url=url, header=headers)
+                # print(response.text.encode('utf8'))
                 """
-            # response = converter.convert(response.content)
-            # logger.info('时魔响应：{}'.format(response.content))
-            # logger.info('转为简体的时魔页面：', str(res))
-            if 'zhuque.in' in site.url:
-                # 获取朱雀时魔
-                hour_sp = response.json().get('data').get('E')
-            else:
-                res_list = self.parse(site, response, site.my_per_hour_bonus_rule)
-                if len(res_list) <= 0:
-                    CommonResponse.error(msg='时魔获取失败！')
-                if 'u2.dmhy.org' in site.url:
-                    res_list = ''.join(res_list).split('，')
-                    res_list.reverse()
-                logger.info('时魔字符串：{}'.format(res_list))
-                hour_sp = toolbox.get_decimals(res_list[0].replace(',', ''))
+                if 'btschool' in site.url:
+                    # logger.info(response.text.encode('utf8'))
+                    url = self.parse(response, '//form[@id="challenge-form"]/@action[1]')
+                    data = {
+                        'md': ''.join(self.parse(response, '//form[@id="challenge-form"]/input[@name="md"]/@value')),
+                        'r': ''.join(self.parse(response, '//form[@id="challenge-form"]/input[@name="r"]/@value'))
+                    }
+                    logger.info(data)
+                    logger.info('学校时魔页面url：', url)
+                    response = self.send_request(
+                        my_site=my_site,
+                        url=site.url + ''.join(url).lstrip('/'),
+                        method='post',
+                        # headers=headers,
+                        data=data,
+                        delay=60
+                    )
+                    """
+                # response = converter.convert(response.content)
+                # logger.info('时魔响应：{}'.format(response.content))
+                # logger.info('转为简体的时魔页面：', str(res))
+                if 'zhuque.in' in site.url:
+                    # 获取朱雀时魔
+                    hour_sp = response.json().get('data').get('E')
+                else:
+                    res_list = self.parse(site, response, site.my_per_hour_bonus_rule)
+                    if len(res_list) <= 0:
+                        CommonResponse.error(msg='时魔获取失败！')
+                    if 'u2.dmhy.org' in site.url:
+                        res_list = ''.join(res_list).split('，')
+                        res_list.reverse()
+                    logger.info('时魔字符串：{}'.format(res_list))
+                    hour_sp = toolbox.get_decimals(res_list[0].replace(',', ''))
             SiteStatus.objects.update_or_create(
                 site=my_site,
                 created_at__date__gte=datetime.today(),

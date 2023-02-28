@@ -112,7 +112,7 @@ def auto_get_status(site_list: List[int] = []):
             # res = pt_spider.parse_status_html(my_site, result.data)
             logger.info('自动更新个人数据: {}, {}'.format(my_site.nickname, result))
             # if res.code == 0:
-            status = result.data[0]
+            status = result.data
             message = message_template.format(
                 my_site.nickname,
                 status.my_level,

@@ -24,7 +24,7 @@ class AuthenticateMiddleware(MiddlewareMixin):
             return JsonResponse(data=CommonResponse.error(msg='未登录，等先登录后重试！').dict(), safe=False)
         salt = settings.SECRET_KEY
         try:
-            res = jwt.decode(token, salt, algorithms=["HS256"])
+            res = jwt.decode(token.replace('Bearer ', ''), salt, algorithms=["HS256"])
             user = User.objects.get(id=res.get('id'), username=res.get('username'))
             request.user = user
         except exceptions.PyJWTError:

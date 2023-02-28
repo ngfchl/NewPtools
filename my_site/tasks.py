@@ -383,3 +383,14 @@ def auto_update_license():
     return CommonResponse.error(
         msg=f'License更新失败！'
     )
+
+
+@shared_task
+def import_from_ptpp(data_list: List):
+    results = pool.map(pt_spider.get_uid_and_passkey, data_list)
+
+    message_list = [result.msg for result in results]
+    logger.info(message_list)
+    # send_text(title='PTPP站点导入通知', message='Cookies解析失败，请确认导入了正确的cookies备份文件！')
+    toolbox.send_text(title='PTPP站点导入通知', message='\n\n'.join(message_list))
+    return message_list

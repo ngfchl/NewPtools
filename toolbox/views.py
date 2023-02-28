@@ -1,3 +1,4 @@
+import json
 import logging
 import os
 import re
@@ -280,7 +281,7 @@ def today_data():
                   f'#### 数据列表：{"".join(increase_list)}'
     logger.info(incremental)
     # todo
-    # self.send_text(title='通知：今日数据', message=incremental)
+    send_text(title='通知：今日数据', message=incremental)
 
 
 def get_token(payload, timeout):
@@ -289,3 +290,37 @@ def get_token(payload, timeout):
     # token = jwt.encode(payload=payload, key=salt, headers=headers).decode("utf-8")
     token = jwt.encode(payload=payload, key=salt, algorithm="HS256")
     return token
+
+
+def parse_ptpp_cookies(data_list):
+    # 解析前端传来的数据
+    datas = json.loads(data_list.cookies)
+    info_list = json.loads(data_list.info)
+    # userdata_list = json.loads(data_list.userdata)
+    cookies = []
+    try:
+        for data, info in zip(datas, info_list):
+            cookie_list = data.get('cookies')
+            host = data.get('host')
+            cookie_str = ''
+            for cookie in cookie_list:
+                cookie_str += '{}={};'.format(cookie.get('name'), cookie.get('value'))
+            # logger.info(domain + cookie_str)
+            cookies.append({
+                'url': data.get('url'),
+                'host': host,
+                'icon': info.get('icon'),
+                'info': info.get('user'),
+                'passkey': info.get('passkey'),
+                'cookies': cookie_str.rstrip(';'),
+                # 'userdatas': userdata_list.get(host)
+            })
+        logger.info('站点记录共{}条'.format(len(cookies)))
+        # logger.info(cookies)
+        return cookies
+    except Exception as e:
+        # raise
+        # 打印异常详细信息
+        logger.error(traceback.format_exc(limit=3))
+        send_text(title='PTPP站点导入通知', message='Cookies解析失败，请确认导入了正确的cookies备份文件！')
+        return 'Cookies解析失败，请确认导入了正确的cookies备份文件！'

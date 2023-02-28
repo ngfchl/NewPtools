@@ -69,4 +69,4 @@ class TorrentInfoSchemaOut(ModelSchema):
 class ImportSchema(Schema):
     info: str
     cookies: str
-    userdata: str
+    # userdata: str

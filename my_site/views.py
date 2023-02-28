@@ -19,7 +19,7 @@ router = Router(tags=['mysite'])
 
 @router.get('/mysite', response=CommonResponse[List[MySiteSchemaOut]], description='我的站点-列表')
 def get_mysite_list(request):
-    return CommonResponse.success(data=list(MySite.objects.order_by('id')))
+    return CommonResponse.success(data=list(MySite.objects.order_by('time_join')))
 
 
 @router.get('/mysite/{int:mysite_id}', response=MySiteSchemaOut, description='我的站点-单个')

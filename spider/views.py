@@ -94,97 +94,105 @@ class PtSpider:
         # logger.info('查询站点信息：', site, site.url, url)
         if not site:
             return CommonResponse.error(msg='尚未支持此站点：{}'.format(url))
-        # 如果有更新cookie，如果没有继续创建
-        # userdatas = cookie.get('userdatas')
-        time_stamp = cookie.get('info').get('joinTime')
-        if not time_stamp:
-            time_join = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(int(time_stamp) / 1000))
-        else:
-            time_join = datetime.now()
-        uid = cookie.get('info').get('id')
-        if not uid:
-            try:
-                logger.info('备份文件未获取到User_id，尝试获取中')
-                scraper = cloudscraper.create_scraper(browser={
-                    'browser': 'chrome',
-                    'platform': 'darwin',
-                })
-                response = scraper.get(
-                    url=site.url + site.page_index,
-                    cookies=cookie.get('cookies'),
-                )
-                logger.info(response.text)
-                uid = ''.join(self.parse(site, response, site.my_uid_rule)).split('=')[-1]
-                logger.info(f'uid:{uid}')
-            except Exception as e:
-                passkey_msg = f'{site.name} Uid获取失败，请手动添加！'
-                msg = f'{site.name} 信息导入失败！ {passkey_msg}：{e}'
-                logger.info(passkey_msg)
-                return CommonResponse.error(
-                    msg=msg
-                )
-        result = MySite.objects.update_or_create(site=site.id, defaults={
-            'nickname': site.name,
-            'cookie': cookie.get('cookies'),
-            'user_id': uid,
-            'time_join': time_join,
-        })
-        # my_site = result[0]
-        # passkey_msg = ''
-        # logger.info('开始导入PTPP历史数据')
-        # for key, value in userdatas.items():
-        #     logger.info(key)
-        #     try:
-        #         downloaded = value.get('downloaded')
-        #         uploaded = value.get('uploaded')
-        #         seeding_size = value.get('seedingSize')
-        #         my_bonus = value.get('bonus')
-        #         ratio = value.get('ratio')
-        #         seed = value.get('seeding')
-        #         my_level_str = value.get('levelName')
-        #         if 'hdcity' in site.url:
-        #             my_level = my_level_str.replace('[', '').replace(']', '').strip(" ").strip()
-        #         else:
-        #             my_level = re.sub(u"([^\u0041-\u005a\u0061-\u007a])", "", my_level_str).strip(" ")
-        #         if not my_level:
-        #             my_level = 'User'
-        #         if ratio is None or ratio == 'null':
-        #             continue
-        #         if type(ratio) == str:
-        #             ratio = ratio.strip('\n').strip()
-        #         if float(ratio) < 0:
-        #             ratio = 'inf'
-        #         if not value.get(
-        #                 'id') or key == 'latest' or not downloaded or not uploaded or not seeding_size or not my_bonus:
-        #             continue
-        #         create_time = dateutil.parser.parse(key).date()
-        #         count_status = SiteStatus.objects.filter(site=my_site,
-        #                                                  created_at__date=create_time).count()
-        #         if count_status >= 1:
-        #             continue
-        #         res_status = SiteStatus.objects.update_or_create(
-        #             site=my_site,
-        #             created_at__date=create_time,
-        #             defaults={
-        #                 'uploaded': uploaded,
-        #                 'downloaded': downloaded,
-        #                 'ratio': float(ratio),
-        #                 'my_bonus': my_bonus,
-        #                 'my_level': my_level,
-        #                 'seed_volume': seeding_size,
-        #                 'seed': seed if seed else 0,
-        #             })
-        #         res_status[0].created_at = create_time
-        #         res_status[0].save()
-        #         logger.info(f'数据导入结果: 日期: {create_time}，True为新建，false为更新')
-        #         logger.info(res_status)
-        #     except Exception as e:
-        #         msg = '{}{} 数据导入出错，错误原因：{}'.format(site.name, key, traceback.format_exc(limit=3))
-        #         logger.error(msg)
-        #         continue
-        return CommonResponse.success(
-            msg=site.name + (' 信息导入成功！' if result[1] else ' 信息更新成功！ ')
-        )
+        try:
+            logger.info(f'正在导入站点：{site.name}')
+            # 如果有更新cookie，如果没有继续创建
+            # userdatas = cookie.get('userdatas')
+            time_stamp = cookie.get('info').get('joinTime')
+            logger.info(f'注册时间：{time_stamp}')
+            if not time_stamp:
+                time_join = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(int(time_stamp) / 1000))
+            else:
+                time_join = datetime.now()
+            uid = cookie.get('info').get('id')
+            if not uid:
+                try:
+                    logger.info('备份文件未获取到User_id，尝试获取中')
+                    scraper = cloudscraper.create_scraper(browser={
+                        'browser': 'chrome',
+                        'platform': 'darwin',
+                    })
+                    response = scraper.get(
+                        url=site.url + site.page_index,
+                        cookies=cookie.get('cookies'),
+                    )
+                    logger.info(response.text)
+                    uid = ''.join(self.parse(site, response, site.my_uid_rule)).split('=')[-1]
+                    logger.info(f'uid:{uid}')
+                except Exception as e:
+                    passkey_msg = f'{site.name} Uid获取失败，请手动添加！'
+                    msg = f'{site.name} 信息导入失败！ {passkey_msg}：{e}'
+                    logger.info(passkey_msg)
+                    return CommonResponse.error(
+                        msg=msg
+                    )
+            result = MySite.objects.update_or_create(site=site.id, defaults={
+                'nickname': site.name,
+                'cookie': cookie.get('cookies'),
+                'user_id': uid,
+                'time_join': time_join,
+            })
+            # my_site = result[0]
+            # passkey_msg = ''
+            # logger.info('开始导入PTPP历史数据')
+            # for key, value in userdatas.items():
+            #     logger.info(key)
+            #     try:
+            #         downloaded = value.get('downloaded')
+            #         uploaded = value.get('uploaded')
+            #         seeding_size = value.get('seedingSize')
+            #         my_bonus = value.get('bonus')
+            #         ratio = value.get('ratio')
+            #         seed = value.get('seeding')
+            #         my_level_str = value.get('levelName')
+            #         if 'hdcity' in site.url:
+            #             my_level = my_level_str.replace('[', '').replace(']', '').strip(" ").strip()
+            #         else:
+            #             my_level = re.sub(u"([^\u0041-\u005a\u0061-\u007a])", "", my_level_str).strip(" ")
+            #         if not my_level:
+            #             my_level = 'User'
+            #         if ratio is None or ratio == 'null':
+            #             continue
+            #         if type(ratio) == str:
+            #             ratio = ratio.strip('\n').strip()
+            #         if float(ratio) < 0:
+            #             ratio = 'inf'
+            #         if not value.get(
+            #                 'id') or key == 'latest' or not downloaded or not uploaded or not seeding_size or not my_bonus:
+            #             continue
+            #         create_time = dateutil.parser.parse(key).date()
+            #         count_status = SiteStatus.objects.filter(site=my_site,
+            #                                                  created_at__date=create_time).count()
+            #         if count_status >= 1:
+            #             continue
+            #         res_status = SiteStatus.objects.update_or_create(
+            #             site=my_site,
+            #             created_at__date=create_time,
+            #             defaults={
+            #                 'uploaded': uploaded,
+            #                 'downloaded': downloaded,
+            #                 'ratio': float(ratio),
+            #                 'my_bonus': my_bonus,
+            #                 'my_level': my_level,
+            #                 'seed_volume': seeding_size,
+            #                 'seed': seed if seed else 0,
+            #             })
+            #         res_status[0].created_at = create_time
+            #         res_status[0].save()
+            #         logger.info(f'数据导入结果: 日期: {create_time}，True为新建，false为更新')
+            #         logger.info(res_status)
+            #     except Exception as e:
+            #         msg = '{}{} 数据导入出错，错误原因：{}'.format(site.name, key, traceback.format_exc(limit=3))
+            #         logger.error(msg)
+            #         continue
+            message = f'{site.name}: {" 信息导入成功！" if result[1] else " 信息更新成功！ "}'
+            logger.info(message)
+            return CommonResponse.success(msg=message)
+        except Exception as e:
+            message = f'{site.name}: 站点导入失败！{traceback.format_exc(3)}'
+            logger.info(message)
+            toolbox.send_text(title='PTPP站点导入', message=message)
+            return CommonResponse.error(msg=f'{site.name}: 站点导入失败！')
 
     def sign_in_52pt(self, my_site: MySite):
         site = get_object_or_404(WebSite, id=my_site.site)

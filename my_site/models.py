@@ -28,6 +28,9 @@ class MySite(BaseEntity):
     sign_in = models.BooleanField(verbose_name='开启签到', default=True, help_text='是否开启签到')
     get_info = models.BooleanField(verbose_name='抓取信息', default=True, help_text='是否抓取站点数据')
     search = models.BooleanField(verbose_name='开启搜索', default=True, help_text='是否开启搜索')
+    get_torrents = models.BooleanField(verbose_name="拉取种子", default=True)
+    repeat_torrents = models.BooleanField(verbose_name="辅种支持", default=False)
+    brush_flow = models.BooleanField(verbose_name="刷流支持", default=False)
     # 用户数据 自动拉取
     time_join = models.DateTimeField(verbose_name='注册时间',
                                      default=datetime(2023, 1, 1, 12, 30, 00),

@@ -9,7 +9,20 @@ class WebSiteSchemaOut(ModelSchema):
 
     class Config:
         model = WebSite
-        model_fields = ['id', 'url', 'name', 'nickname', 'logo', 'tags']
+        model_fields = [
+            'id',  'name', 'nickname',
+            'logo', 'tags', 'sp_full',
+            # 常用地址
+            'page_message','url',
+            # 功能菜单
+            'func_sign_in',
+            'func_get_userinfo',
+            'func_get_torrents',
+            'func_hr_discern',
+            'func_brush_flow',
+            'func_search_torrents',
+            'func_repeat_torrents',
+        ]
 
 
 class WebSiteSchemaIn(ModelSchema):

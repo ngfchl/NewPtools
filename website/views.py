@@ -7,6 +7,7 @@ from ninja.responses import codes_4xx
 
 from monkey.schema import CommonMessage
 from my_site.models import MySite
+from toolbox.schema import CommonResponse
 from website.schema import *
 
 # Create your views here.
@@ -22,11 +23,11 @@ def get_website_list(request):
     return website_list
 
 
-@router.get('/website/new', response=List[WebSiteSchemaOut],description="获取未添加到系统的站点列表")
+@router.get('/website/new', response=CommonResponse[List[WebSiteSchemaOut]], description="获取未添加到系统的站点列表")
 def get_website_list(request):
     id_list = [site.get('site') for site in MySite.objects.values('site')]
     website_list = WebSite.objects.exclude(id__in=id_list)
-    return website_list
+    return CommonResponse.success(data=list(website_list))
 
 
 @router.get('/website/{int:website_id}', response=WebSiteSchemaOut)

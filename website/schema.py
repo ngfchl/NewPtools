@@ -9,7 +9,7 @@ class WebSiteSchemaOut(ModelSchema):
 
     class Config:
         model = WebSite
-        model_fields = ['url', 'name', 'nickname', 'logo', 'tags']
+        model_fields = ['id', 'url', 'name', 'nickname', 'logo', 'tags']
 
 
 class WebSiteSchemaIn(ModelSchema):

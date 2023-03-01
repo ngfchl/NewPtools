@@ -17,10 +17,10 @@ logger = logging.getLogger('ptools')
 router = Router(tags=['website'])
 
 
-@router.get('/website', response=List[WebSiteSchemaOut])
+@router.get('/website', response=CommonResponse[List[WebSiteSchemaOut]])
 def get_website_list(request):
     website_list = WebSite.objects.order_by('id')
-    return website_list
+    return CommonResponse.success(data=list(website_list))
 
 
 @router.get('/website/new', response=CommonResponse[List[WebSiteSchemaOut]], description="获取未添加到系统的站点列表")

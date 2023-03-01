@@ -60,12 +60,25 @@ def get_status_list(request):
     return SiteStatus.objects.order_by('id').select_related('site')
 
 
-@router.get('/status/newest', response=CommonResponse[List[SiteStatusSchemaOut]], description='最新状态-列表')
+@router.get('/status/newest', response=CommonResponse[List[StatusSchema]], description='最新状态-列表')
 def get_newest_status_list(request):
-    my_site_list = MySite.objects.values('id')
-    status_list = [SiteStatus.objects.filter(site=my_site.get('id')).order_by('created_at').first() for my_site in
-                   my_site_list if SiteStatus.objects.filter(site=my_site.get('id')).order_by('created_at').first()]
-    return CommonResponse.success(data=status_list)
+    my_site_list = MySite.objects.all()
+    id_list = [SiteStatus.objects.filter(site=my_site.id).order_by('created_at').first().id for my_site in
+               my_site_list if SiteStatus.objects.filter(site=my_site.id).order_by('created_at').first()]
+    status_list = SiteStatus.objects.filter(id__in=id_list)
+    site_list = WebSite.objects.filter(id__in=[my_site.site for my_site in my_site_list])
+    info_list = []
+    for my_site in my_site_list:
+        status = status_list.filter(site=my_site).first()
+        # if not status:
+        #     status = SiteStatus.objects.create(site=my_site)
+        info = {
+            'my_site': my_site,
+            'site': site_list.get(id=my_site.site),
+            'status': status if status else SiteStatus(site=my_site)
+        }
+        info_list.append(info)
+    return CommonResponse.success(data=info_list)
 
 
 @router.get('/status/{int:status_id}', response=SiteStatusSchemaOut, description='每日状态-单个')

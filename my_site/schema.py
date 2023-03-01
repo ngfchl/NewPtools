@@ -1,7 +1,10 @@
+from typing import Optional
+
 from ninja import ModelSchema, Schema
 from ninja.orm import create_schema
 
 from my_site.models import *
+from website.schema import WebSiteSchemaOut
 
 
 class MySiteSchemaOut(ModelSchema):
@@ -11,7 +14,12 @@ class MySiteSchemaOut(ModelSchema):
 
     class Config:
         model = MySite
-        model_exclude = ['created_at']
+        model_exclude = [
+            'created_at',
+            'passkey',
+            'cookie',
+            'user_agent'
+        ]
 
 
 class MySiteSchemaIn(ModelSchema):
@@ -33,10 +41,11 @@ class MySiteSortSchemaIn(ModelSchema):
 class SiteStatusSchemaOut(ModelSchema):
     """    站点基本信息及信息抓取规则    """
     site: create_schema(model=MySite, fields=['id'])
+    updated_at: Optional[datetime]
 
     class Config:
         model = SiteStatus
-        model_exclude = ['created_at', 'updated_at']
+        model_exclude = ['created_at']
 
 
 class SiteStatusSchemaIn(ModelSchema):
@@ -52,6 +61,13 @@ class SignInSchemaOut(ModelSchema):
     class Config:
         model = SignIn
         model_exclude = ['created_at', 'updated_at']
+
+
+class StatusSchema(Schema):
+    """返回复杂数据"""
+    my_site: MySiteSchemaOut
+    site: WebSiteSchemaOut
+    status: SiteStatusSchemaOut
 
 
 class SignInSchemaIn(ModelSchema):

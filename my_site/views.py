@@ -8,8 +8,8 @@ from ninja import Router
 from my_site import tasks as autopt
 from my_site.schema import *
 from spider.views import PtSpider
-from toolbox.schema import CommonResponse
 from toolbox import views as toolbox
+from toolbox.schema import CommonResponse
 
 # Create your views here.
 logger = logging.getLogger('ptools')
@@ -58,6 +58,14 @@ def remove_mysite(request, mysite_id):
 @router.get('/status', response=List[SiteStatusSchemaOut], description='每日状态-列表')
 def get_status_list(request):
     return SiteStatus.objects.order_by('id').select_related('site')
+
+
+@router.get('/status/newest', response=CommonResponse[List[SiteStatusSchemaOut]], description='最新状态-列表')
+def get_newest_status_list(request):
+    my_site_list = MySite.objects.values('id')
+    status_list = [SiteStatus.objects.filter(site=my_site.get('id')).order_by('created_at').first() for my_site in
+                   my_site_list if SiteStatus.objects.filter(site=my_site.get('id')).order_by('created_at').first()]
+    return CommonResponse.success(data=status_list)
 
 
 @router.get('/status/{int:status_id}', response=SiteStatusSchemaOut, description='每日状态-单个')

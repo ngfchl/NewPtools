@@ -22,6 +22,13 @@ def get_website_list(request):
     return website_list
 
 
+@router.get('/website/new', response=List[WebSiteSchemaOut],description="获取未添加到系统的站点列表")
+def get_website_list(request):
+    id_list = [site.get('site') for site in MySite.objects.values('site')]
+    website_list = WebSite.objects.exclude(id__in=id_list)
+    return website_list
+
+
 @router.get('/website/{int:website_id}', response=WebSiteSchemaOut)
 def get_website(request, website_id):
     return get_object_or_404(WebSite, id=website_id)

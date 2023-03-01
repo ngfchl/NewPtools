@@ -22,7 +22,7 @@ class MySiteSchemaOut(ModelSchema):
         ]
 
 
-class MySiteSchemaIn(ModelSchema):
+class MySiteSchemaEdit(ModelSchema):
     # site: create_schema(WebSite, fields=['id', 'name'])
 
     class Config:

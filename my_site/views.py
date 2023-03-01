@@ -22,13 +22,17 @@ def get_mysite_list(request):
     return CommonResponse.success(data=list(MySite.objects.order_by('time_join')))
 
 
-@router.get('/mysite/{int:mysite_id}', response=MySiteSchemaOut, description='我的站点-单个')
-def get_mysite(request, mysite_id):
-    return get_object_or_404(MySite, id=mysite_id)
+@router.get('/mysite/get', response=CommonResponse[Optional[MySiteSchemaEdit]], description='我的站点-单个')
+def get_mysite(request, mysite_id: int):
+    try:
+        return CommonResponse.success(data=MySite.objects.get(id=mysite_id))
+    except Exception as e:
+        print(e)
+        return CommonResponse.error(msg='没有这个站点的信息哦')
 
 
 @router.post('/mysite', description='我的站点-添加')
-def add_mysite(request, my_site_params: MySiteSchemaIn):
+def add_mysite(request, my_site_params: MySiteSchemaEdit):
     my_site_params.schema().pop('id')
     logger.info(my_site_params)
     my_site = MySite.objects.create(**my_site_params.dict())
@@ -36,7 +40,7 @@ def add_mysite(request, my_site_params: MySiteSchemaIn):
 
 
 @router.put('/mysite/{int:my_site_id}', description='我的站点-更新')
-def edit_mysite(request, my_site_id: int, my_site_params: MySiteSchemaIn):
+def edit_mysite(request, my_site_id: int, my_site_params: MySiteSchemaEdit):
     try:
         my_site_res = MySite.objects.filter(id=my_site_id).aupdate(**my_site_params.dict())
         logger.info(my_site_res)

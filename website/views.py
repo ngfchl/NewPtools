@@ -24,7 +24,7 @@ def get_website_list(request):
 
 
 @router.get('/website/new', response=CommonResponse[List[WebSiteSchemaOut]], description="获取未添加到系统的站点列表")
-def get_website_list(request):
+def get_website_new_list(request):
     id_list = [site.get('site') for site in MySite.objects.values('site')]
     website_list = WebSite.objects.exclude(id__in=id_list)
     return CommonResponse.success(data=list(website_list))

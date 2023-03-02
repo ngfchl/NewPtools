@@ -10,10 +10,10 @@ class WebSiteSchemaOut(ModelSchema):
     class Config:
         model = WebSite
         model_fields = [
-            'id',  'name', 'nickname',
+            'id', 'name', 'nickname',
             'logo', 'tags', 'sp_full',
             # 常用地址
-            'page_message','url',
+            'page_message', 'url',
             # 功能菜单
             'func_sign_in',
             'func_get_userinfo',

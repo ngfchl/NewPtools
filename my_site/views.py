@@ -11,6 +11,7 @@ from my_site.schema import *
 from spider.views import PtSpider
 from toolbox import views as toolbox
 from toolbox.schema import CommonResponse
+from my_site.schema import SignInDoSchemaIn
 
 # Create your views here.
 logger = logging.getLogger('ptools')
@@ -67,14 +68,33 @@ async def edit_mysite(request, my_site_params: MySiteSchemaEdit):
             msg=f'{my_site_params.nickname} 信息更新失败！'
         )
     except Exception as e:
+        logger.info(traceback.format_exc(3))
         msg = f'{my_site_params.nickname} 参数有误，请确认后重试！{e}'
+        logger.info(msg)
         return CommonResponse.error(msg=msg)
 
 
-@router.delete('/mysite/{int:mysite_id}', description='我的站点-删除')
+@router.delete('/mysite', response=CommonResponse, description='我的站点-删除')
 def remove_mysite(request, mysite_id):
-    count = SiteStatus.objects.filter(id=mysite_id).delete()
-    return f'remove/{count}'
+    try:
+        logger.info(f'开始删除站点：{mysite_id}')
+        my_site_res = MySite.objects.get(id=mysite_id).delete()
+        logger.info(my_site_res)
+        if my_site_res[0] > 0:
+            my_site = my_site_res[1]
+            logger.info(f'删除成功：，成功删除 {my_site_res[0]} 条数据！')
+            return CommonResponse.success(
+                msg=f'站点删除成功！'
+            )
+
+        return CommonResponse.error(
+            msg=f'站点删除失败！'
+        )
+    except Exception as e:
+        logger.info(traceback.format_exc(30))
+        msg = f'站点删除失败！{e}'
+        logger.info(msg)
+        return CommonResponse.error(msg=msg)
 
 
 @router.get('/status', response=List[SiteStatusSchemaOut], description='每日状态-列表')
@@ -113,7 +133,25 @@ def get_signin_list(request):
     return SignIn.objects.order_by('id').select_related('site')
 
 
-@router.post('/sign/do/', response=CommonResponse, description='每日签到')
+@router.post('/signin', response=CommonResponse, description='每日签到-手动签到')
+def do_signin(request, sign_in: SignInDoSchemaIn):
+    """手动签到"""
+    try:
+        logger.info(f'手动签到中，站点id：{sign_in.site_id}')
+        my_site = MySite.objects.get(id=sign_in.site_id)
+        res = pt_spider.sign_in(my_site)
+        logger.info(f'正在签到：{res}')
+        # if res.code == 0:
+        #     return CommonResponse.success(msg=res[0])
+        return res
+    except Exception as e:
+        msg = f'签到失败：{e}'
+        logger.error(msg)
+        logger.error(traceback.format_exc(3))
+        return CommonResponse.error(msg=msg)
+
+
+@router.post('/sign/do', response=CommonResponse, description='每日签到')
 def sign_in_api(request, site_list: List[int] = []):
     try:
         res = autopt.auto_sign_in.delay(site_list)

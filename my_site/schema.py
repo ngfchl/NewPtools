@@ -22,6 +22,10 @@ class MySiteSchemaOut(ModelSchema):
         ]
 
 
+class SignInDoSchemaIn(Schema):
+    site_id: int
+
+
 class MySiteSchemaEdit(ModelSchema):
     # site: create_schema(WebSite, fields=['id', 'name'])
 

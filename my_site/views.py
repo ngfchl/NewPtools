@@ -2,6 +2,7 @@ import logging
 import traceback
 from typing import List
 
+from django.db import IntegrityError
 from django.shortcuts import get_object_or_404
 from ninja import Router
 
@@ -31,26 +32,43 @@ def get_mysite(request, mysite_id: int):
         return CommonResponse.error(msg='没有这个站点的信息哦')
 
 
-@router.post('/mysite', description='我的站点-添加')
+@router.post('/mysite', response=CommonResponse, description='我的站点-添加')
 def add_mysite(request, my_site_params: MySiteSchemaEdit):
-    my_site_params.schema().pop('id')
-    logger.info(my_site_params)
-    my_site = MySite.objects.create(**my_site_params.dict())
-    return my_site
-
-
-@router.put('/mysite/{int:my_site_id}', description='我的站点-更新')
-def edit_mysite(request, my_site_id: int, my_site_params: MySiteSchemaEdit):
     try:
-        my_site_res = MySite.objects.filter(id=my_site_id).aupdate(**my_site_params.dict())
-        logger.info(my_site_res)
-        return CommonResponse.success(
-            msg=f'{my_site_res} 信息更新成功！'
+        logger.info(f'开始处理：{my_site_params.nickname}')
+        logger.info(my_site_params)
+        my_site_params.id = None
+        my_site = MySite.objects.create(**my_site_params.dict())
+        if my_site:
+            msg = f'处理完毕：{my_site.nickname}，保存成功！'
+            logger.info(msg)
+            return CommonResponse.success(msg=msg)
+        return CommonResponse.error(msg=f'处理完毕：{my_site.nickname}，保存失败！')
+    except IntegrityError as e:
+        msg = f'{my_site_params.nickname} 站点信息已存在，请勿重复添加~！'
+        return CommonResponse.error(msg=msg)
+    except Exception as e:
+        logger.info(traceback.format_exc(3))
+        msg = f'{my_site_params.nickname} 参数有误，请确认后重试！{e}'
+        return CommonResponse.error(msg=msg)
+
+
+@router.put('/mysite', response=CommonResponse, description='我的站点-更新')
+async def edit_mysite(request, my_site_params: MySiteSchemaEdit):
+    try:
+        logger.info(f'开始更新：{my_site_params.nickname}')
+        my_site_res = await MySite.objects.filter(id=my_site_params.id).aupdate(**my_site_params.dict())
+        if my_site_res > 0:
+            logger.info(f'处理完毕：{my_site_params.nickname}，成功处理 {my_site_res} 条数据！')
+            return CommonResponse.success(
+                msg=f'{my_site_params.nickname} 信息更新成功！'
+            )
+        return CommonResponse.error(
+            msg=f'{my_site_params.nickname} 信息更新失败！'
         )
     except Exception as e:
-        return CommonResponse.error(
-            msg=f'{my_site_params.nickname} 参数有误，请确认后重试！{e}'
-        )
+        msg = f'{my_site_params.nickname} 参数有误，请确认后重试！{e}'
+        return CommonResponse.error(msg=msg)
 
 
 @router.delete('/mysite/{int:mysite_id}', description='我的站点-删除')

@@ -71,6 +71,7 @@ class StatusSchema(Schema):
     """返回复杂数据"""
     my_site: MySiteSchemaOut
     site: WebSiteSchemaOut
+    sign: Optional[SignInSchemaOut]
     status: Optional[SiteStatusSchemaOut]
     level: Optional[UserLevelRuleSchemaOut]
     next_level: Optional[UserLevelRuleSchemaOut]

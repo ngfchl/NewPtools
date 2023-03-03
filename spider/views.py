@@ -535,13 +535,13 @@ class PtSpider:
         """签到"""
         site = get_object_or_404(WebSite, id=my_site.site)
         logger.info(site.name + '开始签到')
-        signin_today = my_site.signin_set.filter(created_at__date__gte=datetime.today(), sign_in_today=False)
+        signin_today = my_site.signin_set.filter(created_at__date__gte=datetime.today()).first()
         # 如果已有签到记录
         if signin_today:
             if signin_today.sign_in_today is True:
                 return CommonResponse.success(msg=f'已签到，请勿重复签到！')
         else:
-            signin_today = SignIn(site=my_site)
+            signin_today = SignIn(site=my_site, created_at=datetime.now())
         url = site.url + site.page_sign_in.lstrip('/')
         logger.info('签到链接：' + url)
         try:

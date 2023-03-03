@@ -4,7 +4,7 @@ from ninja import ModelSchema, Schema
 from ninja.orm import create_schema
 
 from my_site.models import *
-from website.schema import WebSiteSchemaOut
+from website.schema import WebSiteSchemaOut, UserLevelRuleSchemaOut
 
 
 class MySiteSchemaOut(ModelSchema):
@@ -71,7 +71,9 @@ class StatusSchema(Schema):
     """返回复杂数据"""
     my_site: MySiteSchemaOut
     site: WebSiteSchemaOut
-    status: SiteStatusSchemaOut
+    status: Optional[SiteStatusSchemaOut]
+    level: Optional[UserLevelRuleSchemaOut]
+    next_level: Optional[UserLevelRuleSchemaOut]
 
 
 class SignInSchemaIn(ModelSchema):

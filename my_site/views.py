@@ -12,6 +12,7 @@ from spider.views import PtSpider
 from toolbox import views as toolbox
 from toolbox.schema import CommonResponse
 from my_site.schema import SignInDoSchemaIn
+from website.models import UserLevelRule
 
 # Create your views here.
 logger = logging.getLogger('ptools')
@@ -105,20 +106,34 @@ def get_status_list(request):
 @router.get('/status/newest', response=CommonResponse[List[StatusSchema]], description='最新状态-列表')
 def get_newest_status_list(request):
     my_site_list = MySite.objects.all()
+    print(len(my_site_list))
     id_list = [SiteStatus.objects.filter(site=my_site.id).order_by('created_at').first().id for my_site in
                my_site_list if SiteStatus.objects.filter(site=my_site.id).order_by('created_at').first()]
     status_list = SiteStatus.objects.filter(id__in=id_list)
-    site_list = WebSite.objects.filter(id__in=[my_site.site for my_site in my_site_list])
+    my_site_id_list = [my_site.id for my_site in my_site_list]
+    site_id_list = [my_site.site for my_site in my_site_list]
+    site_list = WebSite.objects.all()
+    print(len(site_list))
+    sign_list = SignIn.objects.filter(id__in=my_site_id_list)
+    level_list = UserLevelRule.objects.filter(site_id__in=site_id_list)
     info_list = []
     for my_site in my_site_list:
         status = status_list.filter(site=my_site).first()
+        sign = sign_list.filter(site=my_site, created_at__date=datetime.today().date()).first()
+        level = level_list.filter(site_id=my_site.site, level=status.my_level).first() if status else None
+        next_level = level_list.filter(site_id=my_site.site, level_id=level.id + 1).first() if status else None
         # if not status:
         #     status = SiteStatus.objects.create(site=my_site)
+        print(my_site.nickname)
         info = {
             'my_site': my_site,
-            'site': site_list.get(id=my_site.site),
-            'status': status if status else SiteStatus(site=my_site)
+            'site': site_list.filter(id=my_site.site).first(),
+            'status': status if status else SiteStatus(site=my_site),
+            'sign': sign,
+            'level': level,
+            'next_level': next_level
         }
+        print(info)
         info_list.append(info)
     return CommonResponse.success(data=info_list)
 

@@ -1050,13 +1050,12 @@ class PtSpider:
                         details_html = etree.HTML(res.text)
                 except Exception as e:
                     logger.info(f'BT学校个人主页访问失败！{e}')
-        if site.url in [
-            'hdchina.org'
-        ]:
+        if 'hdchina.org' in site.url:
             cookies = ''
             logger.info(f'res: {user_detail_res.text}')
             logger.info(f'cookies: {user_detail_res.cookies.get_dict()}')
             # expires = [cookie for cookie in session.cookies if not cookie.expires]
+            logger.info(f'请求中的cookie: {user_detail_res.cookies}')
 
             for key, value in user_detail_res.cookies.get_dict().items():
                 cookies += f'{key}={value};'
@@ -1094,7 +1093,8 @@ class PtSpider:
             logger.info(site.url)
             seeding_html = details_html
         elif 'hdchina.org' in site.url:
-            details_html = etree.HTML(details_html.text)
+            # print(details_html.content)
+            # details_html = etree.HTML(details_html.text)
             csrf = details_html.xpath('//meta[@name="x-csrf"]/@content')
             logger.info(f'CSRF Token：{csrf}')
 
@@ -1110,7 +1110,6 @@ class PtSpider:
                     'csrf': ''.join(csrf)
                 })
             logger.info(f'cookie: {my_site.cookie}')
-            logger.info(f'请求中的cookie: {seeding_detail_res.cookies}')
             logger.info(f'做种列表：{seeding_detail_res.text}')
             seeding_html = etree.HTML(seeding_detail_res.text)
         elif 'club.hares.top' in site.url:
@@ -1206,7 +1205,7 @@ class PtSpider:
             # 请求公告信息，直接推送通知到手机
             self.get_notice_info(my_site, details_html.data)
             # return self.parse_status_html(my_site, data)
-            status = SiteStatus.objects.filter(created_at__date=datetime.today()).first()
+            status = SiteStatus.objects.filter(site=my_site, created_at__date=datetime.today()).first()
             return CommonResponse.success(data=status, msg=f'{my_site.nickname} 数据更新成功！')
         except RequestException as nce:
             logger.error(traceback.format_exc(limit=3))

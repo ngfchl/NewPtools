@@ -124,7 +124,7 @@ def get_newest_status_list(request):
         status = status_list.filter(site=my_site).first()
         sign = sign_list.filter(site=my_site, created_at__date=datetime.today().date()).first()
         level = level_list.filter(site_id=my_site.site, level=status.my_level).first() if status else None
-        next_level = level_list.filter(site_id=my_site.site, level_id=level.id + 1).first() if status else None
+        next_level = level_list.filter(site_id=my_site.site, level_id=level.id + 1).first() if level else None
         # if not status:
         #     status = SiteStatus.objects.create(site=my_site)
         info = {

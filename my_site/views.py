@@ -1,6 +1,6 @@
 import logging
 import traceback
-from typing import List
+from typing import List, Optional
 
 from django.db import IntegrityError
 from django.shortcuts import get_object_or_404
@@ -11,7 +11,7 @@ from my_site.schema import *
 from spider.views import PtSpider
 from toolbox import views as toolbox
 from toolbox.schema import CommonResponse
-from my_site.schema import SignInDoSchemaIn
+from my_site.schema import MySiteDoSchemaIn
 from website.models import UserLevelRule
 
 # Create your views here.
@@ -103,17 +103,20 @@ def get_status_list(request):
     return SiteStatus.objects.order_by('id').select_related('site')
 
 
+@router.post('/status', response=CommonResponse[Optional[SiteStatusSchemaOut]], description='每日状态-更新')
+def get_status_list(request, my_site: MySiteDoSchemaIn):
+    return pt_spider.send_status_request(MySite.objects.get(id=my_site.site_id))
+
+
 @router.get('/status/newest', response=CommonResponse[List[StatusSchema]], description='最新状态-列表')
 def get_newest_status_list(request):
     my_site_list = MySite.objects.all()
-    print(len(my_site_list))
     id_list = [SiteStatus.objects.filter(site=my_site.id).order_by('created_at').first().id for my_site in
                my_site_list if SiteStatus.objects.filter(site=my_site.id).order_by('created_at').first()]
     status_list = SiteStatus.objects.filter(id__in=id_list)
     my_site_id_list = [my_site.id for my_site in my_site_list]
     site_id_list = [my_site.site for my_site in my_site_list]
     site_list = WebSite.objects.all()
-    print(len(site_list))
     sign_list = SignIn.objects.filter(id__in=my_site_id_list)
     level_list = UserLevelRule.objects.filter(site_id__in=site_id_list)
     info_list = []
@@ -124,7 +127,6 @@ def get_newest_status_list(request):
         next_level = level_list.filter(site_id=my_site.site, level_id=level.id + 1).first() if status else None
         # if not status:
         #     status = SiteStatus.objects.create(site=my_site)
-        print(my_site.nickname)
         info = {
             'my_site': my_site,
             'site': site_list.filter(id=my_site.site).first(),
@@ -133,7 +135,7 @@ def get_newest_status_list(request):
             'level': level,
             'next_level': next_level
         }
-        print(info)
+        # print(info)
         info_list.append(info)
     return CommonResponse.success(data=info_list)
 
@@ -149,7 +151,7 @@ def get_signin_list(request):
 
 
 @router.post('/signin', response=CommonResponse, description='每日签到-手动签到')
-def do_signin(request, sign_in: SignInDoSchemaIn):
+def do_signin(request, sign_in: MySiteDoSchemaIn):
     """手动签到"""
     try:
         logger.info(f'手动签到中，站点id：{sign_in.site_id}')

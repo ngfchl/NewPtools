@@ -22,7 +22,7 @@ class MySiteSchemaOut(ModelSchema):
         ]
 
 
-class SignInDoSchemaIn(Schema):
+class MySiteDoSchemaIn(Schema):
     site_id: int
 
 

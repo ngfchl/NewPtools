@@ -1207,10 +1207,10 @@ class PtSpider:
             self.get_notice_info(my_site, details_html.data)
             # return self.parse_status_html(my_site, data)
             status = SiteStatus.objects.filter(created_at__date=datetime.today()).first()
-            return CommonResponse.success(data=status)
+            return CommonResponse.success(data=status, msg=f'{my_site.nickname} 数据更新成功！')
         except RequestException as nce:
             logger.error(traceback.format_exc(limit=3))
-            return CommonResponse.error(msg=f'与网站建立连接失败，请检查网络？？')
+            return CommonResponse.error(msg=f'与网站 {my_site.nickname} 建立连接失败，请检查网络？？')
         except Exception as e:
             message = f'{my_site.nickname} 访问个人主页信息：失败！原因：{e}'
             logger.error(message)

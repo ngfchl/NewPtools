@@ -141,7 +141,7 @@ var i = 1;
     'use strict';
     if (i == 1) {
         if (window.top != window.self) return;  //don't run on frames or iframes
-        if (!localStorage.getItem(token)) {
+        if (!sessionStorage.getItem(token)) {
             getSite()
         }
         // GM_addStyle(GM_getResourceText("bootstrap"));
@@ -169,7 +169,7 @@ async function getSite() {
                     console.log(res.msg)
                     resolve(false)
                 }
-                localStorage.setItem(token, JSON.stringify(res))
+                sessionStorage.setItem(token, JSON.stringify(res))
                 resolve(res)
             },
             onerror: function (response) {
@@ -189,9 +189,13 @@ async function getCookie() {
         GM_cookie('list', { // 异步,如果在return data之前还没执行完，部分站点会导致cookie不全。
             url: location.href
         }, (cookies) => {
-            let ptCookie = cookies.map(c => `${c.name}=${c.value}`).join('; ');
-            console.log('【Debug】cookie:', ptCookie);
-            resolve(ptCookie)
+            try {
+                let ptCookie = cookies.map(c => `${c.name}=${c.value}`).join('; ');
+                console.log('【Debug】cookie:', ptCookie);
+                resolve(ptCookie)
+            } catch (e) {
+                reject(false)
+            }
         });
     })
 }
@@ -201,7 +205,7 @@ async function getCookie() {
  * @returns
  */
 async function getSiteData() {
-    var site_info = JSON.parse(localStorage.getItem(token))
+    var site_info = JSON.parse(sessionStorage.getItem(token))
     console.log(site_info)
     if (site_info === false) {
         alert('ptools服务器连接失败！')
@@ -211,13 +215,22 @@ async function getSiteData() {
     //获取cookie与useragent
     let user_agent = window.navigator.userAgent
     let cookie = await getCookie()
+    if (!cookie) {
+        alert('Cookie获取失败，请使用Beta版油猴（红色图标的油猴）！')
+        return false
+    }
     //获取UID
     let href = document.evaluate(site_info.my_uid_rule, document).iterateNext().textContent
     console.log(href)
-    let user_id = href.split('=')
+    let user_id_info = href.split('=')
+    let user_id = $.trim(user_id_info[user_id_info.length - 1])
     console.log(user_id)
+    if (!user_id) {
+        alert('用户ID获取失败！')
+        return false
+    }
     // &token=${token}
-    return `user_id=${user_id[user_id.length - 1]}&nickname=${site_info.name}&site=${site_info.id}&cookie=${cookie}&user_agent=${user_agent}`
+    return `user_id=${user_id}&nickname=${site_info.name}&site=${site_info.id}&cookie=${cookie}&user_agent=${user_agent}`
 }
 
 /**

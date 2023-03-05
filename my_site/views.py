@@ -1,17 +1,18 @@
 import logging
 import traceback
-from typing import List, Optional
+from typing import List
 
+from django.core.paginator import Paginator
 from django.db import IntegrityError
 from django.shortcuts import get_object_or_404
-from ninja import Router
+from ninja import Router, Query
 
 from my_site import tasks as autopt
 from my_site.schema import *
+from my_site.schema import MySiteDoSchemaIn
 from spider.views import PtSpider
 from toolbox import views as toolbox
-from toolbox.schema import CommonResponse
-from my_site.schema import MySiteDoSchemaIn
+from toolbox.schema import CommonResponse, CommonPaginateSchema
 from website.models import UserLevelRule
 
 # Create your views here.
@@ -104,7 +105,7 @@ def get_status_list(request):
 
 
 @router.post('/status', response=CommonResponse[Optional[SiteStatusSchemaOut]], description='每日状态-更新')
-def get_status_list(request, my_site: MySiteDoSchemaIn):
+def do_status(request, my_site: MySiteDoSchemaIn):
     return pt_spider.send_status_request(MySite.objects.get(id=my_site.site_id))
 
 
@@ -117,7 +118,7 @@ def get_newest_status_list(request):
     my_site_id_list = [my_site.id for my_site in my_site_list]
     site_id_list = [my_site.site for my_site in my_site_list]
     site_list = WebSite.objects.all()
-    sign_list = SignIn.objects.filter(id__in=my_site_id_list)
+    sign_list = SignIn.objects.all()
     level_list = UserLevelRule.objects.filter(site_id__in=site_id_list)
     info_list = []
     for my_site in my_site_list:
@@ -145,9 +146,27 @@ def get_status(request, status_id):
     return get_object_or_404(SiteStatus, id=status_id)
 
 
-@router.get('/signin', response=List[SignInSchemaOut], description='每日签到-列表')
-def get_signin_list(request):
-    return SignIn.objects.order_by('id').select_related('site')
+@router.get('/signin', response=CommonResponse[CommonPaginateSchema[SignInSchemaOut]],
+            description='每日签到-列表')
+def get_signin_list(request, filters: SignInQueryParamsSchemaIn = Query(...)):
+    try:
+        logger.info(filters.site_id)
+        logger.info(filters.page * filters.limit)
+        sign_list = SignIn.objects.filter(site_id=filters.site_id).order_by('-updated_at')
+        page_list = Paginator(sign_list, filters.limit)
+        print(page_list.get_page(filters.page))
+        data = {
+            'items': list(page_list.get_page(filters.page).object_list),
+            'per_page': filters.page,
+            'total': page_list.count
+        }
+        logger.info(data)
+        return CommonResponse.success(data=data)
+    except Exception as e:
+        msg = f'获取签到历史失败：{e}'
+        logger.error(msg)
+        logger.error(traceback.format_exc(3))
+        return CommonResponse.error(msg=msg)
 
 
 @router.post('/signin', response=CommonResponse, description='每日签到-手动签到')

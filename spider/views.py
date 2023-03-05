@@ -539,7 +539,7 @@ class PtSpider:
         # 如果已有签到记录
         if signin_today:
             if signin_today.sign_in_today is True:
-                return CommonResponse.success(msg=f'已签到，请勿重复签到！')
+                return CommonResponse.success(msg=f'{my_site.nickname} 已签到，请勿重复签到！')
         else:
             signin_today = SignIn(site=my_site, created_at=datetime.now())
         url = site.url + site.page_sign_in.lstrip('/')

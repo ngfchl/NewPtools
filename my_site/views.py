@@ -111,7 +111,7 @@ def get_status_list(request, my_site: MySiteDoSchemaIn):
 @router.get('/status/newest', response=CommonResponse[List[StatusSchema]], description='最新状态-列表')
 def get_newest_status_list(request):
     my_site_list = MySite.objects.all()
-    id_list = [SiteStatus.objects.filter(site=my_site.id).order_by('created_at').first().id for my_site in
+    id_list = [SiteStatus.objects.filter(site=my_site.id).order_by('-created_at').first().id for my_site in
                my_site_list if SiteStatus.objects.filter(site=my_site.id).order_by('created_at').first()]
     status_list = SiteStatus.objects.filter(id__in=id_list)
     my_site_id_list = [my_site.id for my_site in my_site_list]

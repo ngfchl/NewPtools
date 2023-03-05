@@ -1,8 +1,7 @@
-from ninja import Schema
+from typing import Generic, TypeVar, List
+
 from pydantic.generics import GenericModel
 from pydantic.schema import Optional
-
-from typing import Generic, TypeVar
 
 # class BaseResponse(Schema):
 
@@ -41,3 +40,9 @@ class CommonResponse(GenericModel, Generic[T]):
             "msg": self.msg,
             "data": self.data
         }
+
+
+class CommonPaginateSchema(GenericModel, Generic[T]):
+    per_page: int
+    total: int
+    items: List[T]

@@ -11,6 +11,7 @@ class MySiteSchemaOut(ModelSchema):
     """    站点基本信息及信息抓取规则    """
 
     # site: create_schema(WebSite, fields=['id', 'name'])
+    updated: str
 
     class Config:
         model = MySite
@@ -20,6 +21,9 @@ class MySiteSchemaOut(ModelSchema):
             'cookie',
             'user_agent'
         ]
+
+    def resolve_updated(self, obj):
+        return datetime.strftime(self.updated_at, '%Y年%m月%d日%H:%M:%S')
 
 
 class MySiteDoSchemaIn(Schema):
@@ -36,20 +40,27 @@ class MySiteSchemaEdit(ModelSchema):
 
 class MySiteSortSchemaIn(ModelSchema):
     # site: create_schema(WebSite, fields=['id', 'name'])
+    updated: str
 
     class Config:
         model = MySite
         model_exclude = ['id', 'sort_id']
 
+    def resolve_updated(self, obj):
+        return datetime.strftime(self.updated_at, '%Y年%m月%d日%H:%M:%S')
+
 
 class SiteStatusSchemaOut(ModelSchema):
     """    站点基本信息及信息抓取规则    """
     site: create_schema(model=MySite, fields=['id'])
-    updated_at: Optional[datetime]
+    updated: str
 
     class Config:
         model = SiteStatus
         model_exclude = ['created_at']
+
+    def resolve_updated(self, obj):
+        return datetime.strftime(self.updated_at, '%Y年%m月%d日%H:%M:%S')
 
 
 class SiteStatusSchemaIn(ModelSchema):
@@ -60,11 +71,16 @@ class SiteStatusSchemaIn(ModelSchema):
 
 class SignInSchemaOut(ModelSchema):
     """    站点基本信息及信息抓取规则    """
-    site: create_schema(model=MySite, fields=['id'])
+
+    # site: create_schema(model=MySite, fields=['id'])
+    updated: str
 
     class Config:
         model = SignIn
-        model_exclude = ['created_at', 'updated_at']
+        model_exclude = ['created_at']
+
+    def resolve_updated(self, obj):
+        return datetime.strftime(self.updated_at, '%Y年%m月%d日%H:%M:%S')
 
 
 class StatusSchema(Schema):
@@ -87,6 +103,12 @@ class TorrentInfoSchemaOut(ModelSchema):
     class Config:
         model = SignIn
         model_exclude = ['created_at', 'updated_at']
+
+
+class SignInQueryParamsSchemaIn(Schema):
+    site_id: int
+    page: int
+    limit: int
 
 
 class ImportSchema(Schema):

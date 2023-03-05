@@ -1400,7 +1400,17 @@ class PtSpider:
                     else:
                         my_score = 0
                     # 获取HR信息
-                    hr = ''.join(details_html.xpath(site.my_hr_rule)).replace('H&R:', '').replace('有效\n:', '').strip()
+                    hr = ''.join(
+                        details_html.xpath(site.my_hr_rule)
+                    ).replace('H&R:', '').strip()
+                    print(hr)
+                    if site.url in [
+                        'https://monikadesign.uk/',
+                        'https://pt.hdpost.top/',
+                        'https://reelflix.xyz/',
+                    ]:
+                        print(hr)
+                        hr.replace('\n', '').replace('有效', '').replace(':', '').strip('/').strip()
                     my_hr = hr if hr else '0'
                     logger.info(f'h&r: "{hr}" ,解析后：{my_hr}')
                     # 做种与下载信息

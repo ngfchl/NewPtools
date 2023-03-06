@@ -214,7 +214,7 @@ def import_from_ptpp(request, data: ImportSchema):
         return CommonResponse.error(msg='站点数据导入失败！')
 
 
-@router.get('/status/chart/{site_id}', response=CommonResponse, description='站点数据展示')
+@router.get('/status/chart', response=CommonResponse, description='站点数据展示')
 def site_data_api(request, site_id: int):
     """站点数据(柱状图)"""
     # my_site_id = request.GET.get('id')
@@ -223,11 +223,22 @@ def site_data_api(request, site_id: int):
         my_site_list = MySite.objects.all()
         diff_list = []
         # 提取日期
-        date_list = set([
+        date_list_set = set([
             status.created_at.date().strftime('%Y-%m-%d') for status in SiteStatus.objects.all()
         ])
-        date_list = list(date_list)
+        date_list = list(date_list_set)
         date_list.sort()
+        logger.info(date_list)
+        for my_site in my_site_list:
+            site_info = parse_site_data_to_chart(my_site)
+            inner_date_list = site_info.get('date_list')
+            diff_uploaded_list = site_info.get('diff_uploaded_list')
+            diff_downloaded_list = site_info.get('diff_downloaded_list')
+            uploaded_list = site_info.get('uploaded_list')
+            downloaded_list = site_info.get('downloaded_list')
+            diff_date_list = date_list_set - set(inner_date_list)
+            logger.info(diff_date_list)
+        """
         # logger.info(f'日期列表：{date_list}')
         logger.info(f'日期数量：{len(date_list)}')
 
@@ -238,6 +249,7 @@ def site_data_api(request, site_id: int):
             info_list = [
                 {
                     'uploaded': site_info.uploaded,
+                    'downloaded': site_info.downloaded,
                     'date': site_info.created_at.date().strftime('%Y-%m-%d')
                 } for site_info in site_status_list
             ]
@@ -254,18 +266,39 @@ def site_data_api(request, site_id: int):
                 'date': info['date']
             } for (index, info) in enumerate(info_list) if index < len(info_list) - 1]
             '''
-            diff_info_list = {
-                info['date']: info['uploaded'] - info_list[index - 1]['uploaded'] if
-                info['uploaded'] - info_list[index - 1]['uploaded'] > 0 else 0 for
-                (index, info) in enumerate(info_list) if 0 < index < len(info_list)
+            # diff_info_list = {
+            #     info['date']: info['uploaded'] - info_list[index - 1]['uploaded'] if
+            #     info['uploaded'] - info_list[index - 1]['uploaded'] > 0 else 0 for
+            #     (index, info) in enumerate(info_list) if 0 < index < len(info_list)
+            #
+            # }
+            diff_info_list = {}
+            for (index, info) in enumerate(info_list):
+                if index == 0:
+                    diff_uploaded = info['uploaded']
+                    diff_downloaded = info['downloaded']
+                else:
+                    diff_uploaded = info['uploaded'] - info_list[index - 1]['uploaded'] if \
+                        info['uploaded'] > info_list[index - 1]['uploaded'] else 0
+                    diff_downloaded = info['downloaded'] - info_list[index - 1]['downloaded'] if \
+                        info['downloaded'] > info_list[index - 1]['downloaded'] else 0
+                diff_info = {
+                    info['date']: {
+                        'diff_uploaded': diff_uploaded,
+                        'diff_downloaded': diff_downloaded
+                    }
+                }
+                diff_info_list.update(diff_info)
 
-            }
-            # logger.info(f'处理完后站点数据条数：{len(info_list)}')
+            logger.info(f'处理完后站点数据条数：{len(info_list)}')
             for date in date_list:
                 if not diff_info_list.get(date):
-                    diff_info_list[date] = 0
-            # logger.info(diff_info_list)
-            # logger.info(len(diff_info_list))
+                    diff_info_list[date] = {
+                        'diff_uploaded': 0,
+                        'diff_downloaded': 0
+                    }
+            logger.info(diff_info_list)
+            logger.info(len(diff_info_list))
             diff_info_list = sorted(diff_info_list.items(), key=lambda x: x[0])
             diff_list.append({
                 'name': my_site.nickname,
@@ -277,49 +310,83 @@ def site_data_api(request, site_id: int):
         return CommonResponse.success(
             data={'date_list': date_list, 'diff': diff_list}
         )
-
+    """
     logger.info(f'前端传来的站点ID：{site_id}')
     my_site = MySite.objects.filter(id=site_id).first()
     if not my_site:
         return CommonResponse.error(
             msg='访问出错咯！没有这个站点...'
         )
+    return CommonResponse.success(data=parse_site_data_to_chart(my_site))
+
+
+def parse_site_data_to_chart(my_site: MySite):
     site_info_list = my_site.sitestatus_set.order_by('created_at').all()
     if len(site_info_list) <= 0:
         return CommonResponse.error(
             msg='你还没有获取过这个站点的数据...'
         )
-    # logger.info(site_info_list)
-    site_status_list = []
+    logger.info(site_info_list)
     site = get_object_or_404(WebSite, id=my_site.site)
+
+    uploaded_list = []
+    diff_uploaded_list = []
+    downloaded_list = []
+    diff_downloaded_list = []
+    bonus_list = []
+    score_list = []
+    ratio_list = []
+    seeding_size_list = []
+    seeding_list = []
+    leeching_list = []
+    invitation_list = []
+    bonus_hour_list = []
+    date_list = []
+    for (index, site_info) in enumerate(site_info_list):
+        # for (index, info) in enumerate(info_list):
+        if index == 0:
+            diff_uploaded = site_info.uploaded
+            diff_downloaded = site_info.downloaded
+        else:
+            diff_uploaded = site_info.uploaded - site_info_list[index - 1].uploaded
+            diff_downloaded = site_info.downloaded - site_info_list[index - 1].downloaded
+        diff_uploaded_list.append(diff_uploaded)
+        diff_downloaded_list.append(diff_downloaded)
+        uploaded_list.append(site_info.uploaded)
+        downloaded_list.append(site_info.downloaded)
+        bonus_list.append(site_info.my_bonus)
+        score_list.append(site_info.my_score)
+        ratio_list.append(0 if site_info.ratio == float('inf') else site_info.ratio)
+        seeding_size_list.append(site_info.seed_volume)
+        seeding_list.append(site_info.seed)
+        leeching_list.append(site_info.leech)
+        invitation_list.append(site_info.invitation)
+        bonus_hour_list.append(site_info.bonus_hour)
+        date_list.append(site_info.updated_at.strftime('%Y-%m-%d'))
+    logger.info(site)
+    # logger.info(site_status_list)
     my_site_info = {
         'id': my_site.id,
         'name': site.name,
         'icon': site.logo,
         'url': site.url,
-        'class': site_info_list.first().my_level,
-        'last_active': datetime.strftime(site_info_list.first().updated_at, '%Y/%m/%d %H:%M:%S'),
+        'level': site_info_list.first().my_level,
+        'last_active': site_info_list.first().updated_at.strftime('%Y-%m-%d %H:%M:%S'),
+        'uploaded_list': uploaded_list,
+        'downloaded_list': downloaded_list,
+        'diff_uploaded_list': diff_uploaded_list,
+        'diff_downloaded_list': diff_downloaded_list,
+        'bonus_list': bonus_list,
+        'score_list': score_list,
+        'ratio_list': ratio_list,
+        'seeding_size_list': seeding_size_list,
+        'seeding_list': seeding_list,
+        'leeching_list': leeching_list,
+        'invitation_list': invitation_list,
+        'bonus_hour_list': bonus_hour_list,
+        'date_list': date_list,
     }
-    for site_info in site_info_list:
-        my_site_status = {
-            'uploaded': site_info.uploaded,
-            'downloaded': site_info.downloaded,
-            'ratio': 0 if site_info.ratio == float('inf') else site_info.ratio,
-            'seedingSize': site_info.seed_vol,
-            'sp': site_info.my_sp,
-            'sp_hour': site_info.sp_hour,
-            'bonus': site_info.my_bonus,
-            'seeding': site_info.seed,
-            'leeching': site_info.leech,
-            'invitation': site_info.invitation,
-            'info_date': site_info.created_at.date()
-        }
-        site_status_list.append(my_site_status)
-    logger.info(site)
-    # logger.info(site_status_list)
-    return CommonResponse.success(
-        data={'site': my_site_info, 'site_status_list': site_status_list}
-    )
+    return my_site_info
 
 
 @router.post('/status/do', response=CommonResponse, description='刷新站点数据')

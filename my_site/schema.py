@@ -54,13 +54,17 @@ class SiteStatusSchemaOut(ModelSchema):
     """    站点基本信息及信息抓取规则    """
     site: create_schema(model=MySite, fields=['id'])
     updated: str
+    updated_at: Optional[datetime]
 
     class Config:
         model = SiteStatus
         model_exclude = ['created_at']
 
     def resolve_updated(self, obj):
-        return datetime.strftime(self.updated_at, '%Y年%m月%d日%H:%M:%S')
+        return datetime.strftime(
+            self.updated_at,
+            '%Y年%m月%d日%H:%M:%S'
+        ) if self.updated_at else datetime.now().strftime('%Y年%m月%d日%H:%M:%S')
 
 
 class SiteStatusSchemaIn(ModelSchema):

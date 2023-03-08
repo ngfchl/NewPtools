@@ -13,7 +13,7 @@ import transmission_rpc
 #     SIMPLE_RESPONSES=True
 # )
 client = transmission_rpc.Client(
-    host='100.97.181.90',
+    host='100.64.152.70',
     port=9091,
     username='ngfchl',
     password='.wq891222',

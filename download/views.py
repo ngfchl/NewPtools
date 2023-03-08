@@ -81,15 +81,22 @@ def get_downloader_speed(request):
     downloader_list = Downloader.objects.all()
     info_list = []
     for downloader in downloader_list:
+
         try:
             client = get_downloader_instance(downloader.id)
             if downloader.category == DownloaderCategory.qBittorrent:
+                print(downloader.category)
                 # x = {'connection_status': 'connected', 'dht_nodes': 0, 'dl_info_data': 2577571007646,
                 #      'dl_info_speed': 3447895, 'dl_rate_limit': 41943040, 'up_info_data': 307134686158,
                 #      'up_info_speed': 4208516, 'up_rate_limit': 0, 'category': 'Qb', 'name': 'home-qb'}
                 info = client.transfer.info
-                info.update({'category': downloader.category, 'name': downloader.name})
-            else:
+                info.update({
+                    'category': downloader.category,
+                    'name': downloader.name,
+                    'connection_status': True if info.get('connection_status') == 'connected' else False
+                })
+            elif downloader.category == DownloaderCategory.Transmission:
+                print(downloader.category)
                 base_info = client.session_stats().fields
                 """
                 info = {'activeTorrentCount': 570,
@@ -114,23 +121,36 @@ def get_downloader_speed(request):
                         }
                 """
                 info = {
-                    'connection_status': 'connected',
-                    'dht_nodes': 0,
+                    'connection_status': True,
+                    # 'dht_nodes': 0,
                     'dl_info_data': base_info.get('cumulative-stats').get('downloadedBytes'),
                     'dl_info_speed': base_info.get('downloadSpeed'),
-                    'dl_rate_limit': 41943040,
+                    # 'dl_rate_limit': 41943040,
                     'up_info_data': base_info.get('cumulative-stats').get('uploadedBytes'),
                     'up_info_speed': base_info.get('uploadSpeed'),
-                    'up_rate_limit': 0,
+                    # 'up_rate_limit': 0,
                     'category': downloader.category,
                     'name': downloader.name
                 }
-
+            else:
+                info = {
+                    'category': downloader.category,
+                    'name': downloader.name,
+                    'connection_status': False,
+                    'dl_info_data': 0,
+                    'dl_info_speed': 0,
+                    'up_info_data': 0,
+                    'up_info_speed': 0,
+                }
         except Exception as e:
             info = {
                 'category': downloader.category,
                 'name': downloader.name,
-                'connection_status': False
+                'connection_status': False,
+                'dl_info_data': 0,
+                'dl_info_speed': 0,
+                'up_info_data': 0,
+                'up_info_speed': 0,
             }
         info_list.append(info)
     print(info_list)

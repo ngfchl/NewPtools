@@ -12,14 +12,14 @@ class DownloaderSchemaOut(ModelSchema):
 
 
 class TransferSchemaOut(Schema):
-    connection_status: str
-    dht_nodes: int
+    connection_status: bool
+    # dht_nodes: int
     dl_info_data: int
     dl_info_speed: int
-    dl_rate_limit: int
+    # dl_rate_limit: int
     up_info_data: int
     up_info_speed: int
-    up_rate_limit: int
+    # up_rate_limit: int
     category: str
     name: str
 

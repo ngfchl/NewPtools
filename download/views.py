@@ -2,11 +2,13 @@ import hashlib
 import json
 import logging
 import time
+from datetime import timedelta, datetime
 from typing import List
 
 import qbittorrentapi
 import requests
 import transmission_rpc
+from django.http import JsonResponse
 from django.shortcuts import get_object_or_404
 from ninja import Router
 from ninja.responses import codes_4xx
@@ -66,12 +68,137 @@ def get_downloader_instance(downloader_id):
             password=downloader.password,
             SIMPLE_RESPONSES=True
         )
-    if downloader.category == DownloaderCategory.Transmission:
+    else:
         client = transmission_rpc.Client(
             host=downloader.host, port=downloader.port,
             username=downloader.username, password=downloader.password
         )
-    return client, downloader.category
+    return client
+
+
+@router.get('/downloaders/speed', response=CommonResponse[List[TransferSchemaOut]], description='实时上传下载')
+def get_downloader_speed(request):
+    downloader_list = Downloader.objects.all()
+    info_list = []
+    for downloader in downloader_list:
+        try:
+            client = get_downloader_instance(downloader.id)
+            if downloader.category == DownloaderCategory.qBittorrent:
+                # x = {'connection_status': 'connected', 'dht_nodes': 0, 'dl_info_data': 2577571007646,
+                #      'dl_info_speed': 3447895, 'dl_rate_limit': 41943040, 'up_info_data': 307134686158,
+                #      'up_info_speed': 4208516, 'up_rate_limit': 0, 'category': 'Qb', 'name': 'home-qb'}
+                info = client.transfer.info
+                info.update({'category': downloader.category, 'name': downloader.name})
+            else:
+                base_info = client.session_stats().fields
+                """
+                info = {'activeTorrentCount': 570,
+                        'cumulative-stats': {
+                            'downloadedBytes': 1627151110618,
+                            'filesAdded': 1765384,
+                            'secondsActive': 13861806,
+                            'sessionCount': 36,
+                            'uploadedBytes': 10230987475236
+                        },
+                        'current-stats': {
+                            'downloadedBytes': 0,
+                            'filesAdded': 0,
+                            'secondsActive': 80761,
+                            'sessionCount': 1,
+                            'uploadedBytes': 27312187754
+                        },
+                        'downloadSpeed': 0,
+                        'pausedTorrentCount': 0,
+                        'torrentCount': 570,
+                        'uploadSpeed': 0
+                        }
+                """
+                info = {
+                    'connection_status': 'connected',
+                    'dht_nodes': 0,
+                    'dl_info_data': base_info.get('cumulative-stats').get('downloadedBytes'),
+                    'dl_info_speed': base_info.get('downloadSpeed'),
+                    'dl_rate_limit': 41943040,
+                    'up_info_data': base_info.get('cumulative-stats').get('uploadedBytes'),
+                    'up_info_speed': base_info.get('uploadSpeed'),
+                    'up_rate_limit': 0,
+                    'category': downloader.category,
+                    'name': downloader.name
+                }
+
+        except Exception as e:
+            info = {
+                'category': downloader.category,
+                'name': downloader.name,
+                'connection_status': False
+            }
+        info_list.append(info)
+    print(info_list)
+    return CommonResponse.success(data=info_list)
+
+
+@router.get('/downloaders/downloading', response=CommonResponse, description='当前种子')
+def get_downloading(request, downloader_id: int):
+    logger.info('当前下载器id：{}'.format(downloader_id))
+    qb_client, category = get_downloader_instance(downloader_id)
+    try:
+        qb_client.auth_log_in()
+        # transfer = qb_client.transfer_info()
+        # torrents = qb_client.torrents_info()
+        main_data = qb_client.sync_maindata()
+        torrent_list = main_data.get('torrents')
+        torrents = []
+        for index, torrent in torrent_list.items():
+            # logger.info(type(torrent))
+            # logger.info(torrent)
+            # torrent = json.loads(torrent)
+            # 时间处理
+            # 添加于
+            torrent['added_on'] = datetime.fromtimestamp(torrent.get('added_on')).strftime(
+                '%Y年%m月%d日%H:%M:%S'
+            )
+            # 完成于
+            if torrent.get('downloaded') == 0:
+                torrent['completion_on'] = ''
+                torrent['last_activity'] = ''
+                torrent['downloaded'] = ''
+            else:
+                torrent['completion_on'] = datetime.fromtimestamp(torrent.get('completion_on')).strftime(
+                    '%Y年%m月%d日%H:%M:%S'
+                )
+                # 最后活动于
+                last_activity = str(timedelta(seconds=time.time() - torrent.get('last_activity')))
+
+                torrent['last_activity'] = last_activity.replace(
+                    'days,', '天'
+                ).replace(
+                    'day,', '天'
+                ).replace(':', '小时', 1).replace(':', '分', 1).split('.')[0] + '秒'
+                # torrent['last_activity'] = datetime.fromtimestamp(torrent.get('last_activity')).strftime(
+                #     '%Y年%m月%d日%H:%M:%S')
+            # 做种时间
+            seeding_time = str(timedelta(seconds=torrent.get('seeding_time')))
+            torrent['seeding_time'] = seeding_time.replace('days,', '天').replace(
+                'day,', '天'
+            ).replace(':', '小时', 1).replace(':', '分', 1).split('.')[0] + '秒'
+            # 大小与速度处理
+            # torrent['state'] = TorrentBaseInfo.download_state.get(torrent.get('state'))
+            torrent['ratio'] = '%.4f' % torrent.get('ratio') if torrent['ratio'] >= 0.0001 else 0
+            torrent['progress'] = '%.4f' % torrent.get('progress') if float(torrent['progress']) < 1 else 1
+            torrent['uploaded'] = '' if torrent['uploaded'] == 0 else torrent['uploaded']
+            torrent['upspeed'] = '' if torrent['upspeed'] == 0 else torrent['upspeed']
+            torrent['dlspeed'] = '' if torrent['dlspeed'] == 0 else torrent['dlspeed']
+            torrent['hash'] = index
+            torrents.append(torrent)
+        logger.info('当前下载器共有种子：{}个'.format(len(torrents)))
+        main_data['torrents'] = torrents
+        return JsonResponse(CommonResponse.success(data=main_data).to_dict(), safe=False)
+    except Exception as e:
+        logger.error(e)
+        # raise
+        return JsonResponse(CommonResponse.error(
+            msg='连接下载器出错咯！'
+        ).to_dict(), safe=False)
 
 
 @router.get('/categories/{downloader_id}',

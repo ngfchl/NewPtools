@@ -39,6 +39,7 @@ INSTALLED_APPS = [
     "corsheaders",
     "website",
     "my_site",
+    "schedule",
     "configuration",
     "monkey",
     "spider",

@@ -7,7 +7,7 @@ from django.db import IntegrityError
 from django.shortcuts import get_object_or_404
 from ninja import Router, Query
 
-from my_site import tasks as autopt
+from schedule import tasks as autopt
 from my_site.schema import *
 from my_site.schema import MySiteDoSchemaIn
 from spider.views import PtSpider

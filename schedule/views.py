@@ -3,7 +3,7 @@ import logging
 from django_celery_beat.models import IntervalSchedule, PeriodicTask
 from ninja import Router
 
-from my_site import tasks
+from schedule import tasks
 from toolbox.schema import CommonResponse
 
 # Create your views here.
@@ -14,7 +14,7 @@ router = Router(tags=['schedule'])
 @router.get('/schedules', response=CommonResponse, description='定时列表')
 def get_schedule_list(request):
     data = [{
-        'task': f'my_site.tasks.{key}',
+        'task': f'schedule.tasks.{key}',
         'desc': getattr(tasks, key).__doc__.strip()
     } for key in dir(tasks) if key.startswith('auto_')]
     return CommonResponse.success(data=data)

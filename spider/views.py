@@ -523,6 +523,43 @@ class PtSpider:
             logger.error(traceback.format_exc(limit=3))
             return CommonResponse.error(msg='{} 签到失败: {}'.format(site.name, e))
 
+    def sign_in_zhuque(self, my_site):
+        site = get_object_or_404(WebSite, id=my_site.site)
+        try:
+            csrf_res = self.send_request(my_site=my_site, url=site.url)
+            # '<meta name="x-csrf-token" content="4db531b6687b6e7f216b491c06937113">'
+            x_csrf_token = self.parse(site, csrf_res, '//meta[@name="x-csrf-token"]/@content')
+            logger.info(f'csrf token: {x_csrf_token}')
+            header = {
+                'user-agent': my_site.user_agent,
+                'content-type': 'application/json',
+                'referer': 'https://zhuque.in/gaming/genshin/character/list',
+                'x-csrf-token': ''.join(x_csrf_token),
+            }
+            data = {"resetModal": "true", "all": 1, }
+            url = f'{site.url}{site.page_sign_in}'
+            logger.info(url)
+            res = self.send_request(my_site=my_site, method='post', url=url, json=data, header=header)
+            # 单独发送请求，解决冬樱签到问题
+            # res = requests.post(url=url, verify=False, cookies=cookie2dict(my_site.cookie), json=data, headers=header)
+            """
+            {
+                "status": 200,
+                "data": {
+                    "code": "FIRE_GENSHIN_CHARACTER_MAGIC_SUCCESS",
+                    "bonus": 0
+                }
+            }
+            """
+            logger.info(res.content)
+            return CommonResponse.success(data=res.json())
+        except Exception as e:
+            # 打印异常详细信息
+            logger.error(traceback.format_exc(limit=3))
+            return CommonResponse.error(
+                msg='{} 签到失败: {}'.format(site.name, e)
+            )
+
     @staticmethod
     def get_user_torrent(html, rule):
         res_list = html.xpath(rule)
@@ -559,6 +596,18 @@ class PtSpider:
                     signin_today.sign_in_today = True
                     signin_today.sign_in_info = result.msg
                     signin_today.save()
+                return result
+            if 'zhuque.in' in site.url:
+                result = self.sign_in_zhuque(my_site)
+                if result.code == 0 and result.data.get('status') == 200:
+                    data = result.data.get("data")
+                    bonus = data.get("bonus")
+                    message = f'技能释放成功，获得{bonus}灵石'
+                    # if bonus > 0:
+                    #     signin_today.sign_in_today = True
+                    #     signin_today.sign_in_info = message
+                    #     signin_today.save()
+                    result.msg = message
                 return result
             if 'hdupt.com' in site.url:
                 result = self.sign_in_hdupt(my_site)

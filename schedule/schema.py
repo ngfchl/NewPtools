@@ -27,6 +27,14 @@ class CrontabTaskSchemaIn(Schema):
 class PeriodicTaskSchemaOut(ModelSchema):
     class Config:
         model = PeriodicTask
-        model_exclude = [
-            'interval',
+        model_field = [
+            'name',
+            'task',
+            'crontab',
+            'one_off',
+            'enabled',
+            'last_run_at',
+            'total_run_count',
+            'description',
+            'date_changed',
         ]

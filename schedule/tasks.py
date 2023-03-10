@@ -5,10 +5,10 @@ import logging
 import os
 import subprocess
 import time
-from concurrent.futures.thread import ThreadPoolExecutor
 from datetime import datetime
-from typing import List
 from multiprocessing.dummy import Pool as ThreadPool
+from typing import List
+
 import requests
 import toml
 from celery.app import shared_task
@@ -68,23 +68,30 @@ def auto_sign_in(site_list: List[int] = []):
     #         my_site.nickname: res.to_dict()
     #     })
     results = pool.map(pt_spider.sign_in, queryset)
-    pool.join()
     pool.close()
+    pool.join()
     logger.info('开始执行签到任务')
+    success_message = []
+    failed_message = []
     for my_site, result in zip(queryset, results):
-        # logger.info('自动签到：{}, {}'.format(my_site, result))
-        # if result.code == 0:
-        #     msg = f'{my_site.nickname} 签到成功！{result.msg} \n\n'
-        #     logger.info(msg)
-        #     message_list.append(msg)
-        # else:
-        #     message = f'{my_site.nickname}签到失败：{result.msg} \n\n'
-        #     message_list.insert(0, message)
-        #     logger.error(message)
-        message_list.append(f'{my_site.nickname}: {result.msg}')
+        logger.info('自动签到：{}, {}'.format(my_site, result))
+        if result.code == 0:
+            msg = f'✅{my_site.nickname} 签到成功！{result.msg} \n\n'
+            logger.info(msg)
+            success_message.append(msg)
+        else:
+            message = f'❌❎{my_site.nickname}签到失败：{result.msg} \n\n'
+            failed_message.append(message)
+            logger.error(message)
+        # message_list.append(f'{my_site.nickname}: {result.msg}')
     end = time.time()
-    message = f'签到任务执行完毕，当前时间：{datetime.fromtimestamp(end)},耗费时间：{end - start}'
+    message = f'当前时间：{datetime.fromtimestamp(end)},' \
+              f'本次签到任务执行完毕，成功签到{len(success_message)}个站点，' \
+              f'失败{len(failed_message)}个站点，耗费时间：{round(end - start, 2)}'
     message_list.append(message)
+    message_list.extend(failed_message)
+    message_list.append('*' * 20)
+    message_list.extend(success_message)
     logger.info(message)
     logger.info(message_list)
     toolbox.send_text('\n'.join(message_list))
@@ -150,10 +157,9 @@ def auto_get_status(site_list: List[int] = []):
     logger.info(message_list + consuming)
     message = message_list + consuming
     toolbox.send_text(title='通知：更新个人数据', message=message)
-    return CommonResponse(msg=message_list)
-
     # 释放内存
     gc.collect()
+    return CommonResponse(msg=message_list)
 
 
 @shared_task

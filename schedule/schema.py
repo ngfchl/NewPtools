@@ -27,7 +27,7 @@ class CrontabTaskSchemaIn(Schema):
 class PeriodicTaskSchemaOut(ModelSchema):
     class Config:
         model = PeriodicTask
-        model_field = [
+        model_fields = [
             'name',
             'task',
             'crontab',

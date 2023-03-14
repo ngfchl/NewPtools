@@ -37,6 +37,17 @@ def auto_sign_in(site_list: List[int] = []):
     toolbox.send_text(f'开始执行签到任务，当前时间：{datetime.fromtimestamp(start)}')
     logger.info('筛选需要签到的站点')
     message_list = []
+    sign_list = MySite.objects.filter(
+        sign_in=True
+    ) if len(site_list) == 0 else MySite.objects.filter(sign_in=True, id__in=site_list)
+    # chatgpt 优化的代码：
+    queryset = [
+        my_site for my_site in sign_list
+        if my_site.cookie and WebSite.objects.get(id=my_site.site).func_sign_in and
+           my_site.signin_set.filter(created_at__date__gte=datetime.today(), sign_in_today=True).count() == 0 and
+           (datetime.now().hour >= 9 or WebSite.objects.get(id=my_site.site).url not in ['https://u2.dmhy.org/'])
+    ]
+    """
     # 获取工具支持且本人开启签到的所有站点
     websites = WebSite.objects.all()
     sign_list = MySite.objects.filter(
@@ -53,20 +64,16 @@ def auto_sign_in(site_list: List[int] = []):
             'https://u2.dmhy.org/',
             # 'https://52pt.site/'
         ]]
-        message = '站点：`U2` 早上九点之前不执行签到任务哦！ \n\n'
-        logger.info(message)
-        message_list.append(message)
+    """
+    message = '站点：`U2` 早上九点之前不执行签到任务哦！ \n\n'
+    logger.info(message)
+    message_list.append(message)
     logger.info(len(queryset))
     if len(queryset) <= 0:
         message_list = ['已全部签到或无需签到！ \n\n']
         logger.info(message_list)
         toolbox.send_text('\n'.join(message_list))
         return message_list
-    # for my_site in queryset:
-    #     res = pt_spider.sign_in(my_site)
-    #     message_list.append({
-    #         my_site.nickname: res.to_dict()
-    #     })
     results = pool.map(pt_spider.sign_in, queryset)
     pool.close()
     pool.join()

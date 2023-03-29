@@ -81,11 +81,11 @@ def auto_sign_in(site_list: List[int] = []):
     for my_site, result in zip(queryset, results):
         logger.info('自动签到：{}, {}'.format(my_site, result))
         if result.code == 0:
-            msg = f'✅{my_site.nickname} 签到成功！{result.msg} \n\n'
+            msg = f'✅ {my_site.nickname} 签到成功！{result.msg} \n\n'
             logger.info(msg)
             success_message.append(msg)
         else:
-            message = f'🆘{my_site.nickname}签到失败：{result.msg} \n\n'
+            message = f'🆘 {my_site.nickname}签到失败：{result.msg} \n\n'
             failed_message.append(message)
             logger.error(message)
         # message_list.append(f'{my_site.nickname}: {result.msg}')

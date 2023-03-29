@@ -1,4 +1,4 @@
-from django_celery_beat.models import PeriodicTask
+from django_celery_beat.models import PeriodicTask, CrontabSchedule, cronexp
 from ninja import Schema, ModelSchema
 
 
@@ -17,8 +17,29 @@ class CrontabSchemaIn(Schema):
     month_of_year: str = '*'
 
 
+class CrontabSchemaOut(ModelSchema):
+    express: str
+
+    class Config:
+        model = CrontabSchedule
+        model_exclude = ['timezone']
+
+    def resolve_express(self, obj):
+        return '{} {} {} {} {}'.format(
+            cronexp(self.minute), cronexp(self.hour),
+            cronexp(self.day_of_month), cronexp(self.month_of_year),
+            cronexp(self.day_of_week),
+        )
+
+
+class TaskEditSchemaIn(Schema):
+    """cron任务"""
+    id: int
+
+
 class CrontabTaskSchemaIn(Schema):
     """cron任务"""
+    id: int
     name: str
     task: str
     crontab: CrontabSchemaIn
@@ -28,6 +49,7 @@ class PeriodicTaskSchemaOut(ModelSchema):
     class Config:
         model = PeriodicTask
         model_fields = [
+            'id',
             'name',
             'task',
             'crontab',

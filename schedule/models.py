@@ -6,6 +6,7 @@ from auxiliary.base import BaseEntity
 # Create your models here.
 class Task(models.TextChoices):
     # 已实现的自动任务
+    backend_cleanup = 'celery.backend_cleanup', '清理任务记录'
     auto_sign_in = 'schedule.tasks.auto_sign_in', '执行签到'
     auto_get_status = 'schedule.tasks.auto_get_status', '更新个人数据'
     auto_get_torrents = 'schedule.tasks.auto_get_torrents', '拉取最新种子'

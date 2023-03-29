@@ -12,6 +12,7 @@ class MySiteSchemaOut(ModelSchema):
 
     # site: create_schema(WebSite, fields=['id', 'name'])
     updated: str
+    joined: str
 
     class Config:
         model = MySite
@@ -24,6 +25,9 @@ class MySiteSchemaOut(ModelSchema):
 
     def resolve_updated(self, obj):
         return datetime.strftime(self.updated_at, '%Y年%m月%d日%H:%M:%S')
+
+    def resolve_joined(self, obj):
+        return datetime.strftime(self.time_join, '%Y年%m月%d日%H:%M:%S')
 
 
 class MySiteDoSchemaIn(Schema):
@@ -52,7 +56,6 @@ class MySiteSortSchemaIn(ModelSchema):
 
 class SiteStatusSchemaOut(ModelSchema):
     """    站点基本信息及信息抓取规则    """
-    site: create_schema(model=MySite, fields=['id'])
     updated: str
     updated_at: Optional[datetime]
 

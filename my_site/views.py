@@ -7,9 +7,9 @@ from django.db import IntegrityError
 from django.shortcuts import get_object_or_404
 from ninja import Router, Query
 
-from schedule import tasks as autopt
 from my_site.schema import *
 from my_site.schema import MySiteDoSchemaIn
+from schedule import tasks as autopt
 from spider.views import PtSpider
 from toolbox import views as toolbox
 from toolbox.schema import CommonResponse, CommonPaginateSchema
@@ -77,10 +77,10 @@ async def edit_mysite(request, my_site_params: MySiteSchemaEdit):
 
 
 @router.delete('/mysite', response=CommonResponse, description='我的站点-删除')
-def remove_mysite(request, mysite_id):
+def remove_mysite(request, my_site: MySiteDoSchemaIn):
     try:
-        logger.info(f'开始删除站点：{mysite_id}')
-        my_site_res = MySite.objects.get(id=mysite_id).delete()
+        logger.info(f'开始删除站点：{my_site.site_id}')
+        my_site_res = MySite.objects.get(id=my_site.site_id).delete()
         logger.info(my_site_res)
         if my_site_res[0] > 0:
             my_site = my_site_res[1]
@@ -109,6 +109,35 @@ def do_status(request, my_site: MySiteDoSchemaIn):
     return pt_spider.send_status_request(MySite.objects.get(id=my_site.site_id))
 
 
+def get_status_by_mysite(request, my_site: MySiteDoSchemaIn):
+    status = SiteStatus.objects.filter(site_id=my_site.site_id).first()
+    print(status)
+    return CommonResponse.success(data=status)
+
+
+@router.post('/status/get', response=CommonResponse[Optional[StatusSchema]], description='每日状态-最新')
+def get_newest_status(request, my_site: MySiteDoSchemaIn):
+    try:
+        my_site = MySite.objects.get(id=my_site.site_id)
+        status = SiteStatus.objects.filter(site=my_site).first()
+        sign = SignIn.objects.filter(site=my_site, created_at__date=datetime.today().date()).first()
+        level = UserLevelRule.objects.filter(site_id=my_site.site, level=status.my_level).first() if status else None
+        next_level = UserLevelRule.objects.filter(site_id=my_site.site,
+                                                  level_id=level.id + 1).first() if level else None
+        info = {
+            'my_site': my_site,
+            'site': WebSite.objects.filter(id=my_site.site).first(),
+            'status': status if status else SiteStatus(site=my_site),
+            'sign': sign,
+            'level': level,
+            'next_level': next_level
+        }
+        return CommonResponse.success(data=info)
+    except Exception as e:
+        print(e)
+        return CommonResponse.success(data=None)
+
+
 @router.get('/status/newest', response=CommonResponse[List[StatusSchema]], description='最新状态-列表')
 def get_newest_status_list(request):
     my_site_list = MySite.objects.all()
@@ -126,8 +155,6 @@ def get_newest_status_list(request):
         sign = sign_list.filter(site=my_site, created_at__date=datetime.today().date()).first()
         level = level_list.filter(site_id=my_site.site, level=status.my_level).first() if status else None
         next_level = level_list.filter(site_id=my_site.site, level_id=level.id + 1).first() if level else None
-        # if not status:
-        #     status = SiteStatus.objects.create(site=my_site)
         info = {
             'my_site': my_site,
             'site': site_list.filter(id=my_site.site).first(),

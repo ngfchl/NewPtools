@@ -110,7 +110,7 @@ def do_status(request, my_site: MySiteDoSchemaIn):
 
 
 def get_status_by_mysite(request, my_site: MySiteDoSchemaIn):
-    status = SiteStatus.objects.filter(site_id=my_site.site_id).first()
+    status = SiteStatus.objects.filter(site_id=my_site.site_id).last()
     print(status)
     return CommonResponse.success(data=status)
 

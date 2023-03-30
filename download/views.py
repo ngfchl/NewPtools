@@ -30,30 +30,39 @@ router = Router(tags=['download'])
 def get_downloaders(request):
     downloaders = Downloader.objects.all()
     print(downloaders)
-    if len(downloaders) <= 0:
-        return CommonResponse.error(msg='还没有下载器，快去添加吧 ~')
     return CommonResponse.success(data=list(downloaders))
 
 
-@router.get('/downloaders/{int:downloader_id}', response=DownloaderSchemaOut)
-def get_downloader(request, downloader_id):
-    return get_object_or_404(Downloader, id=downloader_id)
+@router.get('/downloader', response=CommonResponse[DownloaderSchemaIn])
+def get_downloader(request, downloader_id: int):
+    downloader = get_object_or_404(Downloader, id=downloader_id)
+    return CommonResponse.success(data=downloader)
 
 
-@router.post('/downloaders')
+@router.post('/downloader', response=CommonResponse[DownloaderSchemaIn])
 def add_downloader(request, downloader: DownloaderSchemaIn):
-    return 'add'
+    downloader = Downloader.objects.create(downloader.dict())
+    return CommonResponse.success(data=downloader)
 
 
-@router.put('/downloaders/{int:downloader_id}')
-def edit_downloader(request, downloader_id):
-    return f'edit/{downloader_id}'
+@router.put('/downloader', response=CommonResponse[DownloaderSchemaIn])
+def edit_downloader(request, downloader: DownloaderSchemaIn):
+    print(downloader)
+    new_downloader = Downloader.objects.update_or_create(defaults=downloader.dict(), id=downloader.id)
+    print(new_downloader)
+    return CommonResponse.success(data=new_downloader[0])
 
 
-@router.delete('/downloaders/{int:downloader_id}')
-def remove_downloader(request, downloader_id):
-    count = Downloader.objects.filter(id=downloader_id).delete()
-    return f'remove/{count}'
+@router.delete('/downloader', response=CommonResponse)
+def remove_downloader(request, downloader_id: int):
+    try:
+        count = Downloader.objects.filter(id=downloader_id).delete()
+        if count > 0:
+            return CommonResponse.success(msg='删除成功！')
+        return CommonResponse.error(msg='删除失败！')
+    except Exception as e:
+        logger.error(e)
+        return CommonResponse.error(msg='删除失败！')
 
 
 def get_downloader_instance(downloader_id):

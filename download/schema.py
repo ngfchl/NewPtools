@@ -8,7 +8,7 @@ class DownloaderSchemaOut(ModelSchema):
 
     class Config:
         model = Downloader
-        model_fields = ['id', 'name', 'host', 'category']
+        model_fields = ['id', 'name', 'host', 'category', 'enable', 'port']
 
 
 class TransferSchemaOut(Schema):
@@ -29,7 +29,7 @@ class DownloaderSchemaIn(ModelSchema):
 
     class Config:
         model = Downloader
-        model_exclude = ['id', 'created_at', 'updated_at']
+        model_exclude = ['created_at', 'updated_at']
 
 
 class CategorySchema(Schema):

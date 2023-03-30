@@ -16,6 +16,8 @@ class Downloader(BaseEntity):
     username = models.CharField(max_length=16, verbose_name='用户名')
     # 密码
     password = models.CharField(max_length=128, verbose_name='密码')
+    # 开启
+    enable = models.BooleanField(default=True, verbose_name='开启')
     # host
     host = models.CharField(max_length=32, verbose_name='HOST')
     # port

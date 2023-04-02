@@ -474,8 +474,12 @@ def site_sort_api(request, site_id: int, sort_id: int):
 
 @router.get('/status/today', response=CommonResponse)
 def today_data(request):
-    incremental = toolbox.today_data()
-    return CommonResponse.success(data=incremental)
+    total_upload, total_download, increase_info_list = toolbox.today_data()
+    return CommonResponse.success(data={
+        'total_upload': total_upload,
+        'total_download': total_download,
+        'data': increase_info_list
+    })
 
 
 @router.get('/torrents', response=CommonResponse[List[TorrentInfoSchemaOut]], description='获取种子')

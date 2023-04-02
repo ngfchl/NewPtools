@@ -242,7 +242,7 @@ def import_from_ptpp(request, data: ImportSchema):
 
 
 @router.get('/status/chart', response=CommonResponse, description='站点数据展示')
-def site_data_api(request, site_id: int = 0):
+def site_data_api(request, site_id: int = 0, days: int = -7):
     """站点数据(柱状图)"""
     # my_site_id = request.GET.get('id')
     logger.info(f'ID值：{type(site_id)}')
@@ -323,7 +323,7 @@ def site_data_api(request, site_id: int = 0):
                 diff_info_list.update(diff_info)
 
             logger.info(f'处理完后站点数据条数：{len(diff_info_list)}')
-            for date in date_list:
+            for date in date_list[days:]:
                 if not diff_info_list.get(date):
                     diff_info_list[date] = {
                         'diff_uploaded': 0,
@@ -334,12 +334,12 @@ def site_data_api(request, site_id: int = 0):
             diff_info_list = sorted(diff_info_list.items(), key=lambda x: x[0])
             diff_list.append({
                 'name': my_site.nickname,
-                'diff_uploaded_list': [value[1].get('diff_uploaded') for value in diff_info_list],
-                'diff_downloaded_list': [value[1].get('diff_downloaded') for value in diff_info_list]
+                'diff_uploaded_list': [value[1].get('diff_uploaded') for value in diff_info_list][days:],
+                'diff_downloaded_list': [value[1].get('diff_downloaded') for value in diff_info_list][days:]
             })
 
         return CommonResponse.success(
-            data={'date_list': date_list, 'diff': diff_list}
+            data={'date_list': date_list[days:-1], 'diff': diff_list}
         )
     else:
         logger.info(f'前端传来的站点ID：{site_id}')
@@ -348,10 +348,10 @@ def site_data_api(request, site_id: int = 0):
             return CommonResponse.error(
                 msg='访问出错咯！没有这个站点...'
             )
-        return CommonResponse.success(data=parse_site_data_to_chart(my_site))
+        return CommonResponse.success(data=parse_site_data_to_chart(my_site, days))
 
 
-def parse_site_data_to_chart(my_site: MySite):
+def parse_site_data_to_chart(my_site: MySite, days: int = -7):
     site_info_list = my_site.sitestatus_set.order_by('created_at').all()
     if len(site_info_list) <= 0:
         raise '你还没有获取过这个站点的数据...'
@@ -371,7 +371,7 @@ def parse_site_data_to_chart(my_site: MySite):
     invitation_list = []
     bonus_hour_list = []
     date_list = []
-    for (index, site_info) in enumerate(site_info_list):
+    for (index, site_info) in enumerate(list(site_info_list)[days:]):
         # for (index, info) in enumerate(info_list):
         if index == 0:
             diff_uploaded = site_info.uploaded

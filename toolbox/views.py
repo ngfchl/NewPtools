@@ -266,7 +266,7 @@ def today_data():
             continue
         total_upload += uploaded_increase
         total_download += downloaded_increase
-        increase_list.append(f'\n\n- 站点：{my_site.site.name}'
+        increase_list.append(f'\n\n- 站点：{my_site.nickname}'
                              f'\n\t\t上传：{FileSizeConvert.parse_2_file_size(uploaded_increase)}'
                              f'\n\t\t下载：{FileSizeConvert.parse_2_file_size(downloaded_increase)}')
     # incremental = {
@@ -282,6 +282,7 @@ def today_data():
     logger.info(incremental)
     # todo
     send_text(title='通知：今日数据', message=incremental)
+    return incremental
 
 
 def get_token(payload, timeout):

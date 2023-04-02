@@ -77,10 +77,10 @@ async def edit_mysite(request, my_site_params: MySiteSchemaEdit):
 
 
 @router.delete('/mysite', response=CommonResponse, description='我的站点-删除')
-def remove_mysite(request, my_site: MySiteDoSchemaIn):
+def remove_mysite(request, site_id: int):
     try:
-        logger.info(f'开始删除站点：{my_site.site_id}')
-        my_site_res = MySite.objects.get(id=my_site.site_id).delete()
+        logger.info(f'开始删除站点：{site_id}')
+        my_site_res = MySite.objects.get(id=site_id).delete()
         logger.info(my_site_res)
         if my_site_res[0] > 0:
             my_site = my_site_res[1]
@@ -242,7 +242,7 @@ def import_from_ptpp(request, data: ImportSchema):
 
 
 @router.get('/status/chart', response=CommonResponse, description='站点数据展示')
-def site_data_api(request, site_id: int):
+def site_data_api(request, site_id: int = 0):
     """站点数据(柱状图)"""
     # my_site_id = request.GET.get('id')
     logger.info(f'ID值：{type(site_id)}')
@@ -256,16 +256,21 @@ def site_data_api(request, site_id: int):
         date_list = list(date_list_set)
         date_list.sort()
         logger.info(date_list)
-        for my_site in my_site_list:
-            site_info = parse_site_data_to_chart(my_site)
-            inner_date_list = site_info.get('date_list')
-            diff_uploaded_list = site_info.get('diff_uploaded_list')
-            diff_downloaded_list = site_info.get('diff_downloaded_list')
-            uploaded_list = site_info.get('uploaded_list')
-            downloaded_list = site_info.get('downloaded_list')
-            diff_date_list = date_list_set - set(inner_date_list)
-            logger.info(diff_date_list)
-        """
+        # for my_site in my_site_list:
+        #     try:
+        #         site_info = parse_site_data_to_chart(my_site)
+        #         inner_date_list = site_info.get('date_list')
+        #         diff_uploaded_list = site_info.get('diff_uploaded_list')
+        #         diff_downloaded_list = site_info.get('diff_downloaded_list')
+        #         uploaded_list = site_info.get('uploaded_list')
+        #         downloaded_list = site_info.get('downloaded_list')
+        #         diff_date_list = date_list_set - set(inner_date_list)
+        #         logger.info(diff_date_list)
+        #         diff_list.append(site_info)
+        #     except Exception as e:
+        #         logger.error(f'{my_site.nickname} 尚未获取过数据！')
+        #         logger.error(traceback.format_exc(limit=3))
+        #         continue
         # logger.info(f'日期列表：{date_list}')
         logger.info(f'日期数量：{len(date_list)}')
 
@@ -317,7 +322,7 @@ def site_data_api(request, site_id: int):
                 }
                 diff_info_list.update(diff_info)
 
-            logger.info(f'处理完后站点数据条数：{len(info_list)}')
+            logger.info(f'处理完后站点数据条数：{len(diff_info_list)}')
             for date in date_list:
                 if not diff_info_list.get(date):
                     diff_info_list[date] = {
@@ -329,30 +334,27 @@ def site_data_api(request, site_id: int):
             diff_info_list = sorted(diff_info_list.items(), key=lambda x: x[0])
             diff_list.append({
                 'name': my_site.nickname,
-                'type': 'bar',
-                'large': 'true',
-                'stack': 'increment',
-                'data': [value[1] if value[1] > 0 else 0 for value in diff_info_list]
+                'diff_uploaded_list': [value[1].get('diff_uploaded') for value in diff_info_list],
+                'diff_downloaded_list': [value[1].get('diff_downloaded') for value in diff_info_list]
             })
+
         return CommonResponse.success(
             data={'date_list': date_list, 'diff': diff_list}
         )
-    """
-    logger.info(f'前端传来的站点ID：{site_id}')
-    my_site = MySite.objects.filter(id=site_id).first()
-    if not my_site:
-        return CommonResponse.error(
-            msg='访问出错咯！没有这个站点...'
-        )
-    return CommonResponse.success(data=parse_site_data_to_chart(my_site))
+    else:
+        logger.info(f'前端传来的站点ID：{site_id}')
+        my_site = MySite.objects.filter(id=site_id).first()
+        if not my_site:
+            return CommonResponse.error(
+                msg='访问出错咯！没有这个站点...'
+            )
+        return CommonResponse.success(data=parse_site_data_to_chart(my_site))
 
 
 def parse_site_data_to_chart(my_site: MySite):
     site_info_list = my_site.sitestatus_set.order_by('created_at').all()
     if len(site_info_list) <= 0:
-        return CommonResponse.error(
-            msg='你还没有获取过这个站点的数据...'
-        )
+        raise '你还没有获取过这个站点的数据...'
     logger.info(site_info_list)
     site = get_object_or_404(WebSite, id=my_site.site)
 
@@ -468,6 +470,12 @@ def site_sort_api(request, site_id: int, sort_id: int):
         logger.error(f'数据更新失败：{e}')
         logger.error(traceback.format_exc(limit=3))
         return CommonResponse.error(msg=f'数据更新失败：{e}')
+
+
+@router.get('/today', response=CommonResponse)
+def today_data(request):
+    incremental = toolbox.today_data()
+    return CommonResponse.success(data=incremental)
 
 
 @router.get('/torrents', response=CommonResponse[List[TorrentInfoSchemaOut]], description='获取种子')

@@ -87,7 +87,7 @@ def get_downloader_instance(downloader_id):
 
 @router.get('/downloaders/speed', response=CommonResponse[List[TransferSchemaOut]], description='实时上传下载')
 def get_downloader_speed(request):
-    downloader_list = Downloader.objects.all()
+    downloader_list = Downloader.objects.filter(enable=True).all()
     info_list = []
     for downloader in downloader_list:
 

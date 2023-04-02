@@ -472,7 +472,7 @@ def site_sort_api(request, site_id: int, sort_id: int):
         return CommonResponse.error(msg=f'数据更新失败：{e}')
 
 
-@router.get('/today', response=CommonResponse)
+@router.get('/status/today', response=CommonResponse)
 def today_data(request):
     incremental = toolbox.today_data()
     return CommonResponse.success(data=incremental)

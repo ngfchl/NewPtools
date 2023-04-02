@@ -250,6 +250,7 @@ def today_data():
     # yesterday_site_status_list = SiteStatus.objects.filter(
     #     created_at__day=datetime.today() - timedelta(days=1))
     increase_list = []
+    increase_info_list = []
     total_upload = 0
     total_download = 0
     for site_state in today_site_status_list:
@@ -269,6 +270,11 @@ def today_data():
         increase_list.append(f'\n\n- 站点：{my_site.nickname}'
                              f'\n\t\t上传：{FileSizeConvert.parse_2_file_size(uploaded_increase)}'
                              f'\n\t\t下载：{FileSizeConvert.parse_2_file_size(downloaded_increase)}')
+        increase_info_list.append({
+            'name': my_site.nickname,
+            'uploaded': uploaded_increase,
+            'downloaded': downloaded_increase
+        })
     # incremental = {
     #     '总上传': FileSizeConvert.parse_2_file_size(total_upload),
     #     '总下载': FileSizeConvert.parse_2_file_size(total_download),
@@ -282,7 +288,11 @@ def today_data():
     logger.info(incremental)
     # todo
     send_text(title='通知：今日数据', message=incremental)
-    return incremental
+    return {
+        'total_upload': total_upload,
+        'total_download': total_download,
+        'data': increase_info_list
+    }
 
 
 def get_token(payload, timeout):

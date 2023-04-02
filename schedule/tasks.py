@@ -143,7 +143,7 @@ def auto_get_status(site_list: List[int] = []):
             logger.info('组装Message：{}'.format(message))
             message = f'> <font color="orange">{my_site.nickname} </font> 信息更新成功！{message}\n\n'
             message_list += message
-            toolbox.send_text(title='个人数据更新', message=my_site.nickname + ' 信息更新成功！' + message)
+            # toolbox.send_text(title='个人数据更新', message=my_site.nickname + ' 信息更新成功！' + message)
             logger.info(message)
         else:
             print(result)
@@ -152,8 +152,7 @@ def auto_get_status(site_list: List[int] = []):
             toolbox.send_text(title='个人数据更新', message=f'{my_site.nickname} 信息更新失败！原因：{message}')
             logger.warning(f'{my_site.nickname} 信息更新失败！原因：{result.msg}')
     # 发送今日数据
-    # toolbox.today_data()
-
+    toolbox.today_data()
     end = time.time()
     consuming = '> <font color="blue">{} 任务运行成功！耗时：{} 完成时间：{}  </font>  \n'.format(
         '自动更新个人数据', end - start,

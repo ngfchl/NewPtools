@@ -1074,13 +1074,21 @@ class PtSpider:
         if user_detail_res.status_code != 200:
             return CommonResponse.error(msg=f'{site.name} 个人主页访问错误，错误码：{user_detail_res.status_code}')
         if site.url in [
-            'greatposterwall', 'dicmusic', 'zhuque.in'
+            'https://greatposterwall.com/', 'https://dicmusic.club/',
         ]:
             user_detail = user_detail_res.json()
             if user_detail.get('status') != 'success':
                 return CommonResponse.error(
                     msg=f'{site.name} 个人主页访问错误，错误：{user_detail.get("status")}')
             details_html = user_detail.get('response')
+        elif site.url in [
+            'https://zhuque.in/'
+        ]:
+            user_detail = user_detail_res.json()
+            if user_detail.get('status') != 200:
+                return CommonResponse.error(
+                    msg=f'{site.name} 个人主页访问错误，错误：{user_detail.get("status")}')
+            details_html = user_detail.get('data')
         elif site.url in [
             'https://totheglory.im/',
         ]:
@@ -1229,9 +1237,7 @@ class PtSpider:
                 headers = {
                     'user-agent': my_site.user_agent
                 }
-            if site.url in [
-                'zhuque.in'
-            ]:
+            if 'zhuque.in' in site.url:
                 zhuque_header = self.get_zhuque_header(my_site)
                 headers.update(zhuque_header)
             if site.url in ['https://filelist.io/']:
@@ -1241,18 +1247,23 @@ class PtSpider:
             details_html = self.get_userinfo_html(my_site, headers=headers)
             if details_html.code != 0:
                 return details_html
-            # 发送请求，请求做种信息页面
-            seeding_html = self.get_seeding_html(my_site, headers=headers, details_html=details_html.data)
-            if seeding_html.code != 0:
-                return seeding_html
             # 请求时魔页面,信息写入数据库
-            hour_bonus = self.get_hour_sp(my_site)
+            hour_bonus = self.get_hour_sp(my_site, headers=headers)
             if hour_bonus.code != 0:
                 return hour_bonus
             # 请求邮件页面，直接推送通知到手机
-            self.get_mail_info(my_site, details_html.data, header=headers)
-            # 请求公告信息，直接推送通知到手机
-            self.get_notice_info(my_site, details_html.data)
+            if site.url not in [
+                'https://dicmusic.club/',
+                'https://greatposterwall.com/',
+                'https://zhuque.in/',
+            ]:
+                # 发送请求，请求做种信息页面
+                seeding_html = self.get_seeding_html(my_site, headers=headers, details_html=details_html.data)
+                if seeding_html.code != 0:
+                    return seeding_html
+                self.get_mail_info(my_site, details_html.data, header=headers)
+                # 请求公告信息，直接推送通知到手机
+                self.get_notice_info(my_site, details_html.data)
             # return self.parse_status_html(my_site, data)
             status = SiteStatus.objects.filter(site=my_site, created_at__date=datetime.today()).first()
             return CommonResponse.success(data=status, msg=f'{my_site.nickname} 数据更新成功！')
@@ -1323,14 +1334,13 @@ class PtSpider:
             try:
                 if 'greatposterwall' in site.url or 'dicmusic' in site.url:
                     logger.info(details_html)
-                    details_response = details_html.get('response')
-                    stats = details_response.get('stats')
+                    stats = details_html.get('stats')
                     downloaded = stats.get('downloaded')
                     uploaded = stats.get('uploaded')
                     ratio_str = stats.get('ratio').replace(',', '')
                     ratio = 'inf' if ratio_str == '∞' else ratio_str
-                    my_level = details_response.get('personal').get('class').strip(" ")
-                    community = details_response.get('community')
+                    my_level = details_html.get('personal').get('class').strip(" ")
+                    community = details_html.get('community')
                     seed = community.get('seeding')
                     leech = community.get('leeching')
                     # ajax.php?action=index
@@ -1340,7 +1350,7 @@ class PtSpider:
                         created_at__date__gte=datetime.today(),
                         defaults={
                             'ratio': float(ratio),
-                            'my_level': float(my_level),
+                            'my_level': my_level,
                             'downloaded': downloaded,
                             'uploaded': uploaded,
                             'my_score': 0,
@@ -1353,16 +1363,18 @@ class PtSpider:
                         toolbox.send_text(title=msg, message=msg)
                     return CommonResponse.success(data=res_gpw)
                 elif 'zhuque.in' in site.url:
-                    userdata = details_html.get('data')
-                    downloaded = userdata.get(site.my_downloaded_rule)
-                    uploaded = userdata.get(site.my_uploaded_rule)
-                    seeding_size = userdata.get(site.my_seed_vol_rule)
-                    my_bonus = userdata.get(site.my_bonus_rule)
+                    logger.info(details_html)
+                    downloaded = details_html.get('download')
+                    uploaded = details_html.get('upload')
+                    seeding_size = details_html.get('seedSize')
+                    my_bonus = details_html.get('bonus')
+                    my_score = details_html.get('seedBonus')
+                    seed_days = int(details_html.get('seedTime') / 3600 / 24)
                     ratio = uploaded / downloaded if downloaded > 0 else 'inf'
-                    invitation = userdata.get(site.my_invitation_rule)
-                    my_level = userdata.get('class').get('name').strip(" ")
-                    seed = userdata.get(site.my_seed_rule)
-                    leech = userdata.get(site.my_leech_rule)
+                    invitation = details_html.get(site.my_invitation_rule)
+                    my_level = details_html.get('class').get('name').strip(" ")
+                    seed = details_html.get('seeding')
+                    leech = details_html.get('leeching')
                     if float(ratio) < 1:
                         msg = f'{site.name} 分享率 {ratio} 过低，请注意'
                         toolbox.send_text(title=msg, message=msg)
@@ -1374,12 +1386,13 @@ class PtSpider:
                             'downloaded': downloaded,
                             'uploaded': uploaded,
                             'my_bonus': my_bonus,
-                            'my_score': 0,
+                            'my_score': my_score,
                             'invitation': invitation,
                             'seed': seed,
                             'leech': leech,
                             'my_level': my_level,
                             'seed_volume': seeding_size,
+                            'seed_days': seed_days
                         })
                     return CommonResponse.success(data=res_zhuque)
                 else:
@@ -1517,9 +1530,9 @@ class PtSpider:
                             site,
                             res_next_pt_invite,
                             site.my_invitation_rule))
-                        print(f'邀请字符串：{str_next_pt_invite}')
+                        logger.info(f'邀请字符串：{str_next_pt_invite}')
                         list_next_pt_invite = re.findall('\d+', str_next_pt_invite)
-                        print(list_next_pt_invite)
+                        logger.info(list_next_pt_invite)
                         invitation = int(list_next_pt_invite[0]) - int(list_next_pt_invite[1])
                         defaults.update({
                             'bonus_hour': bonus_hour,
@@ -1735,7 +1748,7 @@ class PtSpider:
         logger.info(f'魔力页面链接：{url}')
         try:
             if 'iptorrents' in site.url:
-                hour_sp = 0
+                bonus_hour = 0
             else:
                 if site.url in [
                     'https://hdchina.org/',
@@ -1750,7 +1763,6 @@ class PtSpider:
                                             })
                 else:
                     response = self.send_request(my_site=my_site, url=url, header=headers)
-                # print(response.text.encode('utf8'))
                 """
                 if 'btschool' in site.url:
                     # logger.info(response.text.encode('utf8'))
@@ -1775,7 +1787,10 @@ class PtSpider:
                 # logger.info('转为简体的时魔页面：', str(res))
                 if 'zhuque.in' in site.url:
                     # 获取朱雀时魔
-                    hour_sp = response.json().get('data').get('E')
+                    bonus_hour = response.json().get('data').get('E')
+                elif 'greatposterwall' in site.url:
+                    # 获取朱雀时魔
+                    bonus_hour = response.json().get('response').get('userstats').get('seedingBonusPointsPerHour')
                 else:
                     res_list = self.parse(site, response, site.my_per_hour_bonus_rule)
                     if len(res_list) <= 0:
@@ -1784,14 +1799,14 @@ class PtSpider:
                         res_list = ''.join(res_list).split('，')
                         res_list.reverse()
                     logger.info('时魔字符串：{}'.format(res_list))
-                    hour_sp = toolbox.get_decimals(res_list[0].replace(',', ''))
+                    bonus_hour = toolbox.get_decimals(res_list[0].replace(',', ''))
             SiteStatus.objects.update_or_create(
                 site=my_site,
                 created_at__date__gte=datetime.today(),
                 defaults={
-                    'bonus_hour': hour_sp,
+                    'bonus_hour': bonus_hour,
                 })
-            return CommonResponse.success(data=hour_sp)
+            return CommonResponse.success(data=bonus_hour)
         except Exception as e:
             # 打印异常详细信息
             message = f'{site.name} 时魔获取失败！{e}'

@@ -119,7 +119,7 @@ def get_status_by_mysite(request, my_site: MySiteDoSchemaIn):
 def get_newest_status(request, my_site: MySiteDoSchemaIn):
     try:
         my_site = MySite.objects.get(id=my_site.site_id)
-        status = SiteStatus.objects.filter(site=my_site).first()
+        status = SiteStatus.objects.filter(site=my_site).order_by('-created_at').first()
         sign = SignIn.objects.filter(site=my_site, created_at__date=datetime.today().date()).first()
         level = UserLevelRule.objects.filter(site_id=my_site.site, level=status.my_level).first() if status else None
         next_level = UserLevelRule.objects.filter(site_id=my_site.site,
@@ -339,7 +339,7 @@ def site_data_api(request, site_id: int = 0, days: int = -7):
             })
 
         return CommonResponse.success(
-            data={'date_list': date_list[days:-1], 'diff': diff_list}
+            data={'date_list': date_list[days:], 'diff': diff_list}
         )
     else:
         logger.info(f'前端传来的站点ID：{site_id}')

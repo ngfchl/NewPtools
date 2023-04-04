@@ -1325,7 +1325,6 @@ class PtSpider:
             except Exception as e:
                 msg = f'{site.name} 注册时间获取出错啦！'
                 logger.info(traceback.format_exc(3))
-                toolbox.send_text(title=msg, message=msg)
 
     def parse_userinfo_html(self, my_site, details_html):
         """解析个人主页"""
@@ -1565,7 +1564,7 @@ class PtSpider:
                         title = f'{site.name} 有{mail}条新短消息，请注意及时查收！'
                         msg = f'### <font color="red">{title}</font>  \n'
                         # 测试发送网站消息原内容
-                        toolbox.send_text(title=title, message=msg)
+                        # toolbox.send_text(title=title, message=msg)
                     if 'greatposterwall' in site.url:
                         userdata = seeding_html.get('userstats')
                         my_bonus = userdata.get('bonusPoints')
@@ -1712,7 +1711,7 @@ class PtSpider:
                                 else:
                                     msg = f'{site.name} 获取做种大小失败，请检查规则信息是否匹配？'
                                     logger.warning(msg)
-                                    toolbox.send_text(title=msg, message=msg)
+                                    # toolbox.send_text(title=msg, message=msg)
                                     break
                             else:
                                 # seed_vol_all = 0

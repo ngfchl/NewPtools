@@ -1,7 +1,6 @@
 from typing import Optional
 
 from ninja import ModelSchema, Schema
-from ninja.orm import create_schema
 
 from my_site.models import *
 from website.schema import WebSiteSchemaOut, UserLevelRuleSchemaOut
@@ -32,6 +31,7 @@ class MySiteSchemaOut(ModelSchema):
 
 class MySiteDoSchemaIn(Schema):
     site_id: int
+    sort_id: Optional[int]
 
 
 class MySiteSchemaEdit(ModelSchema):
@@ -79,7 +79,6 @@ class SiteStatusSchemaIn(ModelSchema):
 class SignInSchemaOut(ModelSchema):
     """    站点基本信息及信息抓取规则    """
 
-    # site: create_schema(model=MySite, fields=['id'])
     updated: str
 
     class Config:

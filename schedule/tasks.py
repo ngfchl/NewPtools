@@ -34,7 +34,7 @@ def auto_sign_in(site_list: List[int] = []):
     """执行签到"""
     start = time.time()
     logger.info('开始执行签到任务')
-    toolbox.send_text(f'开始执行签到任务，当前时间：{datetime.fromtimestamp(start)}')
+    toolbox.send_text(title='正在签到', message=f'开始执行签到任务，当前时间：{datetime.fromtimestamp(start)}')
     logger.info('筛选需要签到的站点')
     message_list = []
     sign_list = MySite.objects.filter(
@@ -68,18 +68,17 @@ def auto_sign_in(site_list: List[int] = []):
     message = '站点：`U2` 早上九点之前不执行签到任务哦！ \n\n'
     logger.info(message)
     message_list.append(message)
-    logger.info(len(queryset))
     if len(queryset) <= 0:
         message_list = ['已全部签到或无需签到！ \n\n']
         logger.info(message_list)
         toolbox.send_text('\n'.join(message_list))
         return message_list
     results = pool.map(pt_spider.sign_in, queryset)
-    logger.info('开始执行签到任务')
+    logger.info('执行签到任务')
     success_message = []
     failed_message = []
     for my_site, result in zip(queryset, results):
-        logger.info('自动签到：{}, {}'.format(my_site, result))
+        logger.info(f'自动签到：{my_site}, {result}')
         if result.code == 0:
             msg = f'✅ {my_site.nickname} 签到成功！{result.msg} \n\n'
             logger.info(msg)
@@ -91,9 +90,9 @@ def auto_sign_in(site_list: List[int] = []):
         # message_list.append(f'{my_site.nickname}: {result.msg}')
     end = time.time()
     message = f'当前时间：{datetime.fromtimestamp(end)},' \
-              f'本次签到任务执行完毕，成功签到{len(success_message)}个站点，' \
+              f'本次签到任务执行完毕，共有{len(queryset)}站点需要签到，成功签到{len(success_message)}个站点，' \
               f'失败{len(failed_message)}个站点，耗费时间：{round(end - start, 2)}'
-    message_list.insert(0, message)
+    message_list.append(message)
     message_list.extend(failed_message)
     message_list.append('*' * 20)
     message_list.extend(success_message)
@@ -144,26 +143,26 @@ def auto_get_status(site_list: List[int] = []):
             )
             logger.info(message)
             # toolbox.send_text(title='个人数据更新', message=my_site.nickname + ' 信息更新成功！' + message)
-            success_message.append(f'> <font color="orange">{my_site.nickname} </font> 信息更新成功！{message}\n\n')
+            success_message.append(f'✅ {my_site.nickname} 信息更新成功！{message}\n\n')
         else:
             print(result)
-            message = f'{my_site.nickname} 信息更新失败！原因：{result.msg}'
+            message = f'🆘 {my_site.nickname} 信息更新失败！原因：{result.msg}'
             logger.warning(message)
-            failed_message.append(f'> <font color="red">{message}</font>  \n\n')
+            failed_message.append(f'{message} \n\n')
             # toolbox.send_text(title='个人数据更新', message=f'{my_site.nickname} 信息更新失败！原因：{message}')
     # 发送今日数据
     total_upload, total_download, increase_info_list = toolbox.today_data()
     increase_list = []
     for increase_info in increase_info_list:
         increase_list.append(
-            f'\n\n- 站点：{increase_info.get("name")}'
+            f'\n\n- ♻️站点：{increase_info.get("name")}'
             f'\n\t\t上传：{toolbox.FileSizeConvert.parse_2_file_size(increase_info.get("uploaded"))}'
-            f'\n\t\t下载：{toolbox.FileSizeConvert.parse_2_file_size(increase_info.get("downloaded"))}'
+            f' ↕ 下载：{toolbox.FileSizeConvert.parse_2_file_size(increase_info.get("downloaded"))}'
         )
-    incremental = f'#### 总上传：{toolbox.FileSizeConvert.parse_2_file_size(total_upload)}\n' \
-                  f'#### 总下载：{toolbox.FileSizeConvert.parse_2_file_size(total_download)}\n' \
-                  f'> 说明: 数据均相较于本站今日之前最近的一条数据，可能并非昨日\n' \
-                  f'#### 数据列表：{"".join(increase_list)}'
+    incremental = f'⬆ 总上传：{toolbox.FileSizeConvert.parse_2_file_size(total_upload)}\n' \
+                  f'⬇ 总下载：{toolbox.FileSizeConvert.parse_2_file_size(total_download)}\n' \
+                  f'✔️ 说明: 数据均相较于本站今日之前最近的一条数据，可能并非昨日\n' \
+                  f'数据列表：{"".join(increase_list)}'
     logger.info(incremental)
     toolbox.send_text(title='通知：今日数据', message=incremental)
     end = time.time()

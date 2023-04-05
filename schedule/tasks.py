@@ -93,7 +93,7 @@ def auto_sign_in(site_list: List[int] = []):
     message = f'当前时间：{datetime.fromtimestamp(end)},' \
               f'本次签到任务执行完毕，成功签到{len(success_message)}个站点，' \
               f'失败{len(failed_message)}个站点，耗费时间：{round(end - start, 2)}'
-    message_list.append(message)
+    message_list.insert(0, message)
     message_list.extend(failed_message)
     message_list.append('*' * 20)
     message_list.extend(success_message)
@@ -111,7 +111,9 @@ def auto_get_status(site_list: List[int] = []):
     更新个人数据
     """
     start = time.time()
-    message_list = '# 更新个人数据  \n\n'
+    message_list = ['# 更新个人数据  \n\n']
+    failed_message = []
+    success_message = []
     websites = WebSite.objects.all()
     queryset = MySite.objects.filter(
         get_info=True
@@ -140,17 +142,15 @@ def auto_get_status(site_list: List[int] = []):
                 status.invitation,
                 status.my_hr,
             )
-            logger.info('组装Message：{}'.format(message))
-            message = f'> <font color="orange">{my_site.nickname} </font> 信息更新成功！{message}\n\n'
-            message_list += message
-            # toolbox.send_text(title='个人数据更新', message=my_site.nickname + ' 信息更新成功！' + message)
             logger.info(message)
+            # toolbox.send_text(title='个人数据更新', message=my_site.nickname + ' 信息更新成功！' + message)
+            success_message.append(f'> <font color="orange">{my_site.nickname} </font> 信息更新成功！{message}\n\n')
         else:
             print(result)
-            message = f'> <font color="red">{my_site.nickname} 信息更新失败！原因：{result.msg}</font>  \n\n'
-            message_list = message + message_list
-            toolbox.send_text(title='个人数据更新', message=f'{my_site.nickname} 信息更新失败！原因：{message}')
-            logger.warning(f'{my_site.nickname} 信息更新失败！原因：{result.msg}')
+            message = f'{my_site.nickname} 信息更新失败！原因：{result.msg}'
+            logger.warning(message)
+            failed_message.append(f'> <font color="red">{message}</font>  \n\n')
+            # toolbox.send_text(title='个人数据更新', message=f'{my_site.nickname} 信息更新失败！原因：{message}')
     # 发送今日数据
     total_upload, total_download, increase_info_list = toolbox.today_data()
     increase_list = []
@@ -167,13 +167,15 @@ def auto_get_status(site_list: List[int] = []):
     logger.info(incremental)
     toolbox.send_text(title='通知：今日数据', message=incremental)
     end = time.time()
-    consuming = '> <font color="blue">{} 任务运行成功！耗时：{} 完成时间：{}  </font>  \n'.format(
-        '自动更新个人数据', end - start,
-        time.strftime("%Y-%m-%d %H:%M:%S")
-    )
+    consuming = f'> <font color="blue">自动更新个人数据 任务运行成功！' \
+                f'共计成功 {len(success_message)} 个站点，失败 {len(failed_message)} 个站点，' \
+                f'耗时：{end - start} 完成时间：{time.strftime("%Y-%m-%d %H:%M:%S")}  </font>  \n'
     logger.info(message_list + consuming)
-    message = message_list + consuming
-    toolbox.send_text(title='通知：更新个人数据', message=message)
+    message_list.append(consuming)
+    message_list.extend(failed_message)
+    message_list.append('*' * 20)
+    message_list.extend(success_message)
+    toolbox.send_text(title='通知：更新个人数据', message=''.join(message_list))
     # 释放内存
     gc.collect()
     return CommonResponse(msg=message_list)

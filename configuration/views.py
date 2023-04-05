@@ -143,30 +143,30 @@ def do_restart(request, cid: str):
         return CommonResponse.error(msg=f'重启指令发送失败!{e}')
 
 
-@router.get('file/list/{filename}', response=CommonResponse, description='获取日志列表')
-def get_log_list(request, filename: str):
-    path = os.path.join(BASE_DIR, 'db')
+@router.get('log', response=CommonResponse, description='获取日志列表')
+def get_log_list(request):
+    path = os.path.join(BASE_DIR, 'logs')
     # logger.info(path)
     # logger.info(os.listdir(path))
     names = [name for name in os.listdir(path)
-             if os.path.isfile(os.path.join(path, name)) and name.startswith(filename)]
-    names = sorted(names, key=lambda x: os.stat(os.path.join(BASE_DIR, f'db/{x}')).st_ctime, reverse=True)
+             if os.path.isfile(os.path.join(path, name))]
+    names = sorted(names, key=lambda x: os.stat(os.path.join(BASE_DIR, f'logs/{x}')).st_ctime, reverse=True)
     # logger.info(names)
-    return CommonResponse.success(data={'path': path, 'names': names})
+    return CommonResponse.success(data=names)
 
 
-@router.get('file/content/{filename}', response=CommonResponse, description='获取日志内容')
-def get_log_content(request, filename: str):
-    path = os.path.join(BASE_DIR, 'db/' + filename)
+@router.get('log/content', response=CommonResponse, description='获取日志内容')
+def get_log_content(request, file_name: str):
+    path = os.path.join(BASE_DIR, 'logs/' + file_name)
     with open(path, 'r') as f:
         logs = f.readlines()
-    logger.info(f'日志行数：{len(logs)}')
-    return CommonResponse.success(data={'path': path, 'logs': logs, })
+    logs.reverse()
+    return CommonResponse.success(data=''.join(logs))
 
 
-@router.get('file/content/{filename}', response=CommonResponse, description='删除日志文件')
-def remove_log_api(request, filename: str):
-    path = os.path.join(BASE_DIR, f'db/{filename}')
+@router.delete('log', response=CommonResponse, description='删除日志文件')
+def remove_log_api(request, file_name: str):
+    path = os.path.join(BASE_DIR, f'logs/{file_name}')
     try:
         os.remove(path)
         return CommonResponse.success(msg='删除成功！')
@@ -175,10 +175,10 @@ def remove_log_api(request, filename: str):
         return CommonResponse.error(msg='删除文件出错啦！详情请查看日志')
 
 
-@router.get('file/remove/{filename}', response=CommonResponse, description='下载日志文件')
-def download_log_file(request, filename: str):
+@router.get('log/download', response=CommonResponse, description='下载日志文件')
+def download_log_file(request, file_name: str):
     try:
-        file_path = os.path.join(BASE_DIR, f'db/{filename}')
+        file_path = os.path.join(BASE_DIR, f'logs/{file_name}')
         response = FileResponse(open(file_path, 'rb'))
         response['content-type'] = "application/octet-stream;charset=utf-8"
         response['Content-Disposition'] = 'attachment; filename=' + os.path.basename(file_path)

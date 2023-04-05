@@ -194,7 +194,7 @@ class PtSpider:
 
     def sign_in_52pt(self, my_site: MySite):
         site = get_object_or_404(WebSite, id=my_site.site)
-        url = site.url + site.page_sign_in.lstrip('/')
+        url = f'{site.url}{site.page_sign_in}'.lstrip('/')
         result = self.send_request(my_site=my_site, url=url, )
         # sign_str = self.parse(result, '//font[contains(text(),"签过到")]/text()')
         sign_str = etree.HTML(result.text).xpath('//font[contains(text(),"签过到")]/text()')
@@ -216,7 +216,7 @@ class PtSpider:
         }
         logger.info(data)
         sign_res = self.send_request(
-            my_site=my_site, url=site.url + site.page_sign_in.lstrip('/'), method='post', data=data
+            my_site=my_site, url=f'{site.url}{site.page_sign_in}'.lstrip('/'), method='post', data=data
         )
         logger.info(sign_res.text)
         # sign_str = etree.HTML(sign_res.text.encode('utf-8-sig')).xpath
@@ -237,10 +237,10 @@ class PtSpider:
         sign_str = self.parse(site, result, '//span[@id="qiandao"]')
         logger.info(sign_str)
         if len(sign_str) < 1:
-            return CommonResponse.success(msg=site.name + '已签到，请勿重复操作！！')
+            return CommonResponse.success(msg=f'{site.name} 已签到，请勿重复操作！！')
         sign_res = self.send_request(
             my_site=my_site,
-            url=site.url + site.page_sign_in.lstrip('/'),
+            url=f'{site.url}{site.page_sign_in}'.lstrip('/'),
             method='post'
         ).text
         logger.info(f'好多油签到反馈：{sign_res}')
@@ -266,10 +266,10 @@ class PtSpider:
         sign_str = self.parse(site, result, '//span[@id="checkin"]/a')
         logger.info(sign_str)
         if len(sign_str) < 1:
-            return CommonResponse.success(msg=site.name + '已签到，请勿重复操作！！')
+            return CommonResponse.success(msg=f'{site.name} 已签到，请勿重复操作！！')
         sign_res = self.send_request(
             my_site=my_site,
-            url=site.url + site.page_sign_in.lstrip('/'),
+            url=f'{site.url}{site.page_sign_in}'.lstrip('/'),
             method='post',
             params={
                 'action': 'checkin'
@@ -299,12 +299,12 @@ class PtSpider:
         logger.info(f'{result.cookies.get_dict()}')
 
         if len(sign_str) >= 1:
-            return CommonResponse.success(msg=site.name + '已签到，请勿重复操作！！')
+            return CommonResponse.success(msg=f'{site.name} 已签到，请勿重复操作！！')
         csrf = ''.join(self.parse(site, result, '//meta[@name="x-csrf"]/@content'))
-        logger.info('CSRF字符串：{}'.format(csrf))
+        logger.info(f'CSRF字符串：{csrf}')
         # sign_res = self.send_request(
         #     my_site=my_site,
-        #     url=site.url + site.page_sign_in,
+        #     url=f'{site.url}{site.page_sign_in}',
         #     method=site.sign_in_method,
         #     data={
         #         'csrf': csrf
@@ -313,7 +313,7 @@ class PtSpider:
         cookies = toolbox.cookie2dict(my_site.cookie)
         cookies.update(result.cookies.get_dict())
         logger.info(cookies)
-        sign_res = requests.request(url=site.url + site.page_sign_in, verify=False, method='post', cookies=cookies,
+        sign_res = requests.request(url=f'{site.url}{site.page_sign_in}', verify=False, method='post', cookies=cookies,
                                     headers={'user-agent': my_site.user_agent}, data={'csrf': csrf})
         logger.info(sign_res.text)
         res_json = sign_res.json()
@@ -339,13 +339,13 @@ class PtSpider:
 
     def sign_in_u2(self, my_site: MySite):
         site = get_object_or_404(WebSite, id=my_site.site)
-        url = site.url + site.page_sign_in.lstrip('/')
+        url = f'{site.url}{site.page_sign_in}'.lstrip('/')
         result = self.send_request(my_site=my_site, url=url, )
         sign_str = ''.join(self.parse(site, result, '//a[@href="showup.php"]/text()'))
         logger.info(site.name + sign_str)
         if '已签到' in sign_str or '已簽到' in sign_str:
             # if '已签到' in converter.convert(sign_str):
-            return CommonResponse.success(msg=site.name + '已签到，请勿重复操作！！')
+            return CommonResponse.success(msg=f'{site.name}已签到，请勿重复操作！！')
         req = self.parse(site, result, '//form//td/input[@name="req"]/@value')
         hash_str = self.parse(site, result, '//form//td/input[@name="hash"]/@value')
         form = self.parse(site, result, '//form//td/input[@name="form"]/@value')
@@ -367,7 +367,7 @@ class PtSpider:
         logger.info(data)
         response = self.send_request(
             my_site,
-            url=site.url + site.page_sign_in.lstrip('/') + '?action=show',
+            url=f'{site.url}{site.page_sign_in.lstrip("/")}?action=show',
             method='post',
             data=data,
         )
@@ -397,7 +397,7 @@ class PtSpider:
         href_sign_in = self.parse(site, res_check, '//a[@href="/plugin_sign-in.php?cmd=show-log"]')
         if len(href_sign_in) >= 1:
             return CommonResponse.success(data={'state': 'false'})
-        url = site.url + site.page_sign_in.lstrip('/')
+        url = f'{site.url}{site.page_sign_in}'.lstrip('/')
         logger.info('# 开启验证码！')
         res = self.send_request(my_site=my_site, method='get', url=url)
         logger.info(res.text.encode('utf-8-sig'))
@@ -425,14 +425,14 @@ class PtSpider:
         result = self.send_request(
             my_site=my_site,
             method='post',
-            url=site.url + 'plugin_sign-in.php?cmd=signin', data=data)
+            url=f'{site.url}plugin_sign-in.php?cmd=signin', data=data)
         logger.info('皇后签到返回值：{}  \n'.format(result.text.encode('utf-8-sig')))
         return CommonResponse.success(data=result.json())
 
     def sign_in_hdsky(self, my_site: MySite):
         """HDSKY签到"""
         site = get_object_or_404(WebSite, id=my_site.site)
-        url = site.url + site.page_sign_in.lstrip('/')
+        url = f'{site.url}{site.page_sign_in}'.lstrip('/')
         # sky无需验证码时使用本方案
         # if not captcha:
         #     result = self.send_request(
@@ -446,13 +446,13 @@ class PtSpider:
         res = self.send_request(
             my_site=my_site,
             method='post',
-            url=site.url + 'image_code_ajax.php',
+            url=f'{site.url}image_code_ajax.php',
             data={
                 'action': 'new'
             }).json()
         # img url
-        img_get_url = site.url + 'image.php?action=regimage&imagehash=' + res.get('code')
-        logger.info('验证码图片链接：' + img_get_url)
+        img_get_url = f'{site.url}image.php?action=regimage&imagehash={res.get("code")}'
+        logger.info(f'验证码图片链接：{img_get_url}')
         # 获取OCR识别结果
         # imagestring = toolbox.baidu_ocr_captcha(img_url=img_get_url)
         times = 0
@@ -463,7 +463,7 @@ class PtSpider:
             ocr_result = toolbox.baidu_ocr_captcha(img_get_url)
             if ocr_result.code == 0:
                 imagestring = ocr_result.data
-                logger.info('验证码长度：{}'.format(len(imagestring)))
+                logger.info(f'验证码长度：{len(imagestring)}')
                 if len(imagestring) == 6:
                     break
             times += 1
@@ -492,7 +492,7 @@ class PtSpider:
         """
         site = get_object_or_404(WebSite, id=my_site.site)
         url = site.url + site.page_user.format(my_site.user_id)
-        logger.info(site.name + '个人主页：' + url)
+        logger.info(f'{site.name} 个人主页：{url}')
         try:
             res = self.send_request(my_site=my_site, url=url)
             # logger.info(res.text.encode('utf8'))
@@ -508,12 +508,12 @@ class PtSpider:
                 'signed_timestamp': signed_timestamp,
                 'signed_token': signed_token
             }
-            logger.info('signed_timestamp:' + signed_timestamp)
-            logger.info('signed_token:' + signed_token)
+            logger.info(f'signed_timestamp:{signed_timestamp}')
+            logger.info(f'signed_token:{signed_token}')
 
             resp = self.send_request(
                 my_site,
-                site.url + site.page_sign_in,
+                f'{site.url}{site.page_sign_in}',
                 method='post',
                 data=params)
             logger.info(f'{my_site.nickname}: {resp.content.decode("utf8")}')
@@ -563,7 +563,7 @@ class PtSpider:
     @staticmethod
     def get_user_torrent(html, rule):
         res_list = html.xpath(rule)
-        logger.info('content' + res_list)
+        logger.info(f'content: {res_list}')
         # logger.info('res_list:', len(res_list))
         return '0' if len(res_list) == 0 else res_list[0]
 
@@ -571,7 +571,7 @@ class PtSpider:
     def sign_in(self, my_site: MySite):
         """签到"""
         site = get_object_or_404(WebSite, id=my_site.site)
-        logger.info(site.name + '开始签到')
+        logger.info(f'{site.name} 开始签到')
         signin_today = my_site.signin_set.filter(created_at__date__gte=datetime.today()).first()
         # 如果已有签到记录
         if signin_today:
@@ -579,8 +579,8 @@ class PtSpider:
                 return CommonResponse.success(msg=f'{my_site.nickname} 已签到，请勿重复签到！')
         else:
             signin_today = SignIn(site=my_site, created_at=datetime.now())
-        url = site.url + site.page_sign_in.lstrip('/')
-        logger.info('签到链接：' + url)
+        url = f'{site.url}{site.page_sign_in}'.lstrip('/')
+        logger.info(f'签到链接：{url}')
         try:
             # with lock:
             if '52pt' in site.url or 'chdbits' in site.url:
@@ -669,16 +669,13 @@ class PtSpider:
                     return result
             if 'open.cd' in site.url:
                 result = self.sign_in_opencd(my_site=my_site)
-                logger.info('皇后签到结果：{}'.format(result.to_dict()))
+                logger.info(f'皇后签到结果：{result.to_dict()}')
                 if result.code == 0:
                     res_json = result.data
                     if res_json.get('state') == 'success':
                         signin_today.sign_in_today = True
                         # data = res_json.get('msg')
-                        message = "签到成功，您已连续签到{}天，本次增加魔力:{}。".format(
-                            res_json.get('signindays'),
-                            res_json.get('integral'),
-                        )
+                        message = f"签到成功，您已连续签到{res_json.get('signindays')}天，本次增加魔力:{res_json.get('integral')}。"
                         signin_today.sign_in_info = message
                         signin_today.save()
                         return CommonResponse.success(msg=message)
@@ -790,14 +787,14 @@ class PtSpider:
 
             if 'btschool' in site.url:
                 # logger.info(res.status_code)
-                logger.info('学校签到：{}'.format(res.text))
+                logger.info(f'学校签到：{res.text}')
                 text = self.parse(site, res, '//script/text()')
-                logger.info('解析签到返回信息：{}'.format(text))
+                logger.info('解析签到返回信息：{text}')
                 if len(text) > 0:
                     location = toolbox.parse_school_location(text)
-                    logger.info('学校签到链接：' + location)
+                    logger.info(f'学校签到链接：{location}')
                     if 'addbouns.php' in location:
-                        res = self.send_request(my_site=my_site, url=site.url + location.lstrip('/'))
+                        res = self.send_request(my_site=my_site, url=f'{site.url}{location.lstrip("/")}')
                 # sign_in_text = self.parse(site, res, '//a[@href="index.php"]/font//text()')
                 # sign_in_stat = self.parse(site, res, '//a[contains(@href,"addbouns")]')
                 sign_in_text = self.parse(site, res, site.sign_info_content)
@@ -809,7 +806,7 @@ class PtSpider:
                     signin_today.sign_in_info = message
                     signin_today.save()
                     return CommonResponse.success(msg=message)
-                return CommonResponse.error(msg='签到失败！请求响应码：{}'.format(res.status_code))
+                return CommonResponse.error(msg=f'签到失败！请求响应码：{res.status_code}')
             if res.status_code == 200:
                 status = res.text
                 # logger.info(status)
@@ -852,7 +849,7 @@ class PtSpider:
                 message = title + '，' + content
                 logger.info(f'{my_site} 签到返回信息：{message}')
                 if len(message) <= 1:
-                    message = datetime.today().strftime('%Y-%m-%d %H:%M:%S') + '打卡成功！'
+                    message = f'{datetime.today().strftime("%Y-%m-%d %H:%M:%S")}打卡成功！'
                 # message = ''.join(title).strip()
                 signin_today.sign_in_today = True
                 signin_today.sign_in_info = message
@@ -860,7 +857,7 @@ class PtSpider:
                 logger.info(f'{my_site.nickname}: {message}')
                 return CommonResponse.success(msg=message)
             else:
-                return CommonResponse.error(msg='请确认签到是否成功？？网页返回码：' + str(res.status_code))
+                return CommonResponse.error(msg=f'请确认签到是否成功？？网页返回码：{res.status_code}')
         except Exception as e:
             msg = '{}签到失败！原因：{}'.format(site.name, e)
             logger.error(msg)
@@ -886,7 +883,7 @@ class PtSpider:
         username = filelist.get('username')
         password = filelist.get('password')
         login_res = session.request(
-            url=site.url + login_url,
+            url=f'{site.url}{login_url}',
             method=login_method,
             headers=headers,
             data={
@@ -910,7 +907,7 @@ class PtSpider:
     def get_zhuque_header(self, my_site: MySite):
         """获取朱雀csrf-token，并生成请求头"""
         site = get_object_or_404(WebSite, id=my_site.site)
-        user_detail_url = site.url + site.page_user.lstrip('/').format(my_site.user_id)
+        user_detail_url = f'{site.url}{site.page_user.lstrip("/").format(my_site.user_id)}'
         logger.info(f'{site.name} 开始抓取站点个人主页信息，网址：{user_detail_url}')
         csrf_res = self.send_request(my_site=my_site, url=site.url)
         # '<meta name="x-csrf-token" content="4db531b6687b6e7f216b491c06937113">'
@@ -927,7 +924,7 @@ class PtSpider:
         mail = 0
         mail_check = len(details_html.xpath(site.my_mailbox_rule))
         if 'zhuque.in' in site.url:
-            mail_res = self.send_request(my_site=my_site, url=site.url + 'api/user/getMainInfo', header=header)
+            mail_res = self.send_request(my_site=my_site, url=f'{site.url}api/user/getMainInfo', header=header)
             logger.info(f'新消息: {mail_res.text}')
             mail_data = mail_res.json().get('data')
             mail = mail_data.get('unreadAdmin') + mail_data.get('unreadInbox') + mail_data.get('unreadSystem')
@@ -956,13 +953,13 @@ class PtSpider:
                     # 'https://wintersakura.net/',
                 ]:
                     # 单独发送请求，解决冬樱签到问题
-                    message_res = requests.get(url=site.url + site.page_message, verify=False,
+                    message_res = requests.get(url=f'{site.url}{site.page_message}', verify=False,
                                                cookies=toolbox.cookie2dict(my_site.cookie),
                                                headers={
                                                    'user-agent': my_site.user_agent
                                                })
                 else:
-                    message_res = self.send_request(my_site, url=site.url + site.page_message)
+                    message_res = self.send_request(my_site, url=f'{site.url}{site.page_message}')
                 logger.info(f'PM消息页面：{message_res}')
                 mail_list = self.parse(site, message_res, site.my_message_title)
                 mail_list = [f'#### {mail.strip()} ...\n' for mail in mail_list]
@@ -1010,13 +1007,13 @@ class PtSpider:
                         # 'https://wintersakura.net/',
                     ]:
                         # 单独发送请求，解决冬樱签到问题
-                        notice_res = requests.get(url=site.url + site.page_index, verify=False,
+                        notice_res = requests.get(url=f'{site.url}{site.page_index}', verify=False,
                                                   cookies=toolbox.cookie2dict(my_site.cookie),
                                                   headers={
                                                       'user-agent': my_site.user_agent
                                                   })
                     else:
-                        notice_res = self.send_request(my_site, url=site.url + site.page_index)
+                        notice_res = self.send_request(my_site, url=f'{site.url}{site.page_index}')
                     # notice_res = self.send_request(my_site, url=site.url)
                     logger.info(f'公告信息：{notice_res}')
                     notice_list = self.parse(site, notice_res, site.my_notice_title)

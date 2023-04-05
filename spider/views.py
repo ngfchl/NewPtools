@@ -47,7 +47,7 @@ class PtSpider:
                      data: dict = None,
                      params: dict = None,
                      json: dict = None,
-                     timeout: int = 45,
+                     timeout: int = 75,
                      delay: int = 15,
                      header: dict = {},
                      proxies: dict = None):
@@ -932,6 +932,11 @@ class PtSpider:
                 title = f'{site.name} 有{mail}条新消息，请注意及时查收！'
                 toolbox.send_text(title=title, message=title)
         logger.info(f' 短消息：{mail_check}')
+        res = SiteStatus.objects.update_or_create(
+            site=my_site,
+            created_at__date__gte=datetime.today(),
+        )
+        status = res[0]
         if mail_check > 0:
             if site.url in [
                 'https://monikadesign.uk/',
@@ -970,15 +975,13 @@ class PtSpider:
                 # 测试发送网站消息原内容
                 message = f'\n# 短消息  \n> 只显示第一页哦\n{mail}'
                 message_list += message
-            res = SiteStatus.objects.update_or_create(
-                site=my_site,
-                created_at__date__gte=datetime.today(),
-            )
-            status = res[0]
-            status.mail += len(mail_list)
+            status.mail = len(mail_list)
             status.save()
             title = f'{site.name} 有{len(mail_list)}条新消息，请注意及时查收！'
             toolbox.send_text(title=title, message=message_list)
+        else:
+            status.mail = 0
+            status.save()
 
     def get_notice_info(self, my_site: MySite, details_html):
         """获取站点公告信息"""
@@ -1039,14 +1042,7 @@ class PtSpider:
                     # notice = '  \n\n### '.join(notice_list[:notice_count])
                     notice = ''.join(notice_list[:1])
                     message_list += f'# 公告  \n## {notice}'
-                    res = SiteStatus.objects.update_or_create(
-                        site=my_site,
-                        created_at__date__gte=datetime.today(),
-                    )
-                    status = res[0]
-                    status.mail += len(notice_list)
-                    status.save()
-                    title = f'{site.name} 有{len(notice_list)}条新消息，请注意及时查收！'
+                    title = f'{site.name} 有{len(notice_list)}条新公告，请注意及时查收！'
                     toolbox.send_text(title=title, message=message_list)
 
     def get_userinfo_html(self, my_site: MySite, headers: dict):

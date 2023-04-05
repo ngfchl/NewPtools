@@ -269,6 +269,7 @@ def today_data():
             'uploaded': uploaded_increase,
             'downloaded': downloaded_increase
         })
+    increase_info_list.sort(key=lambda x: x.get('uploaded'), reverse=True)
     return total_upload, total_download, increase_info_list
 
 

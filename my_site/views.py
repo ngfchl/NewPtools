@@ -454,17 +454,10 @@ def show_sign_api(request, site_id: int):
         )
 
 
-@router.get('/sign/show/{site_id}/{sort_id}', response=CommonResponse, description='站点排序')
-def site_sort_api(request, site_id: int, sort_id: int):
+@router.post('/sort', response=CommonResponse, description='站点排序')
+def site_sort_api(request, my_site: MySiteDoSchemaIn):
     try:
-        my_site = MySite.objects.filter(id=site_id).first()
-        my_site.sort_id += int(sort_id)
-
-        if int(my_site.sort_id) <= 0:
-            my_site.sort_id = 0
-            my_site.save()
-            return CommonResponse.success(msg='排序已经最靠前啦，不要再点了！')
-        my_site.save()
+        MySite.objects.filter(pk=my_site.site_id).update(sort_id=my_site.sort_id)
         return CommonResponse.success(msg='排序成功！')
     except Exception as e:
         logger.error(f'数据更新失败：{e}')

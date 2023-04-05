@@ -29,7 +29,6 @@ router = Router(tags=['download'])
             description='下载器列表')
 def get_downloaders(request):
     downloaders = Downloader.objects.all()
-    print(downloaders)
     return CommonResponse.success(data=list(downloaders))
 
 
@@ -47,9 +46,7 @@ def add_downloader(request, downloader: DownloaderSchemaIn):
 
 @router.put('/downloader', response=CommonResponse[DownloaderSchemaIn])
 def edit_downloader(request, downloader: DownloaderSchemaIn):
-    print(downloader)
     new_downloader = Downloader.objects.update_or_create(defaults=downloader.dict(), id=downloader.id)
-    print(new_downloader)
     return CommonResponse.success(data=new_downloader[0])
 
 
@@ -94,7 +91,6 @@ def get_downloader_speed(request):
         try:
             client = get_downloader_instance(downloader.id)
             if downloader.category == DownloaderCategory.qBittorrent:
-                print(downloader.category)
                 # x = {'connection_status': 'connected', 'dht_nodes': 0, 'dl_info_data': 2577571007646,
                 #      'dl_info_speed': 3447895, 'dl_rate_limit': 41943040, 'up_info_data': 307134686158,
                 #      'up_info_speed': 4208516, 'up_rate_limit': 0, 'category': 'Qb', 'name': 'home-qb'}
@@ -105,7 +101,6 @@ def get_downloader_speed(request):
                     'connection_status': True if info.get('connection_status') == 'connected' else False
                 })
             elif downloader.category == DownloaderCategory.Transmission:
-                print(downloader.category)
                 base_info = client.session_stats().fields
                 """
                 info = {'activeTorrentCount': 570,
@@ -162,7 +157,7 @@ def get_downloader_speed(request):
                 'up_info_speed': 0,
             }
         info_list.append(info)
-    print(info_list)
+    # logger.info(info_list)
     return CommonResponse.success(data=info_list)
 
 
@@ -323,7 +318,7 @@ def get_torrents_hash_from_iyuu():
         url=url,
         data=data
     )
-    print(res.json())
+    logger.info(res.json())
     return res.json()
 
 

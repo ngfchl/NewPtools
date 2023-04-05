@@ -322,15 +322,15 @@ def site_data_api(request, site_id: int = 0, days: int = -7):
                 }
                 diff_info_list.update(diff_info)
 
-            logger.info(f'处理完后站点数据条数：{len(diff_info_list)}')
+            # logger.info(f'处理完后站点数据条数：{len(diff_info_list)}')
             for date in date_list[days:]:
                 if not diff_info_list.get(date):
                     diff_info_list[date] = {
                         'diff_uploaded': 0,
                         'diff_downloaded': 0
                     }
-            logger.info(diff_info_list)
-            logger.info(len(diff_info_list))
+            # logger.info(diff_info_list)
+            # logger.info(len(diff_info_list))
             diff_info_list = sorted(diff_info_list.items(), key=lambda x: x[0])
             diff_list.append({
                 'name': my_site.nickname,

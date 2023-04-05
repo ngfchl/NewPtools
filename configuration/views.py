@@ -6,6 +6,7 @@ from datetime import datetime
 
 import docker
 import jwt
+import toml
 from django.conf import settings
 from django.contrib import auth
 from django.http import FileResponse
@@ -224,3 +225,8 @@ def save_config_api(request):
             msg=f'获取配置文件信息失败！{e}'
         ).to_dict(), safe=False)
 """
+
+
+@router.get('/system', response=CommonResponse, )
+def parse_toml(request):
+    return CommonResponse.success(data=toml.load('db/ptools.toml'))

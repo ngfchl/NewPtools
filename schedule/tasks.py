@@ -154,15 +154,16 @@ def auto_get_status(site_list: List[int] = []):
     total_upload, total_download, increase_info_list = toolbox.today_data()
     increase_list = []
     for increase_info in increase_info_list:
-        increase_list.append(
-            f'\n\n- ♻️站点：{increase_info.get("name")}'
-            f'\n\t\t上传：{toolbox.FileSizeConvert.parse_2_file_size(increase_info.get("uploaded"))}'
-            f' ↕ 下载：{toolbox.FileSizeConvert.parse_2_file_size(increase_info.get("downloaded"))}'
-        )
+        info = f'\n\n- ♻️ 站点：{increase_info.get("name")}'
+        if increase_info.get("uploaded") > 0:
+            info += f'\n\t\t⬆ {toolbox.FileSizeConvert.parse_2_file_size(increase_info.get("uploaded"))}'
+        if increase_info.get("downloaded") > 0:
+            info += f'\n\t\t⬇ {toolbox.FileSizeConvert.parse_2_file_size(increase_info.get("downloaded"))}'
+        increase_list.append(info)
     incremental = f'⬆ 总上传：{toolbox.FileSizeConvert.parse_2_file_size(total_upload)}\n' \
                   f'⬇ 总下载：{toolbox.FileSizeConvert.parse_2_file_size(total_download)}\n' \
-                  f'✔️ 说明: 数据均相较于本站今日之前最近的一条数据，可能并非昨日\n' \
-                  f'数据列表：{"".join(increase_list)}'
+                  f'✔ 说明: 数据均相较于本站今日之前最近的一条数据，可能并非昨日\n' \
+                  f'⚛ 数据列表：{"".join(increase_list)}'
     logger.info(incremental)
     toolbox.send_text(title='通知：今日数据', message=incremental)
     end = time.time()

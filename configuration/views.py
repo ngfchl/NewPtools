@@ -1,4 +1,3 @@
-import json
 import logging
 import os
 import subprocess
@@ -15,7 +14,7 @@ from ninja import Router
 from ninja.responses import codes_4xx
 
 from auxiliary.settings import BASE_DIR
-from configuration.schema import UpdateSchemaOut, UserIn
+from configuration.schema import UpdateSchemaOut, UserIn, SettingsIn
 from monkey.schema import CommonMessage
 from toolbox import views as toolbox
 from toolbox.schema import CommonResponse
@@ -255,16 +254,14 @@ def get_config_api(request, name: str):
 
 
 @router.put('/config', response=CommonResponse, )
-def save_config_api(request):
-    content = json.loads(request.body.decode())
-    logger.info(content.get('settings'))
-    if content.get('name') == 'ptools.toml':
+def save_config_api(request, setting: SettingsIn):
+    if setting.name == 'ptools.toml':
         file_path = os.path.join(BASE_DIR, 'db/ptools.toml')
-    if content.get('name') == 'hosts':
+    if setting.name == 'hosts':
         file_path = os.path.join(BASE_DIR, 'db/hosts')
     try:
         with open(file_path, 'w') as f:
-            f.write(content.get('settings'))
+            f.write(setting.content)
             return CommonResponse.success(msg='配置文件保存成功！')
     except Exception as e:
         # raise

@@ -15,3 +15,8 @@ class UpdateSchemaOut(Schema):
 class UserIn(Schema):
     username: str
     password: str
+
+
+class SettingsIn(Schema):
+    name: str
+    content: str

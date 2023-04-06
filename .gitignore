@@ -1,3 +1,5 @@
 /db/*
 /logs/*
 celerybeat-schedule
+supervisor/supervisord.pid
+supervisor/supervisord.sock

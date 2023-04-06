@@ -34,7 +34,7 @@ def auto_sign_in(site_list: List[int] = []):
     """执行签到"""
     start = time.time()
     logger.info('开始执行签到任务')
-    toolbox.send_text(title='正在签到', message=f'开始执行签到任务，当前时间：{datetime.fromtimestamp(start)}')
+    toolbox.send_text(title='通知：正在签到', message=f'开始执行签到任务，当前时间：{datetime.fromtimestamp(start)}')
     logger.info('筛选需要签到的站点')
     message_list = []
     sign_list = MySite.objects.filter(
@@ -71,7 +71,7 @@ def auto_sign_in(site_list: List[int] = []):
     if len(queryset) <= 0:
         message_list = ['已全部签到或无需签到！ \n\n']
         logger.info(message_list)
-        toolbox.send_text('\n'.join(message_list))
+        toolbox.send_text(title='通知：自动签到', message='\n'.join(message_list))
         return message_list
     results = pool.map(pt_spider.sign_in, queryset)
     logger.info('执行签到任务')
@@ -98,7 +98,7 @@ def auto_sign_in(site_list: List[int] = []):
     message_list.extend(success_message)
     logger.info(message)
     logger.info(message_list)
-    toolbox.send_text('\n'.join(message_list))
+    toolbox.send_text(title='通知：自动签到', message='\n'.join(message_list))
     # 释放内存
     gc.collect()
     return message_list
@@ -142,14 +142,14 @@ def auto_get_status(site_list: List[int] = []):
                 status.my_hr,
             )
             logger.info(message)
-            # toolbox.send_text(title='个人数据更新', message=my_site.nickname + ' 信息更新成功！' + message)
+            # toolbox.send_text(title='通知：个人数据更新', message=my_site.nickname + ' 信息更新成功！' + message)
             success_message.append(f'✅ {my_site.nickname} 信息更新成功！{message}\n\n')
         else:
             print(result)
             message = f'🆘 {my_site.nickname} 信息更新失败！原因：{result.msg}'
             logger.warning(message)
             failed_message.append(f'{message} \n\n')
-            # toolbox.send_text(title='个人数据更新', message=f'{my_site.nickname} 信息更新失败！原因：{message}')
+            # toolbox.send_text(title='通知：个人数据更新', message=f'{my_site.nickname} 信息更新失败！原因：{message}')
     # 发送今日数据
     total_upload, total_download, increase_info_list = toolbox.today_data()
     increase_list = []
@@ -177,7 +177,7 @@ def auto_get_status(site_list: List[int] = []):
     toolbox.send_text(title='通知：更新个人数据', message=''.join(message_list))
     # 释放内存
     gc.collect()
-    return CommonResponse(msg=message_list)
+    return message_list
 
 
 @shared_task

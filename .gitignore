@@ -3,3 +3,4 @@
 celerybeat-schedule
 supervisor/supervisord.pid
 supervisor/supervisord.sock
+.idea/*

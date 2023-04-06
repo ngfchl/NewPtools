@@ -1,3 +1,5 @@
+from typing import Union, Optional
+
 from django_celery_beat.models import PeriodicTask, CrontabSchedule, cronexp
 from ninja import Schema, ModelSchema
 
@@ -42,7 +44,8 @@ class CrontabTaskSchemaIn(Schema):
     id: int
     name: str
     task: str
-    crontab: CrontabSchemaIn
+    enabled: Optional[bool]
+    crontab: Union[CrontabSchemaIn, int]
 
 
 class PeriodicTaskSchemaOut(ModelSchema):

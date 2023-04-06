@@ -82,16 +82,18 @@ def delete_crontab_schedule(request, schedule_id: int):
 @router.put('/schedule', response=CommonResponse, description='修改计划任务')
 def edit_crontab_schedule(request, task: CrontabTaskSchemaIn):
     time_zone = pytz.timezone('Asia/Shanghai')
-    cron_schedule, _ = CrontabSchedule.objects.get_or_create(
-        defaults=task.crontab.dict(),
-        timezone=time_zone,
-        hour=task.crontab.hour,
-        minute=task.crontab.minute,
-    )
     periodic_task = PeriodicTask.objects.get(id=task.id)
-    periodic_task.crontab = cron_schedule
+    if isinstance(task.crontab, dict):
+        cron_schedule, _ = CrontabSchedule.objects.get_or_create(
+            defaults=task.crontab.dict(),
+            timezone=time_zone,
+            hour=task.crontab.hour,
+            minute=task.crontab.minute,
+        )
+        periodic_task.crontab = cron_schedule
     periodic_task.name = task.name
     periodic_task.task = task.task
+    periodic_task.enabled = task.enabled
     periodic_task.save()
     logger.info(periodic_task)
     return CommonResponse.success(msg=f'{periodic_task.name} 任务修改成功!')

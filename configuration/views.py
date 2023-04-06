@@ -188,10 +188,11 @@ def download_log_file(request, file_name: str):
         return CommonResponse.error(msg=f'文件不存在？！{e}')
 
 
-@router.get('/shell/{command}', description='执行简易终端命令')
+@router.get('/shell', description='执行简易终端命令')
 def exec_shell_command(request, command: str):
+    logger.info(f'当前命令：{command}')
     p = subprocess.getoutput(command)
-    logger.info(p)
+    logger.info(f'命令执行结果：{p}')
     return CommonResponse.success(data=p)
 
 

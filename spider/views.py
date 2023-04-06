@@ -951,7 +951,7 @@ class PtSpider:
             mail_list = []
             message_list = ''
             if mail_count > 0:
-                print(f'{site.name} 站点消息')
+                logger.info(f'{site.name} 站点消息')
                 if site.url in [
                     'https://hdchina.org/',
                     'https://hudbt.hust.edu.cn/',
@@ -1003,7 +1003,7 @@ class PtSpider:
                 notice_list = []
                 message_list = ''
                 if notice_count > 0:
-                    print(f'{site.name} 站点公告')
+                    logger.info(f'{site.name} 站点公告')
                     if site.url in [
                         'https://hdchina.org/',
                         'https://hudbt.hust.edu.cn/',
@@ -1029,7 +1029,7 @@ class PtSpider:
                     notice_list = [notice.xpath("string(.)", encoding="utf-8").strip("\n").strip("\r").strip()
                                    for notice in notice_list]
                     logger.info(f'公告信息：{notice_list}')
-                    print(content_list)
+                    logger.info(content_list)
                     if len(content_list) > 0:
                         content_list = [
                             content.xpath("string(.)").replace("\r\n\r\n", "  \n> ").strip()
@@ -1042,7 +1042,7 @@ class PtSpider:
                     # notice = '  \n\n### '.join(notice_list[:notice_count])
                     notice = ''.join(notice_list[:1])
                     message_list += f'# 公告  \n## {notice}'
-                    title = f'{site.name} 有{len(notice_list)}条新公告，请注意及时查收！'
+                    title = f'{site.name} 有{notice_count}条新公告，请注意及时查收！'
                     toolbox.send_text(title=title, message=message_list)
 
     def get_userinfo_html(self, my_site: MySite, headers: dict):
@@ -1884,7 +1884,7 @@ class PtSpider:
                     # logger.info(f'种子页面：{response.text}')
                     # logger.info(trs)
                     logger.info(len(trs))
-                    print('=' * 50)
+                    logger.info('=' * 50)
                     for tr in trs:
                         logger.info(tr)
                         # logger.info(etree.tostring(tr))

@@ -254,7 +254,7 @@ def get_config_api(request, name: str):
         return CommonResponse.error(msg='获取配置文件信息失败！')
 
 
-@router.post('/config', response=CommonResponse, )
+@router.put('/config', response=CommonResponse, )
 def save_config_api(request):
     content = json.loads(request.body.decode())
     logger.info(content.get('settings'))

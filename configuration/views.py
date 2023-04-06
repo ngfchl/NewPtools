@@ -1,3 +1,4 @@
+import json
 import logging
 import os
 import subprocess
@@ -9,7 +10,7 @@ import jwt
 import toml
 from django.conf import settings
 from django.contrib import auth
-from django.http import FileResponse
+from django.http import FileResponse, HttpResponse
 from ninja import Router
 from ninja.responses import codes_4xx
 
@@ -231,3 +232,40 @@ def save_config_api(request):
 @router.get('/system', response=CommonResponse, )
 def parse_toml(request):
     return CommonResponse.success(data=toml.load('db/ptools.toml'))
+
+
+@router.get('/config', response=CommonResponse, )
+def get_config_api(request, name: str):
+    try:
+        if name == 'ptools.toml':
+            file_path = os.path.join(BASE_DIR, 'db/ptools.toml')
+            if not os.path.exists(file_path):
+                subprocess.getoutput('touch db/ptools.toml')
+                logger.info(f'配置文件生成成功!')
+        if name == 'hosts':
+            file_path = os.path.join(BASE_DIR, 'db/hosts')
+            if not os.path.exists(file_path):
+                subprocess.getoutput('touch db/hosts')
+        with open(file_path, 'rb') as f:
+            response = HttpResponse(f)
+            logger.info(response)
+            return CommonResponse.success(data=response.content.decode('utf8'))
+    except Exception as e:
+        return CommonResponse.error(msg='获取配置文件信息失败！')
+
+
+@router.post('/config', response=CommonResponse, )
+def save_config_api(request):
+    content = json.loads(request.body.decode())
+    logger.info(content.get('settings'))
+    if content.get('name') == 'ptools.toml':
+        file_path = os.path.join(BASE_DIR, 'db/ptools.toml')
+    if content.get('name') == 'hosts':
+        file_path = os.path.join(BASE_DIR, 'db/hosts')
+    try:
+        with open(file_path, 'w') as f:
+            f.write(content.get('settings'))
+            return CommonResponse.success(msg='配置文件保存成功！')
+    except Exception as e:
+        # raise
+        return CommonResponse.error(msg=f'获取配置文件信息失败！{e}')

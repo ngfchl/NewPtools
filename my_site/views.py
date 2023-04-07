@@ -122,8 +122,19 @@ def get_newest_status(request, my_site: MySiteDoSchemaIn):
         status = SiteStatus.objects.filter(site=my_site).order_by('-created_at').first()
         sign = SignIn.objects.filter(site=my_site, created_at__date=datetime.today().date()).first()
         level = UserLevelRule.objects.filter(site_id=my_site.site, level=status.my_level).first() if status else None
-        next_level = UserLevelRule.objects.filter(site_id=my_site.site,
-                                                  level_id=level.id + 1).first() if level else None
+        if level and level.level != 0:
+            next_level = UserLevelRule.objects.filter(
+                site_id=my_site.site,
+                level_id=level.level_id + 1
+            ).first() if level else None
+            levels = UserLevelRule.objects.filter(
+                site_id=my_site.site,
+                level_id__lte=level.level_id,
+                level_id__gt=0,
+            ) if level else None
+            if levels is not None and len(levels) > 0:
+                rights = [l.rights for l in levels]
+                level.rights = '||'.join(rights)
         info = {
             'my_site': my_site,
             'site': WebSite.objects.filter(id=my_site.site).first(),
@@ -154,7 +165,15 @@ def get_newest_status_list(request):
         status = status_list.filter(site=my_site).first()
         sign = sign_list.filter(site=my_site, created_at__date=datetime.today().date()).first()
         level = level_list.filter(site_id=my_site.site, level=status.my_level).first() if status else None
-        next_level = level_list.filter(site_id=my_site.site, level_id=level.id + 1).first() if level else None
+        if level and level.level != 0:
+            next_level = level_list.filter(site_id=my_site.site, level_id=level.level_id + 1).first() if level else None
+            levels = level_list.filter(
+                site_id=my_site.site, level_id__lte=level.level_id,
+                level_id__gt=0) if level else None
+            if levels and len(levels) > 0:
+                logger.info(len(levels))
+                rights = [l.rights for l in levels]
+                level.rights = '||'.join(rights)
         info = {
             'my_site': my_site,
             'site': site_list.filter(id=my_site.site).first(),

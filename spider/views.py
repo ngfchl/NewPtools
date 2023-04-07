@@ -1780,7 +1780,10 @@ class PtSpider:
                 if 'zhuque.in' in site.url:
                     # 获取朱雀时魔
                     bonus_hour = response.json().get('data').get('E')
-                elif 'greatposterwall' in site.url:
+                elif site.url in [
+                    'https://greatposterwall.com/',
+                    'https://dicmusic.club/'
+                ]:
                     # 获取朱雀时魔
                     bonus_hour = response.json().get('response').get('userstats').get('seedingBonusPointsPerHour')
                 else:
@@ -1796,7 +1799,7 @@ class PtSpider:
                 site=my_site,
                 created_at__date__gte=datetime.today(),
                 defaults={
-                    'bonus_hour': bonus_hour,
+                    'bonus_hour': bonus_hour if bonus_hour else 0,
                 })
             return CommonResponse.success(data=bonus_hour)
         except Exception as e:

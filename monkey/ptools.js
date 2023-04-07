@@ -77,6 +77,7 @@
 // @match        https://cyanbug.net/*
 // @match        https://ptsbao.club/*
 // @match        https://greatposterwall.com/*
+// @match        https://dicmusic.club/*
 // @match        https://gainbound.net/*
 // @match        http://hdzone.me/*
 // @match        https://www.pttime.org/*

@@ -314,7 +314,7 @@ class UserLevelRule(BaseEntity):
     seeding_delta = models.FloatField(verbose_name='做种时间', help_text='累计做种时间', default=0)
     keep_account = models.BooleanField(verbose_name='保 号', default=False)
     graduation = models.BooleanField(verbose_name='毕 业', default=False)
-    rights = models.TextField(verbose_name='权 利', max_length=256, help_text='当前等级所享有的权利与义务',
+    rights = models.TextField(verbose_name='权 利', help_text='当前等级所享有的权利与义务',
                               default='无')
 
     def __str__(self):

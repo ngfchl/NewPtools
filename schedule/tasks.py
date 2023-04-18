@@ -91,14 +91,15 @@ def auto_sign_in(site_list: List[int] = []):
     end = time.time()
     message = f'当前时间：{datetime.fromtimestamp(end)},' \
               f'本次签到任务执行完毕，共有{len(queryset)}站点需要签到，成功签到{len(success_message)}个站点，' \
-              f'失败{len(failed_message)}个站点，耗费时间：{round(end - start, 2)}'
+              f'失败{len(failed_message)}个站点，耗费时间：{round(end - start, 2)} \n'
     message_list.append(message)
     message_list.extend(failed_message)
     message_list.append('*' * 20)
-    message_list.extend(success_message)
+    # message_list.extend(success_message)
     logger.info(message)
-    logger.info(message_list)
+    logger.info(len(message_list))
     toolbox.send_text(title='通知：自动签到', message='\n'.join(message_list))
+    toolbox.send_text(title='通知：自动签到-成功', message='\n'.join(message_list))
     # 释放内存
     gc.collect()
     return message_list
@@ -167,15 +168,16 @@ def auto_get_status(site_list: List[int] = []):
     logger.info(incremental)
     toolbox.send_text(title='通知：今日数据', message=incremental)
     end = time.time()
-    consuming = f'> <font color="blue">自动更新个人数据 任务运行成功！' \
+    consuming = f'自动更新个人数据 任务运行成功！' \
                 f'共计成功 {len(success_message)} 个站点，失败 {len(failed_message)} 个站点，' \
-                f'耗时：{end - start} 完成时间：{time.strftime("%Y-%m-%d %H:%M:%S")}  </font>  \n'
-    logger.info(message_list + consuming)
+                f'耗时：{round(end - start, 2)} 完成时间：{time.strftime("%Y-%m-%d %H:%M:%S")}  \n'
     message_list.append(consuming)
+    logger.info(message_list)
     message_list.extend(failed_message)
     message_list.append('*' * 20)
-    message_list.extend(success_message)
-    toolbox.send_text(title='通知：更新个人数据', message=''.join(message_list))
+    # message_list.extend(success_message)
+    toolbox.send_text(title='通知：更新个人数据', message='\n'.join(message_list))
+    toolbox.send_text(title='通知：更新个人数据-成功', message='\n'.join(success_message))
     # 释放内存
     gc.collect()
     return message_list

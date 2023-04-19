@@ -1107,11 +1107,11 @@ class PtSpider:
             # expires = [cookie for cookie in session.cookies if not cookie.expires]
             logger.info(f'请求中的cookie: {user_detail_res.cookies}')
 
-            for key, value in user_detail_res.cookies.get_dict().items():
-                cookies += f'{key}={value};'
+            # for key, value in user_detail_res.cookies.get_dict().items():
+            #     cookies += f'{key}={value};'
             # my_site.expires = datetime.now() + timedelta(minutes=30)
-            my_site.cookie = cookies
-            my_site.save()
+            # my_site.cookie = cookies
+            # my_site.save()
         self.parse_userinfo_html(my_site=my_site, details_html=details_html)
         return CommonResponse.success(data=details_html)
 

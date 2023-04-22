@@ -3,7 +3,6 @@ import json
 import logging
 import time
 import traceback
-from datetime import datetime
 from typing import List
 
 import qbittorrentapi
@@ -182,47 +181,9 @@ def get_downloading(request, downloader_id: int):
             torrent_list = main_data.get('torrents')
             torrents = []
             for index, torrent in torrent_list.items():
-                # logger.info(type(torrent))
-                # logger.info(torrent)
-                # torrent = json.loads(torrent)
-                # 时间处理
-                # 添加于
-                torrent['added_on'] = datetime.fromtimestamp(torrent.get('added_on')).strftime(
-                    '%Y年%m月%d日%H:%M:%S'
-                )
-
-                torrent['completion_on'] = datetime.fromtimestamp(torrent.get('completion_on')).strftime(
-                    '%Y年%m月%d日%H:%M:%S' if torrent.get('downloaded') > 0 else ''
-                )
-                # 最后活动于
-                torrent['last_activity'] = time.time() - torrent.get('last_activity')
-                # 做种时间
-                # seeding_time = str(timedelta(seconds=torrent.get('seeding_time')))
-                # torrent['seeding_time'] = seeding_time.replace('days,', '天').replace(
-                #     'day,', '天'
-                # ).replace(':', '小时', 1).replace(':', '分', 1).split('.')[0] + '秒'
-                # 大小与速度处理
-                # torrent['state'] = TorrentBaseInfo.download_state.get(torrent.get('state'))
-
-                # torrent['ratio'] = torrent.get('ratio') if torrent['ratio'] >= 0.0001 else 0
-                # torrent['progress'] = torrent.get('progress') if float(torrent['progress']) < 1 else 1
-                # torrent['uploaded'] = '' if torrent['uploaded'] == 0 else torrent['uploaded']
-                # torrent['upspeed'] = '' if torrent['upspeed'] == 0 else torrent['upspeed']
-                # torrent['dlspeed'] = '' if torrent['dlspeed'] == 0 else torrent['dlspeed']
-                properties = qb_client.torrents_properties(torrent_hash=index)
-                if properties.get('peers') > 0:
-                    torrent['peerList'] = list(qb_client.sync_torrent_peers(torrent_hash=index).get('peers').values())
-                torrent.update(properties)
-                trackers = qb_client.torrents_trackers(torrent_hash=index)
-                torrent['trackers'] = [tracker for tracker in trackers if tracker['url'] == torrent['tracker']]
-                if not torrent.get('trackers'):
-                    torrent['trackers'].append({
-                        'status': 3,
-                        'url': torrent.get('tracker'),
-                    })
                 torrent['hash'] = index
+                get_torrent_trackers(qb_client, torrent)
                 torrents.append(torrent)
-
             logger.info('当前下载器共有种子：{}个'.format(len(torrents)))
             main_data['torrents'] = torrents
             main_data['categories'] = list(main_data['categories'].values())
@@ -235,6 +196,38 @@ def get_downloading(request, downloader_id: int):
         return JsonResponse(CommonResponse.error(
             msg='连接下载器出错咯！'
         ).to_dict(), safe=False)
+
+
+@router.get('/downloaders/torrent/props', response=CommonResponse, description='当前种子属性')
+def get_torrent_properties_api(request, downloader_id: int, torrent_hash: str):
+    qb_client, category = get_downloader_instance(downloader_id)
+    try:
+        qb_client.auth_log_in()
+        torrent = qb_client.torrents.info(torrent_hashes=torrent_hash)
+        properties = get_torrent_properties(qb_client, torrent_hash)
+        torrent[0].update(properties)
+        return CommonResponse.success(data=torrent[0])
+    except Exception as e:
+        logger.error(traceback.format_exc(limit=3))
+        return JsonResponse(CommonResponse.error(
+            msg='连接下载器出错咯！'
+        ).to_dict(), safe=False)
+
+
+def get_torrent_properties(client, torrent_hash):
+    properties = client.torrents_properties(torrent_hash=torrent_hash)
+    if properties.get('peers') > 0:
+        properties.update(
+            {'peerList': list(client.sync_torrent_peers(torrent_hash=torrent_hash).get('peers').values())})
+    return properties
+
+
+def get_torrent_trackers(client, torrent):
+    trackers = client.torrents_trackers(torrent_hash=torrent.get('hash'))
+    trackers = [tracker for tracker in trackers if tracker['url'] == torrent['tracker']]
+    torrent['trackers'] = []
+    torrent['trackers'].append({'status': 3, 'url': torrent.get('tracker')}) if len(trackers) <= 0 else torrent[
+        'trackers'].extend(trackers)
 
 
 @router.get('/categories/{downloader_id}',

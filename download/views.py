@@ -206,6 +206,7 @@ def get_torrent_properties_api(request, downloader_id: int, torrent_hash: str):
         torrent = qb_client.torrents.info(torrent_hashes=torrent_hash)
         properties = get_torrent_properties(qb_client, torrent_hash)
         torrent[0].update(properties)
+        get_torrent_trackers(qb_client, torrent[0])
         return CommonResponse.success(data=torrent[0])
     except Exception as e:
         logger.error(traceback.format_exc(limit=3))

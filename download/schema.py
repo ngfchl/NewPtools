@@ -1,3 +1,5 @@
+from typing import List
+
 from ninja import ModelSchema, Schema
 
 from download.models import Downloader
@@ -39,7 +41,7 @@ class CategorySchema(Schema):
 
 class ControlTorrentCommandIn(Schema):
     """接收QB控制指令"""
-    ids: str
+    ids: List[str]
     command: str
     delete_files: bool
     category: str

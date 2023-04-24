@@ -77,6 +77,7 @@ def get_downloader_instance(downloader_id):
                 'timeout': (3.1, 30)
             }
         )
+        client.auth_log_in()
     else:
         client = transmission_rpc.Client(
             host=downloader.host, port=downloader.port,
@@ -90,7 +91,6 @@ def get_downloader_speed(request):
     downloader_list = Downloader.objects.filter(enable=True).all()
     info_list = []
     for downloader in downloader_list:
-
         try:
             client, _ = get_downloader_instance(downloader.id)
             if downloader.category == DownloaderCategory.qBittorrent:
@@ -170,7 +170,7 @@ def get_downloading(request, downloader_id: int):
     qb_client, category = get_downloader_instance(downloader_id)
     try:
         if category == DownloaderCategory.qBittorrent:
-            qb_client.auth_log_in()
+            # qb_client.auth_log_in()
             # transfer = qb_client.transfer_info()
             # torrents = qb_client.torrents_info()
             main_data = qb_client.sync_maindata()
@@ -202,7 +202,7 @@ def get_downloading(request, downloader_id: int):
 def get_torrent_properties_api(request, downloader_id: int, torrent_hash: str):
     qb_client, category = get_downloader_instance(downloader_id)
     try:
-        qb_client.auth_log_in()
+        # qb_client.auth_log_in()
         torrent = qb_client.torrents.info(torrent_hashes=torrent_hash)
         properties = get_torrent_properties(qb_client, torrent_hash)
         torrent[0].update(properties)
@@ -238,7 +238,7 @@ def get_downloader_categories(request, downloader_id: int):
     client, category = get_downloader_instance(downloader_id)
     try:
         if category == DownloaderCategory.qBittorrent:
-            client.auth_log_in()
+            # client.auth_log_in()
             categories = [index for index, value in client.torrents_categories().items()]
             return categories
         if category == DownloaderCategory.Transmission:
@@ -249,35 +249,37 @@ def get_downloader_categories(request, downloader_id: int):
         return 404, {'msg': f'下载器分类/下载路径获取失败: {e}', 'code': -1}
 
 
-@router.post('/control/{downloader_id}', response=CommonMessage, description='操作种子')
-def control_torrent(request, downloader_id: int, control_command: ControlTorrentCommandIn):
+@router.post('/control', response=CommonResponse, description='操作种子')
+def control_torrent(request, control_command: ControlTorrentCommandIn):
+    # if control_command.downloader_id > 0:
+    #     return CommonResponse.success(msg=str(control_command.dict()))
     ids = control_command.ids
     command = control_command.command
     delete_files = control_command.delete_files
     category = control_command.category
     enable = control_command.enable
-    client, downloader_category = get_downloader_instance(downloader_id)
+    client, downloader_category = get_downloader_instance(control_command.downloader_id)
     try:
         if downloader_category == DownloaderCategory.qBittorrent:
-            client.auth_log_in()
+            # client.auth_log_in()
             # qb_client.torrents.resume()
             # 根据指令字符串定位函数
             command_exec = getattr(client.torrents, command)
             logger.info(command_exec)
             command_exec(
-                torrent_hashes=ids.split(','),
+                torrent_hashes=ids,
                 category=category,
                 delete_files=delete_files,
                 enable=enable, )
             # 延缓2秒等待操作生效
-            time.sleep(2)
-            return 200, {'msg': f'指令发送成功！', 'code': 0}
+            time.sleep(1.5)
+            return CommonResponse.success(msg=f'指令发送成功!')
         if downloader_category == DownloaderCategory.Transmission:
             # return 200, {'msg': f'指令发送成功！', 'code': 0}
-            return 501, {'msg': f'TR下载器控制尚未开发完毕！', 'code': -1}
+            return CommonResponse.error(msg=f'TR下载器控制尚未开发完毕!')
     except Exception as e:
         logger.warning(e)
-        return 500, {'msg': f'执行指令失败： {e}', 'code': -1}
+        return CommonResponse.error(msg=f'执行指令失败!')
 
 
 def get_hashes():

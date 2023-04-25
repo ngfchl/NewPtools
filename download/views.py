@@ -227,7 +227,7 @@ def get_torrent_trackers(client, torrent):
     trackers = client.torrents_trackers(torrent_hash=torrent.get('hash'))
     trackers = [tracker for tracker in trackers if tracker['url'] == torrent['tracker']]
     torrent['trackers'] = []
-    torrent['trackers'].append({'status': 3, 'url': torrent.get('tracker')}) if len(trackers) <= 0 else torrent[
+    torrent['trackers'].append({'status': 1, 'url': torrent.get('tracker')}) if len(trackers) <= 0 else torrent[
         'trackers'].extend(trackers)
 
 

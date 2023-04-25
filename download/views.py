@@ -3,7 +3,6 @@ import json
 import logging
 import time
 import traceback
-from typing import List
 
 import qbittorrentapi
 import requests
@@ -204,7 +203,7 @@ def get_torrent_properties_api(request, downloader_id: int, torrent_hash: str):
     try:
         # qb_client.auth_log_in()
         torrent = qb_client.torrents.info(torrent_hashes=torrent_hash)
-        properties = get_torrent_properties(qb_client, torrent_hash)
+        properties = qb_client.torrents_properties(torrent_hash=torrent_hash)
         torrent[0].update(properties)
         get_torrent_trackers(qb_client, torrent[0])
         return CommonResponse.success(data=torrent[0])

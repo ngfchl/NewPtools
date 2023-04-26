@@ -10,11 +10,9 @@ import transmission_rpc
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404
 from ninja import Router
-from ninja.responses import codes_4xx
 
 from auxiliary.base import DownloaderCategory
 from download.schema import *
-from monkey.schema import CommonMessage
 from toolbox.schema import CommonResponse
 
 # Create your views here.
@@ -164,7 +162,7 @@ def get_downloader_speed(request):
 
 
 @router.get('/downloaders/downloading', response=CommonResponse, description='当前种子')
-def get_downloading(request, downloader_id: int):
+def get_downloading(request, downloader_id: int, prop: bool = False):
     logger.info('当前下载器id：{}'.format(downloader_id))
     qb_client, category = get_downloader_instance(downloader_id)
     try:
@@ -181,7 +179,14 @@ def get_downloading(request, downloader_id: int):
             torrents = []
             for index, torrent in torrent_list.items():
                 torrent['hash'] = index
-                get_torrent_trackers(qb_client, torrent)
+                if prop:
+                    trackers = qb_client.torrents_trackers(torrent_hash=index)
+                    if torrent['tracker']:
+                        trackers = [tracker for tracker in trackers if tracker['url'] == torrent['tracker']]
+                    torrent['trackers'] = trackers if len(trackers) > 0 else [{
+                        'status': 1,
+                        'url': torrent.get('tracker')
+                    }]
                 torrents.append(torrent)
             logger.info('当前下载器共有种子：{}个'.format(len(torrents)))
             main_data['torrents'] = torrents
@@ -202,11 +207,14 @@ def get_torrent_properties_api(request, downloader_id: int, torrent_hash: str):
     qb_client, category = get_downloader_instance(downloader_id)
     try:
         # qb_client.auth_log_in()
-        torrent = qb_client.torrents.info(torrent_hashes=torrent_hash)
+        torrent_list = qb_client.torrents.info(torrent_hashes=torrent_hash)
+        torrent = torrent_list[0]
         properties = qb_client.torrents_properties(torrent_hash=torrent_hash)
-        torrent[0].update(properties)
-        get_torrent_trackers(qb_client, torrent[0])
-        return CommonResponse.success(data=torrent[0])
+        files = qb_client.torrents_files(torrent_hash=torrent_hash)
+        torrent.update(properties)
+        torrent['files'] = qb_client.torrents_files(torrent_hash=torrent_hash)
+        get_torrent_trackers(qb_client, torrent)
+        return CommonResponse.success(data=torrent)
     except Exception as e:
         logger.error(traceback.format_exc(limit=3))
         return JsonResponse(CommonResponse.error(
@@ -230,8 +238,8 @@ def get_torrent_trackers(client, torrent):
         'trackers'].extend(trackers)
 
 
-@router.get('/categories/{downloader_id}',
-            response={200: List[CategorySchema], codes_4xx: CommonMessage},
+@router.get('/categories',
+            response=CommonResponse[List[str]],
             description='获取下载器分类（QB）、常用文件夹（TR）')
 def get_downloader_categories(request, downloader_id: int):
     client, category = get_downloader_instance(downloader_id)
@@ -245,7 +253,7 @@ def get_downloader_categories(request, downloader_id: int):
     except Exception as e:
         logger.warning(e)
         # raise
-        return 404, {'msg': f'下载器分类/下载路径获取失败: {e}', 'code': -1}
+        return {'msg': f'下载器分类/下载路径获取失败: {e}', 'code': -1}
 
 
 @router.post('/control', response=CommonResponse, description='操作种子')
@@ -263,13 +271,16 @@ def control_torrent(request, control_command: ControlTorrentCommandIn):
             # client.auth_log_in()
             # qb_client.torrents.resume()
             # 根据指令字符串定位函数
-            command_exec = getattr(client.torrents, command)
-            logger.info(command_exec)
-            command_exec(
-                torrent_hashes=ids,
-                category=category,
-                delete_files=delete_files,
-                enable=enable, )
+            if command == 'removeCategories':
+                client.torrents_removeCategories('')
+            else:
+                command_exec = getattr(client.torrents, command)
+                logger.info(command_exec)
+                command_exec(
+                    torrent_hashes=ids,
+                    category=category,
+                    delete_files=delete_files,
+                    enable=enable, )
             # 延缓2秒等待操作生效
             time.sleep(1.5)
             return CommonResponse.success(msg=f'指令发送成功!')
@@ -277,7 +288,7 @@ def control_torrent(request, control_command: ControlTorrentCommandIn):
             # return 200, {'msg': f'指令发送成功！', 'code': 0}
             return CommonResponse.error(msg=f'TR下载器控制尚未开发完毕!')
     except Exception as e:
-        logger.warning(e)
+        logger.warning(traceback.format_exc(3))
         return CommonResponse.error(msg=f'执行指令失败!')
 
 

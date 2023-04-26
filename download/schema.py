@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Optional
 
 from ninja import ModelSchema, Schema
 
@@ -44,6 +44,6 @@ class ControlTorrentCommandIn(Schema):
     ids: List[str]
     command: str
     delete_files: bool
-    category: str
+    category: Optional[str]
     enable: bool
     downloader_id: int

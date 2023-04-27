@@ -1,4 +1,4 @@
-from typing import List, Optional
+from typing import List, Optional, Union
 
 from ninja import ModelSchema, Schema
 
@@ -48,3 +48,19 @@ class ControlTorrentCommandIn(Schema):
     category: Optional[str]
     enable: bool
     downloader_id: int
+
+
+class NewTorrent(Schema):
+    urls: Optional[Union[str, List[str]]]
+    cookie: Optional[str] = ''
+    category: Optional[str] = ''
+    is_paused: bool = False
+    upload_limit: Optional[int] = 0
+    download_limit: Optional[int] = 0
+    is_skip_checking: bool = False
+    use_auto_torrent_management: bool = True
+
+
+class AddTorrentCommandIn(Schema):
+    downloader_id: int
+    new_torrent: NewTorrent

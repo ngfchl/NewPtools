@@ -3,7 +3,6 @@ import json
 import logging
 import time
 import traceback
-from typing import Union
 
 import qbittorrentapi
 import requests
@@ -178,7 +177,6 @@ def get_downloader_speed_list(request, downloader_id: Optional[int] = 0):
 @router.get('/downloaders/downloading', response=CommonResponse, description='当前种子')
 def get_downloading(request, downloader_id: int, prop: bool = False, torrent_hashes: str = ''):
     logger.info('当前下载器id：{}'.format(downloader_id))
-    print(torrent_hashes)
     qb_client, category = get_downloader_instance(downloader_id)
     try:
         if category == DownloaderCategory.qBittorrent:
@@ -299,6 +297,42 @@ def control_torrent(request, control_command: ControlTorrentCommandIn):
     except Exception as e:
         logger.warning(traceback.format_exc(3))
         return CommonResponse.error(msg=f'执行指令失败!')
+
+
+@router.post('/add_torrent', response=CommonResponse, description='添加种子')
+def add_torrent(request, new_torrent: AddTorrentCommandIn):
+    client, downloader_category = get_downloader_instance(new_torrent.downloader_id)
+    torrent = new_torrent.new_torrent
+    try:
+        if downloader_category == DownloaderCategory.qBittorrent:
+            res = client.torrents.add(
+                urls=torrent.urls,
+                category=torrent.category,
+                is_skip_checking=torrent.is_skip_checking,
+                is_paused=torrent.is_paused,
+                upload_limit=torrent.upload_limit,
+                download_limit=torrent.download_limit,
+                use_auto_torrent_management=torrent.use_auto_torrent_management,
+                cookie=torrent.cookie
+            )
+            if res == 'Ok.':
+                return CommonResponse.success(msg=f'种子已添加，请检查下载器！{res}')
+            return CommonResponse.error(msg=f'种子添加失败！{res}')
+        if downloader_category == DownloaderCategory.Transmission:
+            res = client.add_torrent(
+                torrent=torrent.urls,
+                # download_dir=torrent.category,
+                paused=torrent.is_paused,
+                cookies=torrent.cookie
+            )
+            print(type(res))
+            print(not res.hashString)
+            if res.hashString and len(res.hashString) >= 0:
+                return CommonResponse.success(msg=f'种子已添加，请检查下载器！{res.name}')
+            return CommonResponse.error(msg=f'种子添加失败！')
+    except Exception as e:
+        logger.info(traceback.format_exc(3))
+        return CommonResponse.error(msg='添加失败！')
 
 
 def get_hashes():

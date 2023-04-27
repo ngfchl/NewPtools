@@ -3,6 +3,7 @@ import json
 import logging
 import time
 import traceback
+from typing import Optional
 
 import qbittorrentapi
 import requests
@@ -156,7 +157,7 @@ def get_downloader_speed(downloader):
         }
 
 
-@router.get('/downloaders/speed', response=CommonResponse[Union[List[TransferSchemaOut], TransferSchemaOut]],
+@router.get('/downloaders/speed', response=CommonResponse[Union[List[TransferSchemaOut], TransferSchemaOut, None]],
             description='实时上传下载')
 def get_downloader_speed_list(request, downloader_id: Optional[int] = 0):
     if downloader_id == 0:
@@ -246,7 +247,7 @@ def get_torrent_trackers(client, torrent):
 
 
 @router.get('downloaders/categories',
-            response=CommonResponse[List[CategorySchema]],
+            response=CommonResponse[List[Optional[CategorySchema]]],
             description='获取下载器分类（QB）、常用文件夹（TR）')
 def get_downloader_categories(request, downloader_id: int):
     client, category = get_downloader_instance(downloader_id)
@@ -256,7 +257,15 @@ def get_downloader_categories(request, downloader_id: int):
             categories = [category for category in client.torrents_categories().values()]
             return CommonResponse.success(data=categories)
         if category == DownloaderCategory.Transmission:
-            pass
+            torrents = client.get_torrents(arguments=['id', 'name', 'downloadDir'])
+            save_paths = set()
+            for torrent in torrents:
+                save_paths.add(torrent.fields.get('downloadDir'))
+            categories = [{
+                'name': download_dir.rstrip('/').split('/')[-1],
+                'savePath': download_dir
+            } for download_dir in list(save_paths)]
+            return CommonResponse.success(data=categories)
     except Exception as e:
         logger.warning(e)
         # raise

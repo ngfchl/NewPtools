@@ -36,7 +36,8 @@ class DownloaderSchemaIn(ModelSchema):
 
 class CategorySchema(Schema):
     """返回下载器分类/下载路径"""
-    category: str
+    name: str
+    savePath: str
 
 
 class ControlTorrentCommandIn(Schema):

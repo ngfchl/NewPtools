@@ -15,6 +15,7 @@ class DownloaderSchemaOut(ModelSchema):
 
 class TransferSchemaOut(Schema):
     connection_status: bool
+    free_space_on_disk: int
     # dht_nodes: int
     dl_info_data: int
     dl_info_speed: int

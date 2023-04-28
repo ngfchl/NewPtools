@@ -96,7 +96,8 @@ def get_downloader_speed(downloader):
             info.update({
                 'category': downloader.category,
                 'name': downloader.name,
-                'connection_status': True if info.get('connection_status') == 'connected' else False
+                'connection_status': True if info.get('connection_status') == 'connected' else False,
+                'free_space_on_disk': client.sync_maindata().get('server_state').get('free_space_on_disk')
             })
             return info
         elif downloader.category == DownloaderCategory.Transmission:
@@ -125,6 +126,7 @@ def get_downloader_speed(downloader):
             """
             return {
                 'connection_status': True,
+                'free_space_on_disk': client.raw_session.get('download-dir-free-space'),
                 # 'dht_nodes': 0,
                 'dl_info_data': base_info.get('cumulative-stats').get('downloadedBytes'),
                 'dl_info_speed': base_info.get('downloadSpeed'),
@@ -140,6 +142,7 @@ def get_downloader_speed(downloader):
                 'category': downloader.category,
                 'name': downloader.name,
                 'connection_status': False,
+                'free_space_on_disk': 0,
                 'dl_info_data': 0,
                 'dl_info_speed': 0,
                 'up_info_data': 0,
@@ -149,6 +152,7 @@ def get_downloader_speed(downloader):
         return {
             'category': downloader.category,
             'name': downloader.name,
+            'free_space_on_disk': 0,
             'connection_status': False,
             'dl_info_data': 0,
             'dl_info_speed': 0,
@@ -178,7 +182,7 @@ def get_downloader_speed_list(request, downloader_id: Optional[int] = 0):
 @router.get('/downloaders/downloading', response=CommonResponse, description='当前种子')
 def get_downloading(request, downloader_id: int, prop: bool = False, torrent_hashes: str = ''):
     logger.info('当前下载器id：{}'.format(downloader_id))
-    qb_client, category = get_downloader_instance(downloader_id)
+    client, category = get_downloader_instance(downloader_id)
     try:
         if category == DownloaderCategory.qBittorrent:
             # qb_client.auth_log_in()
@@ -188,11 +192,11 @@ def get_downloading(request, downloader_id: int, prop: bool = False, torrent_has
             # del main_data['tags']
             # del main_data['rid']
             # del main_data['full_update']
-            torrent_list = qb_client.torrents_info(torrent_hashes=torrent_hashes)
+            torrent_list = client.torrents_info(torrent_hashes=torrent_hashes)
             torrents = []
             for torrent in torrent_list:
                 if prop:
-                    trackers = qb_client.torrents_trackers(torrent_hash=torrent.get('hash'))
+                    trackers = client.torrents_trackers(torrent_hash=torrent.get('hash'))
                     trackers = [tracker for tracker in trackers if torrent.get('tracker') and
                                 tracker.get('status') > 0 and tracker.get('url') == torrent.get('tracker')]
                     torrent['trackers'] = trackers if len(trackers) > 0 else [{
@@ -202,7 +206,13 @@ def get_downloading(request, downloader_id: int, prop: bool = False, torrent_has
             logger.info('当前获取种子信息：{}条'.format(len(torrents)))
             return CommonResponse.success(data=torrents)
         else:
-            return CommonResponse.error(msg='尚未支持Tr下载器')
+            torrents = client.get_torrents()
+            torrent_list = []
+            for torrent in torrents:
+                torrent = torrent.fields
+                torrent['hash'] = torrent.get('hashString')
+                torrent_list.append(torrent)
+            return CommonResponse.success(data=torrent_list)
     except Exception as e:
         logger.error(traceback.format_exc(limit=3))
         return JsonResponse(CommonResponse.error(
@@ -212,17 +222,23 @@ def get_downloading(request, downloader_id: int, prop: bool = False, torrent_has
 
 @router.get('/downloaders/torrent/props', response=CommonResponse, description='当前种子属性')
 def get_torrent_properties_api(request, downloader_id: int, torrent_hash: str):
-    qb_client, category = get_downloader_instance(downloader_id)
+    client, category = get_downloader_instance(downloader_id)
     try:
-        # qb_client.auth_log_in()
-        torrent_list = qb_client.torrents.info(torrent_hashes=torrent_hash)
-        torrent = torrent_list[0]
-        properties = qb_client.torrents_properties(torrent_hash=torrent_hash)
-        files = qb_client.torrents_files(torrent_hash=torrent_hash)
-        torrent.update(properties)
-        torrent['files'] = qb_client.torrents_files(torrent_hash=torrent_hash)
-        get_torrent_trackers(qb_client, torrent)
-        return CommonResponse.success(data=torrent)
+        if category == DownloaderCategory.qBittorrent:
+            torrent_list = client.torrents.info(torrent_hashes=torrent_hash)
+            torrent = torrent_list[0]
+            properties = client.torrents_properties(torrent_hash=torrent_hash)
+            files = client.torrents_files(torrent_hash=torrent_hash)
+            torrent.update(properties)
+            torrent['files'] = client.torrents_files(torrent_hash=torrent_hash)
+            get_torrent_trackers(client, torrent)
+            return CommonResponse.success(data=torrent)
+        else:
+            print(torrent_hash)
+            torrent = client.get_torrent(torrent_id=torrent_hash)
+            torrent = torrent.fields
+            torrent['hash'] = torrent.get('hashString')
+            return CommonResponse.success(data=torrent)
     except Exception as e:
         logger.error(traceback.format_exc(limit=3))
         return JsonResponse(CommonResponse.error(

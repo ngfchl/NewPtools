@@ -12,6 +12,7 @@ class WebSiteSchemaOut(ModelSchema):
         model_fields = [
             'id', 'name', 'nickname',
             'logo', 'tags', 'sp_full',
+            'tracker',
             # 常用地址
             'page_message', 'url',
             # 功能菜单

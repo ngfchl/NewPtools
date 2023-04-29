@@ -3,7 +3,7 @@ import json
 import logging
 import time
 import traceback
-from typing import Optional
+import urllib.parse
 
 import qbittorrentapi
 import requests
@@ -15,6 +15,7 @@ from ninja import Router
 from auxiliary.base import DownloaderCategory
 from download.schema import *
 from toolbox.schema import CommonResponse
+from website.models import WebSite
 
 # Create your views here.
 
@@ -38,7 +39,9 @@ def get_downloader(request, downloader_id: int):
 
 @router.post('/downloader', response=CommonResponse[DownloaderSchemaIn])
 def add_downloader(request, downloader: DownloaderSchemaIn):
-    downloader = Downloader.objects.create(downloader.dict())
+    downloader_dict = downloader.dict()
+    del downloader_dict['id']
+    downloader = Downloader.objects.create(**downloader_dict)
     return CommonResponse.success(data=downloader)
 
 
@@ -92,12 +95,11 @@ def get_downloader_speed(downloader):
             # x = {'connection_status': 'connected', 'dht_nodes': 0, 'dl_info_data': 2577571007646,
             #      'dl_info_speed': 3447895, 'dl_rate_limit': 41943040, 'up_info_data': 307134686158,
             #      'up_info_speed': 4208516, 'up_rate_limit': 0, 'category': 'Qb', 'name': 'home-qb'}
-            info = client.transfer.info
+            info = client.sync_maindata().get('server_state')
             info.update({
                 'category': downloader.category,
                 'name': downloader.name,
                 'connection_status': True if info.get('connection_status') == 'connected' else False,
-                'free_space_on_disk': client.sync_maindata().get('server_state').get('free_space_on_disk')
             })
             return info
         elif downloader.category == DownloaderCategory.Transmission:
@@ -181,6 +183,8 @@ def get_downloader_speed_list(request, downloader_id: Optional[int] = 0):
 
 @router.get('/downloaders/downloading', response=CommonResponse, description='当前种子')
 def get_downloading(request, downloader_id: int, prop: bool = False, torrent_hashes: str = ''):
+    if prop:
+        website_list = WebSite.objects.all()
     logger.info('当前下载器id：{}'.format(downloader_id))
     client, category = get_downloader_instance(downloader_id)
     try:
@@ -196,9 +200,12 @@ def get_downloading(request, downloader_id: int, prop: bool = False, torrent_has
             torrents = []
             for torrent in torrent_list:
                 if prop:
+                    url = torrent.get('tracker')
+                    hostname = urllib.parse.urlparse(url).hostname
+                    torrent['host'] = hostname
                     trackers = client.torrents_trackers(torrent_hash=torrent.get('hash'))
                     trackers = [tracker for tracker in trackers if torrent.get('tracker') and
-                                tracker.get('status') > 0 and tracker.get('url') == torrent.get('tracker')]
+                                tracker.get('status') > 0 and tracker.get('url') == url]
                     torrent['trackers'] = trackers if len(trackers) > 0 else [{
                         'status': 1,
                     }]
@@ -210,8 +217,18 @@ def get_downloading(request, downloader_id: int, prop: bool = False, torrent_has
             torrent_list = []
             for torrent in torrents:
                 torrent = torrent.fields
+                url = torrent.get('trackers')[0].get('announce')
+                hostname = urllib.parse.urlparse(url).hostname
+                torrent['host'] = hostname
                 torrent['hash'] = torrent.get('hashString')
+                file_status = []
+                for file, state in zip(torrent['files'], torrent['fileStats']):
+                    file.update(state)
+                    file_status.append(file)
+                del torrent['files']
                 torrent_list.append(torrent)
+            # hosts = set([torrent.get('host') for torrent in torrents])
+            # print(hosts)
             return CommonResponse.success(data=torrent_list)
     except Exception as e:
         logger.error(traceback.format_exc(limit=3))
@@ -234,15 +251,20 @@ def get_torrent_properties_api(request, downloader_id: int, torrent_hash: str):
             get_torrent_trackers(client, torrent)
             return CommonResponse.success(data=torrent)
         else:
-            print(torrent_hash)
             torrent = client.get_torrent(torrent_id=torrent_hash)
             torrent = torrent.fields
             torrent['hash'] = torrent.get('hashString')
+            file_status = []
+            for file, state in zip(torrent['files'], torrent['fileStats']):
+                file.update(state)
+                file_status.append(file)
+            del torrent['files']
+            torrent['files'] = file_status
             return CommonResponse.success(data=torrent)
     except Exception as e:
         logger.error(traceback.format_exc(limit=3))
         return JsonResponse(CommonResponse.error(
-            msg='连接下载器出错咯！'
+            msg='获取种子详情出错咯！'
         ).to_dict(), safe=False)
 
 
@@ -317,8 +339,14 @@ def control_torrent(request, control_command: ControlTorrentCommandIn):
             time.sleep(1.5)
             return CommonResponse.success(msg=f'指令发送成功!')
         if downloader_category == DownloaderCategory.Transmission:
-            # return 200, {'msg': f'指令发送成功！', 'code': 0}
-            return CommonResponse.error(msg=f'TR下载器控制尚未开发完毕!')
+            if command == 'delete':
+                client.remove_torrent(ids=ids, delete_data=delete_files)
+            elif command == 'set_category':
+                client.move_torrent_data(ids=ids, location=category)
+            else:
+                command_exec = getattr(client, command)
+                command_exec(ids=ids)
+            return CommonResponse.success(msg=f'指令发送成功！')
     except Exception as e:
         logger.warning(traceback.format_exc(3))
         return CommonResponse.error(msg=f'执行指令失败!')
@@ -350,8 +378,6 @@ def add_torrent(request, new_torrent: AddTorrentCommandIn):
                 paused=torrent.is_paused,
                 cookies=torrent.cookie
             )
-            print(type(res))
-            print(not res.hashString)
             if res.hashString and len(res.hashString) >= 0:
                 return CommonResponse.success(msg=f'种子已添加，请检查下载器！{res.name}')
             return CommonResponse.error(msg=f'种子添加失败！')

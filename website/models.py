@@ -19,7 +19,7 @@ class WebSite(BaseEntity):
     name = models.CharField(max_length=32, verbose_name='站点名称')
     nickname = models.CharField(max_length=16, verbose_name='站点简称', default='', help_text='英文，用于刷流')
     logo = models.URLField(verbose_name='站点logo', default='favico.ico', help_text='站点logo图标')
-    tracker = models.CharField(verbose_name='tracker', default='', help_text='tracker网址关键字', max_length=32)
+    tracker = models.CharField(verbose_name='tracker', default='', help_text='tracker网址关键字', max_length=256)
     sp_full = models.FloatField(verbose_name='满魔', default=107, help_text='站点满时魔')
     limit_speed = models.IntegerField(verbose_name='上传速度限制',
                                       default=100,

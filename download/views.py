@@ -386,6 +386,59 @@ def add_torrent(request, new_torrent: AddTorrentCommandIn):
         return CommonResponse.error(msg='添加失败！')
 
 
+@router.get('/brush_remove', response=CommonResponse, description='删种脚本')
+def brush_remove_torrent(request, downloader_id: int):
+    client, downloader_category = get_downloader_instance(downloader_id)
+    if downloader_category == DownloaderCategory.Transmission:
+        return CommonResponse.error(msg='不支持Transmission!')
+    hashes = torrents_filter_by_percent_completed_rule(client, num_complete_percent=0.5, downloaded_percent=0.9)
+    client.torrents_delete(delete_files=True, torrent_hashes=hashes)
+    return CommonResponse.success(msg=f'指令发送成功!删除{len(hashes)}个种子！')
+
+
+def torrents_filter_by_percent_completed_rule(client, num_complete_percent, downloaded_percent):
+    """
+    种子筛选之 下载进度筛选
+    :param client: 客户端，仅支持QB
+    :param num_complete_percent: 达标人数
+    :param downloaded_percent: 已完成百分比
+    :return:
+    """
+    torrents = client.torrents.info()
+    hashes = []
+    for torrent in torrents:
+        progress = torrent.get('progress')
+        if progress >= 1:
+            continue
+        category = torrent.get('category')
+        if len(category) <= 0:
+            continue
+
+        hash_string = torrent.get('hash')
+        num_complete = torrent.get('num_complete')
+        uploaded = torrent.get('uploaded')
+        ratio = torrent.get('ratio')
+        time_active = torrent.get('time_active')
+        if time_active > 600 and ratio < 0.01:
+            hashes.append(hash_string)
+        elif num_complete > 20:
+            hashes.append(hash_string)
+        # elif time_active > 600 and uploaded / time_active < 50:
+        #     hashes.append(hash_string)
+        else:
+            peer_info = client.sync_torrent_peers(torrent_hash=hash_string)
+            peers = peer_info.get('peers').values()
+            num_peers = len(peers)
+            if num_peers > 0:
+                progress = [peer.get('progress') for peer in peers]
+                high_progress = [p for p in progress if p > downloaded_percent]
+                if len(high_progress) / num_peers > num_complete_percent:
+                    print(True)
+                    hashes.append(hash_string)
+
+    return hashes
+
+
 def get_hashes():
     """返回下载器中所有种子的HASH列表"""
     return []

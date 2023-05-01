@@ -1,10 +1,12 @@
 import hashlib
 import json
 import logging
+import random
 import time
 import traceback
 import urllib.parse
 
+import feedparser
 import qbittorrentapi
 import requests
 import transmission_rpc
@@ -213,18 +215,24 @@ def get_downloading(request, downloader_id: int, prop: bool = False, torrent_has
             logger.info('当前获取种子信息：{}条'.format(len(torrents)))
             return CommonResponse.success(data=torrents)
         else:
-            torrents = client.get_torrents()
+            if len(torrent_hashes) > 0:
+                torrent_hashes = torrent_hashes.split('|')
+                torrents = client.get_torrents(ids=torrent_hashes)
+            else:
+                torrents = client.get_torrents()
             torrent_list = []
             for torrent in torrents:
                 torrent = torrent.fields
-                url = torrent.get('trackers')[0].get('announce')
-                hostname = urllib.parse.urlparse(url).hostname
-                torrent['host'] = hostname
+                if prop:
+                    url = torrent.get('trackers')[0].get('announce')
+                    hostname = urllib.parse.urlparse(url).hostname
+                    torrent['host'] = hostname
+                    file_status = []
+                    for file, state in zip(torrent['files'], torrent['fileStats']):
+                        file.update(state)
+                        file_status.append(file)
+                    torrent['fileStats'] = file_status
                 torrent['hash'] = torrent.get('hashString')
-                file_status = []
-                for file, state in zip(torrent['files'], torrent['fileStats']):
-                    file.update(state)
-                    file_status.append(file)
                 del torrent['files']
                 torrent_list.append(torrent)
             # hosts = set([torrent.get('host') for torrent in torrents])
@@ -419,7 +427,7 @@ def torrents_filter_by_percent_completed_rule(client, num_complete_percent, down
         uploaded = torrent.get('uploaded')
         ratio = torrent.get('ratio')
         time_active = torrent.get('time_active')
-        if time_active > 600 and ratio < 0.01:
+        if time_active > 1800 and ratio < 0.01:
             hashes.append(hash_string)
         elif num_complete > 20:
             hashes.append(hash_string)
@@ -439,9 +447,72 @@ def torrents_filter_by_percent_completed_rule(client, num_complete_percent, down
     return hashes
 
 
-def get_hashes():
+@router.get('/repeat_torrent', response=CommonResponse, description='获取种子辅种信息')
+def repeat_torrent(request, torrent_hashes: str):
+    iyuu_token = 'IYUU10227T6942484114699c63a6df9bc30f3c81f1bd1cd9b4'
+    res = get_torrents_hash_from_iyuu(iyuu_token, torrent_hashes.lower().split('|'))
+    website_list = WebSite.objects.all()
+    if res.code == 0:
+        data = res.data
+        repeat_data = {}
+        for repeat_info in data:
+            torrent_list = repeat_info.get('torrent')
+            torrents = []
+            for torrent in torrent_list:
+                sid = torrent.get('sid')
+                website = website_list.filter(iyuu=sid).first()
+                if not website:
+                    continue
+
+                url = f'{website.url}{website.page_download.format(torrent.get("torrent_id"), random.randint(100, 10000))}' if \
+                    sid == 14 else \
+                    f'{website.url}{website.page_download.format(torrent.get("torrent_id"))}'
+                print(url)
+                torrents.append(url)
+            repeat_data.update({repeat_info.get('hash'): torrents})
+        return CommonResponse.success(data=repeat_data)
+    return res
+
+
+def get_hashes(downloader_id):
     """返回下载器中所有种子的HASH列表"""
-    return []
+    client, downloader_category = get_downloader_instance(downloader_id)
+    client, downloader_category = get_downloader_instance(downloader_id)
+    hashes = []
+    if downloader_category == DownloaderCategory.qBittorrent:
+        torrents = client.torrents_info()
+        hashes = [torrent.get('hash') for torrent in torrents]
+    if downloader_category == DownloaderCategory.Transmission:
+        torrents = client.get_torrents()
+        hashes = [torrent.hashString for torrent in torrents]
+    return hashes
+
+
+def get_torrents_hash_from_iyuu(iyuu_token: str, hash_list: List[str]):
+    # hash_list = get_hashes()
+    hash_list.sort()
+    # 由于json解析的原因，列表元素之间有空格，需要替换掉所有空格
+    hash_list_json = json.dumps(hash_list).replace(' ', '')
+    hash_list_sha1 = hashlib.sha1(hash_list_json.encode(encoding='utf-8')).hexdigest()
+    url = 'http://api.iyuu.cn/index.php?s=App.Api.Hash'
+    data = {
+        # IYUU token
+        'sign': iyuu_token,
+        # 当前时间戳
+        'timestamp': int(time.time()),
+        # 客户端版本
+        'version': '2.0.0',
+        # hash列表
+        'hash': hash_list_json,
+        # hash列表sha1
+        'sha1': hash_list_sha1
+    }
+    res = requests.post(url=url, data=data).json()
+    logger.info(res)
+    ret = res.get('ret')
+    if ret == 200:
+        return CommonResponse.success(data=res.get('data'))
+    return CommonResponse.error(msg=res.get('msg'))
 
 
 def get_torrents_hash_from_server():
@@ -460,31 +531,24 @@ def push_torrents_to_downloader():
     return []
 
 
-def get_torrents_hash_from_iyuu():
-    # hash_list = get_hashes()
-    hash_list = ['ff06699c8bf1003f46ac07621b967d16e7baac78']
-    hash_list_str = json.dumps(hash_list)
-    hash_list_sha1 = hashlib.sha1(hash_list_str.encode('utf8'))
-    url = 'http://api.iyuu.cn/index.php?s=App.Api.Infohash'
-    data = {
-        # IYUU token
-        'sign': 'IYUU10227T6942484114699c63a6df9bc30f3c81f1bd1cd9b4',
-        # 当前时间戳
-        'timestamp': int(time.time()),
-        # 客户端版本
-        'version': '2.0.0',
-        # hash列表
-        'hash': hash_list_str,
-        # hash列表sha1
-        'sha1': hash_list_sha1.hexdigest()
-
-    }
-    res = requests.post(
-        url=url,
-        data=data
-    )
-    logger.info(res.json())
-    return res.json()
+def get_rss(rss_url: str):
+    """
+    分析RSS订阅信息
+    :param rss_url:
+    :return: 解析好的种子列表
+    """
+    feed = feedparser.parse(rss_url)
+    torrents = []
+    for article in feed.entries:
+        # print(article.published).get('enclosure').get('url'))
+        # print(time.strftime('%Y-%m-%d %H:%M:%S', article.published_parsed))
+        torrents.append({
+            'hash': article.id,
+            'title': article.title,
+            'id': (article.link.split('=')[-1]),
+            'published': article.published_parsed
+        })
+    return torrents
 
 
 if __name__ == '__main__':

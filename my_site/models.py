@@ -23,6 +23,7 @@ class MySite(BaseEntity):
     user_agent = models.TextField(verbose_name='User-Agent', help_text='请填写你获取cookie的浏览器的User-Agent',
                                   default='Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 '
                                           '(KHTML, like Gecko) Chrome/106.0.0.0 Safari/537.36 Edg/106.0.1370.42')
+    rss = models.URLField(verbose_name='rss', null=True, blank=True, help_text='RSS链接')
     # 用户设置
     hr = models.BooleanField(verbose_name='开启HR下载', default=False, help_text='是否下载HR种子')
     sign_in = models.BooleanField(verbose_name='开启签到', default=True, help_text='是否开启签到')
@@ -31,6 +32,7 @@ class MySite(BaseEntity):
     get_torrents = models.BooleanField(verbose_name="拉取种子", default=True)
     repeat_torrents = models.BooleanField(verbose_name="辅种支持", default=False)
     brush_flow = models.BooleanField(verbose_name="刷流支持", default=False)
+    custom_server = models.URLField(verbose_name='代理服务器', null=True, blank=True, help_text='部分站点需要')
     # 用户数据 自动拉取
     time_join = models.DateTimeField(verbose_name='注册时间',
                                      default=datetime(2023, 1, 1, 12, 30, 00),

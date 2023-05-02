@@ -1,12 +1,16 @@
+import hashlib
 import json
 import logging
 import os
 import re
 import subprocess
+import time
 import traceback
 from datetime import datetime, timedelta
+from typing import List
 
 import aip
+import feedparser
 import jwt
 # import git
 import requests
@@ -313,3 +317,101 @@ def parse_ptpp_cookies(data_list):
         logger.error(traceback.format_exc(limit=3))
         send_text(title='PTPP站点导入通知', message='Cookies解析失败，请确认导入了正确的cookies备份文件！')
         return 'Cookies解析失败，请确认导入了正确的cookies备份文件！'
+
+
+def get_rss(rss_url: str):
+    """
+    分析RSS订阅信息
+    :param rss_url:
+    :return: 解析好的种子列表
+    """
+    feed = feedparser.parse(rss_url)
+    torrents = []
+    for article in feed.entries:
+        # print(article.published).get('enclosure').get('url'))
+        # print(time.strftime('%Y-%m-%d %H:%M:%S', article.published_parsed))
+        torrents.append({
+            'hash': article.id,
+            'title': article.title,
+            'id': (article.link.split('=')[-1]),
+            'published': time.mktime(article.published_parsed),
+        })
+    return torrents
+
+
+def get_torrents_hash_from_iyuu(iyuu_token: str, hash_list: List[str]):
+    # hash_list = get_hashes()
+    hash_list.sort()
+    # 由于json解析的原因，列表元素之间有空格，需要替换掉所有空格
+    hash_list_json = json.dumps(hash_list).replace(' ', '')
+    hash_list_sha1 = hashlib.sha1(hash_list_json.encode(encoding='utf-8')).hexdigest()
+    url = 'http://api.iyuu.cn/index.php?s=App.Api.Hash'
+    data = {
+        # IYUU token
+        'sign': iyuu_token,
+        # 当前时间戳
+        'timestamp': int(time.time()),
+        # 客户端版本
+        'version': '2.0.0',
+        # hash列表
+        'hash': hash_list_json,
+        # hash列表sha1
+        'sha1': hash_list_sha1
+    }
+    res = requests.post(url=url, data=data).json()
+    logger.info(res)
+    ret = res.get('ret')
+    if ret == 200:
+        return CommonResponse.success(data=res.get('data'))
+    return CommonResponse.error(msg=res.get('msg'))
+
+
+def push_torrents_to_downloader():
+    """将辅种数据推送至下载器"""
+    # 暂停模式推送至下载器（包含参数，下载链接，Cookie，分类或者下载路径）
+    # 开始校验
+    # 验证校验结果，不为百分百的，暂停任务
+    return []
+
+
+def torrents_filter_by_percent_completed_rule(client, num_complete_percent, downloaded_percent):
+    """
+    种子筛选之 下载进度筛选
+    :param client: 客户端，仅支持QB
+    :param num_complete_percent: 达标人数
+    :param downloaded_percent: 已完成百分比
+    :return:
+    """
+    torrents = client.torrents.info()
+    hashes = []
+    for torrent in torrents:
+        progress = torrent.get('progress')
+        if progress >= 1:
+            continue
+        category = torrent.get('category')
+        if len(category) <= 0:
+            continue
+
+        hash_string = torrent.get('hash')
+        num_complete = torrent.get('num_complete')
+        uploaded = torrent.get('uploaded')
+        ratio = torrent.get('ratio')
+        time_active = torrent.get('time_active')
+        if time_active > 1800 and ratio < 0.01:
+            hashes.append(hash_string)
+        elif num_complete > 20:
+            hashes.append(hash_string)
+        # elif time_active > 600 and uploaded / time_active < 50:
+        #     hashes.append(hash_string)
+        else:
+            peer_info = client.sync_torrent_peers(torrent_hash=hash_string)
+            peers = peer_info.get('peers').values()
+            num_peers = len(peers)
+            if num_peers > 0:
+                progress = [peer.get('progress') for peer in peers]
+                high_progress = [p for p in progress if p > downloaded_percent]
+                if len(high_progress) / num_peers > num_complete_percent:
+                    print(True)
+                    hashes.append(hash_string)
+
+    return hashes

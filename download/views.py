@@ -1,19 +1,16 @@
-import hashlib
-import json
 import logging
 import random
 import time
 import traceback
 import urllib.parse
 
-import feedparser
 import qbittorrentapi
-import requests
 import transmission_rpc
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404
 from ninja import Router
 
+import toolbox.views as toolbox
 from auxiliary.base import DownloaderCategory
 from download.schema import *
 from toolbox.schema import CommonResponse
@@ -399,58 +396,15 @@ def brush_remove_torrent(request, downloader_id: int):
     client, downloader_category = get_downloader_instance(downloader_id)
     if downloader_category == DownloaderCategory.Transmission:
         return CommonResponse.error(msg='不支持Transmission!')
-    hashes = torrents_filter_by_percent_completed_rule(client, num_complete_percent=0.5, downloaded_percent=0.9)
+    hashes = toolbox.torrents_filter_by_percent_completed_rule(client, num_complete_percent=0.5, downloaded_percent=0.9)
     client.torrents_delete(delete_files=True, torrent_hashes=hashes)
     return CommonResponse.success(msg=f'指令发送成功!删除{len(hashes)}个种子！')
-
-
-def torrents_filter_by_percent_completed_rule(client, num_complete_percent, downloaded_percent):
-    """
-    种子筛选之 下载进度筛选
-    :param client: 客户端，仅支持QB
-    :param num_complete_percent: 达标人数
-    :param downloaded_percent: 已完成百分比
-    :return:
-    """
-    torrents = client.torrents.info()
-    hashes = []
-    for torrent in torrents:
-        progress = torrent.get('progress')
-        if progress >= 1:
-            continue
-        category = torrent.get('category')
-        if len(category) <= 0:
-            continue
-
-        hash_string = torrent.get('hash')
-        num_complete = torrent.get('num_complete')
-        uploaded = torrent.get('uploaded')
-        ratio = torrent.get('ratio')
-        time_active = torrent.get('time_active')
-        if time_active > 1800 and ratio < 0.01:
-            hashes.append(hash_string)
-        elif num_complete > 20:
-            hashes.append(hash_string)
-        # elif time_active > 600 and uploaded / time_active < 50:
-        #     hashes.append(hash_string)
-        else:
-            peer_info = client.sync_torrent_peers(torrent_hash=hash_string)
-            peers = peer_info.get('peers').values()
-            num_peers = len(peers)
-            if num_peers > 0:
-                progress = [peer.get('progress') for peer in peers]
-                high_progress = [p for p in progress if p > downloaded_percent]
-                if len(high_progress) / num_peers > num_complete_percent:
-                    print(True)
-                    hashes.append(hash_string)
-
-    return hashes
 
 
 @router.get('/repeat_torrent', response=CommonResponse, description='获取种子辅种信息')
 def repeat_torrent(request, torrent_hashes: str):
     iyuu_token = 'IYUU10227T6942484114699c63a6df9bc30f3c81f1bd1cd9b4'
-    res = get_torrents_hash_from_iyuu(iyuu_token, torrent_hashes.lower().split('|'))
+    res = toolbox.get_torrents_hash_from_iyuu(iyuu_token, torrent_hashes.lower().split('|'))
     website_list = WebSite.objects.all()
     if res.code == 0:
         data = res.data
@@ -477,7 +431,6 @@ def repeat_torrent(request, torrent_hashes: str):
 def get_hashes(downloader_id):
     """返回下载器中所有种子的HASH列表"""
     client, downloader_category = get_downloader_instance(downloader_id)
-    client, downloader_category = get_downloader_instance(downloader_id)
     hashes = []
     if downloader_category == DownloaderCategory.qBittorrent:
         torrents = client.torrents_info()
@@ -486,70 +439,3 @@ def get_hashes(downloader_id):
         torrents = client.get_torrents()
         hashes = [torrent.hashString for torrent in torrents]
     return hashes
-
-
-def get_torrents_hash_from_iyuu(iyuu_token: str, hash_list: List[str]):
-    # hash_list = get_hashes()
-    hash_list.sort()
-    # 由于json解析的原因，列表元素之间有空格，需要替换掉所有空格
-    hash_list_json = json.dumps(hash_list).replace(' ', '')
-    hash_list_sha1 = hashlib.sha1(hash_list_json.encode(encoding='utf-8')).hexdigest()
-    url = 'http://api.iyuu.cn/index.php?s=App.Api.Hash'
-    data = {
-        # IYUU token
-        'sign': iyuu_token,
-        # 当前时间戳
-        'timestamp': int(time.time()),
-        # 客户端版本
-        'version': '2.0.0',
-        # hash列表
-        'hash': hash_list_json,
-        # hash列表sha1
-        'sha1': hash_list_sha1
-    }
-    res = requests.post(url=url, data=data).json()
-    logger.info(res)
-    ret = res.get('ret')
-    if ret == 200:
-        return CommonResponse.success(data=res.get('data'))
-    return CommonResponse.error(msg=res.get('msg'))
-
-
-def get_torrents_hash_from_server():
-    """将本地HASH列表提交至服务器，请求返回可辅种数据"""
-    # 如果为IYUU支持的站点，先向IYUU请求数据
-    # 否则向ptools请求数据
-    # 将本地hash列表与返回数据进行去重，生成种子链接列表
-    return []
-
-
-def push_torrents_to_downloader():
-    """将辅种数据推送至下载器"""
-    # 暂停模式推送至下载器（包含参数，下载链接，Cookie，分类或者下载路径）
-    # 开始校验
-    # 验证校验结果，不为百分百的，暂停任务
-    return []
-
-
-def get_rss(rss_url: str):
-    """
-    分析RSS订阅信息
-    :param rss_url:
-    :return: 解析好的种子列表
-    """
-    feed = feedparser.parse(rss_url)
-    torrents = []
-    for article in feed.entries:
-        # print(article.published).get('enclosure').get('url'))
-        # print(time.strftime('%Y-%m-%d %H:%M:%S', article.published_parsed))
-        torrents.append({
-            'hash': article.id,
-            'title': article.title,
-            'id': (article.link.split('=')[-1]),
-            'published': article.published_parsed
-        })
-    return torrents
-
-
-if __name__ == '__main__':
-    get_torrents_hash_from_iyuu()

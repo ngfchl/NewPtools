@@ -58,3 +58,5 @@ vine==5.0.0
 wcwidth==0.2.6
 websocket-client==1.5.1
 wxpusher==2.2.0
+
+feedparser~=6.0.10

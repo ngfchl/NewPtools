@@ -33,6 +33,8 @@ class MySite(BaseEntity):
     repeat_torrents = models.BooleanField(verbose_name="辅种支持", default=False)
     brush_flow = models.BooleanField(verbose_name="刷流支持", default=False)
     custom_server = models.URLField(verbose_name='代理服务器', null=True, blank=True, help_text='部分站点需要')
+    downloader = models.ForeignKey(verbose_name='下载服务器', null=True, blank=True, on_delete=models.SET_NULL,
+                                   to=Downloader)
     # 用户数据 自动拉取
     time_join = models.DateTimeField(verbose_name='注册时间',
                                      default=datetime(2023, 1, 1, 12, 30, 00),
@@ -94,6 +96,7 @@ class SignIn(BaseEntity):
 # 种子信息
 class TorrentInfo(BaseEntity):
     site = models.ForeignKey(to=MySite, to_field='site', on_delete=models.CASCADE, verbose_name='所属站点', null=True)
+    tid = models.IntegerField(verbose_name='种子ID')
     title = models.CharField(max_length=256, verbose_name='种子名称', default='')
     subtitle = models.CharField(max_length=256, verbose_name='标题', default='')
     category = models.CharField(max_length=128, verbose_name='分类', default='')
@@ -104,7 +107,7 @@ class TorrentInfo(BaseEntity):
     hr = models.BooleanField(verbose_name='H&R考核', default=True, help_text='绿色为通过或无需HR考核')
     sale_status = models.CharField(verbose_name='优惠状态', default='无促销', max_length=16)
     sale_expire = models.CharField(verbose_name='到期时间', default='无限期', max_length=32)
-    on_release = models.CharField(verbose_name='发布时间', default='', max_length=32)
+    published = models.CharField(verbose_name='发布时间', default='', max_length=32)
     seeders = models.CharField(verbose_name='做种人数', default='0', max_length=8)
     leechers = models.CharField(verbose_name='下载人数', default='0', max_length=8)
     completers = models.CharField(verbose_name='完成人数', default='0', max_length=8)
@@ -124,6 +127,7 @@ class TorrentInfo(BaseEntity):
     class Meta:
         verbose_name = '种子管理'
         verbose_name_plural = verbose_name
+        unique_together = ('site', 'tid')
 
     def __str__(self):
         return self.title

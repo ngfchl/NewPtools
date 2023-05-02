@@ -277,6 +277,25 @@ def auto_remove_expire_torrents():
 
 
 @shared_task
+def auto_get_rss():
+    my_site_list = MySite.objects.filter(rss__contains='http').all()
+    websites = WebSite.objects.all()
+    for my_site in my_site_list:
+        try:
+            website = websites.get(id=my_site.site)
+            torrents = toolbox.parse_rss(my_site.rss)
+            torrent_info_list = [TorrentInfo(**torrentInfo, site=my_site) for torrentInfo in torrents]
+            res = TorrentInfo.objects.bulk_create(torrent_info_list, ignore_conflicts=True)
+            logger.info(f'{my_site.nickname} 抓取并存储种子：{len(res)} 个')
+            if my_site.brush_flow:
+                torrent_list = [website.page_download.format(torrent.id) for torrent in torrents]
+                toolbox.push_torrents_to_downloader(my_site.downloader, torrent_list)
+        except Exception as e:
+            logger.info(f'{my_site.nickname} RSS获取或解析失败')
+            continue
+
+
+@shared_task
 def auto_push_to_downloader():
     """推送到下载器"""
     start = time.time()

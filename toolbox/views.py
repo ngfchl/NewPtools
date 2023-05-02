@@ -7,20 +7,23 @@ import subprocess
 import time
 import traceback
 from datetime import datetime, timedelta
-from typing import List
+from typing import List, Union
 
 import aip
 import feedparser
 import jwt
+import qbittorrentapi
 # import git
 import requests
 import toml as toml
+import transmission_rpc
 from django.conf import settings
 from pypushdeer import PushDeer
 from wxpusher import WxPusher
 
-from auxiliary.base import PushConfig
+from auxiliary.base import PushConfig, DownloaderCategory
 from auxiliary.settings import BASE_DIR
+from download.models import Downloader
 from my_site.models import SiteStatus
 from toolbox.models import BaiduOCR, Notify
 from toolbox.schema import CommonResponse
@@ -319,7 +322,7 @@ def parse_ptpp_cookies(data_list):
         return 'Cookies解析失败，请确认导入了正确的cookies备份文件！'
 
 
-def get_rss(rss_url: str):
+def parse_rss(rss_url: str):
     """
     分析RSS订阅信息
     :param rss_url:
@@ -333,7 +336,9 @@ def get_rss(rss_url: str):
         torrents.append({
             'hash': article.id,
             'title': article.title,
-            'id': (article.link.split('=')[-1]),
+            'tid': (article.link.split('=')[-1]),
+            'category': article.links[-1].get('href'),
+            'size': article.links[-1].get('length'),
             'published': time.mktime(article.published_parsed),
         })
     return torrents
@@ -366,12 +371,125 @@ def get_torrents_hash_from_iyuu(iyuu_token: str, hash_list: List[str]):
     return CommonResponse.error(msg=res.get('msg'))
 
 
-def push_torrents_to_downloader():
+def get_downloader_instance(downloader_id):
+    """根据id获取下载实例"""
+    logger.info('当前下载器id：{}'.format(downloader_id))
+    downloader = Downloader.objects.filter(id=downloader_id).first()
+    if downloader.category == DownloaderCategory.qBittorrent:
+        client = qbittorrentapi.Client(
+            host=downloader.host,
+            port=downloader.port,
+            username=downloader.username,
+            password=downloader.password,
+            SIMPLE_RESPONSES=True,
+            REQUESTS_ARGS={
+                'timeout': (3.1, 30)
+            }
+        )
+        client.auth_log_in()
+    else:
+        client = transmission_rpc.Client(
+            host=downloader.host, port=downloader.port,
+            username=downloader.username, password=downloader.password
+        )
+    return client, downloader.category
+
+
+def get_downloader_speed(downloader: Downloader):
+    """获取单个下载器速度信息"""
+    try:
+        client, _ = get_downloader_instance(downloader.id)
+        if downloader.category == DownloaderCategory.qBittorrent:
+            # x = {'connection_status': 'connected', 'dht_nodes': 0, 'dl_info_data': 2577571007646,
+            #      'dl_info_speed': 3447895, 'dl_rate_limit': 41943040, 'up_info_data': 307134686158,
+            #      'up_info_speed': 4208516, 'up_rate_limit': 0, 'category': 'Qb', 'name': 'home-qb'}
+            info = client.sync_maindata().get('server_state')
+            info.update({
+                'category': downloader.category,
+                'name': downloader.name,
+                'connection_status': True if info.get('connection_status') == 'connected' else False,
+            })
+            return info
+        elif downloader.category == DownloaderCategory.Transmission:
+            base_info = client.session_stats().fields
+            return {
+                'connection_status': True,
+                'free_space_on_disk': client.raw_session.get('download-dir-free-space'),
+                # 'dht_nodes': 0,
+                'dl_info_data': base_info.get('cumulative-stats').get('downloadedBytes'),
+                'dl_info_speed': base_info.get('downloadSpeed'),
+                # 'dl_rate_limit': 41943040,
+                'up_info_data': base_info.get('cumulative-stats').get('uploadedBytes'),
+                'up_info_speed': base_info.get('uploadSpeed'),
+                # 'up_rate_limit': 0,
+                'category': downloader.category,
+                'name': downloader.name
+            }
+        else:
+            return {
+                'category': downloader.category,
+                'name': downloader.name,
+                'connection_status': False,
+                'free_space_on_disk': 0,
+                'dl_info_data': 0,
+                'dl_info_speed': 0,
+                'up_info_data': 0,
+                'up_info_speed': 0,
+            }
+    except Exception as e:
+        return {
+            'category': downloader.category,
+            'name': downloader.name,
+            'free_space_on_disk': 0,
+            'connection_status': False,
+            'dl_info_data': 0,
+            'dl_info_speed': 0,
+            'up_info_data': 0,
+            'up_info_speed': 0,
+        }
+
+
+def push_torrents_to_downloader(
+        downloader_id: int,
+        urls: Union[List[str], str],
+        category: str = '',
+        cookie: str = '',
+        upload_limit: int = 0,
+        download_limit: int = 0,
+        is_skip_checking: bool = None,
+        is_paused: bool = None,
+        use_auto_torrent_management: bool = None,
+
+):
     """将辅种数据推送至下载器"""
+    client, downloader_category = get_downloader_instance(downloader_id)
     # 暂停模式推送至下载器（包含参数，下载链接，Cookie，分类或者下载路径）
     # 开始校验
     # 验证校验结果，不为百分百的，暂停任务
-    return []
+    if downloader_category == DownloaderCategory.qBittorrent:
+        res = client.torrents.add(
+            urls=urls,
+            category=category,
+            is_skip_checking=is_skip_checking,
+            is_paused=is_paused,
+            upload_limit=upload_limit,
+            download_limit=download_limit,
+            use_auto_torrent_management=use_auto_torrent_management,
+            cookie=cookie
+        )
+        if res == 'Ok.':
+            return CommonResponse.success(msg=f'种子已添加，请检查下载器！{res}')
+        return CommonResponse.error(msg=f'种子添加失败！{res}')
+    if downloader_category == DownloaderCategory.Transmission:
+        res = client.add_torrent(
+            torrent=urls,
+            labels=category,
+            paused=is_paused,
+            cookies=cookie
+        )
+        if res.hashString and len(res.hashString) >= 0:
+            return CommonResponse.success(msg=f'种子已添加，请检查下载器！{res.name}')
+        return CommonResponse.error(msg=f'种子添加失败！')
 
 
 def torrents_filter_by_percent_completed_rule(client, num_complete_percent, downloaded_percent):
@@ -414,4 +532,17 @@ def torrents_filter_by_percent_completed_rule(client, num_complete_percent, down
                     print(True)
                     hashes.append(hash_string)
 
+    return hashes
+
+
+def get_hashes(downloader_id):
+    """返回下载器中所有种子的HASH列表"""
+    client, downloader_category = get_downloader_instance(downloader_id)
+    hashes = []
+    if downloader_category == DownloaderCategory.qBittorrent:
+        torrents = client.torrents_info()
+        hashes = [torrent.get('hash') for torrent in torrents]
+    if downloader_category == DownloaderCategory.Transmission:
+        torrents = client.get_torrents()
+        hashes = [torrent.hashString for torrent in torrents]
     return hashes

@@ -314,12 +314,8 @@ def auto_get_rss_torrent_detail(my_site_id: int = None):
             created = 0
             for torrent in result:
                 tid = torrent.get('tid')
-                # 组装种子详情页URL
-                url = website.page_detail.format(tid)
-                url = url if url.startswith(
-                    'http') else f'{website.url}{url.lstrip("/")}'
-                # 解析详情页信息
-                res_detail = pt_spider.get_torrent_detail(my_site, url)
+                # 组装种子详情页URL 解析详情页信息
+                res_detail = pt_spider.get_torrent_detail(my_site, f'{website.url}{website.page_detail.format(tid)}')
                 print(res_detail)
                 # 如果无报错，将信息合并到torrent
                 if res_detail.code == 0:
@@ -327,7 +323,6 @@ def auto_get_rss_torrent_detail(my_site_id: int = None):
                 res = TorrentInfo.objects.update_or_create(
                     site=my_site,
                     tid=tid,
-                    downloader=my_site.downloader,
                     defaults=torrent,
                 )
                 if res[1]:

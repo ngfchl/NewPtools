@@ -190,9 +190,10 @@ def get_newest_status_list(request):
     return CommonResponse.success(data=info_list)
 
 
-@router.get('/status/{int:status_id}', response=SiteStatusSchemaOut, description='每日状态-单个')
-def get_status(request, status_id):
-    return get_object_or_404(SiteStatus, id=status_id)
+@router.get('/torrents/rss', response=CommonResponse, description='RSS解析种子信息')
+def get_status(request, site_id: int):
+    res = autopt.auto_get_rss_torrent_detail.delay(site_id)
+    return CommonResponse.success(msg=f'任务正在执行，任务ID：{res.id}')
 
 
 @router.get('/signin', response=CommonResponse[CommonPaginateSchema[SignInSchemaOut]],

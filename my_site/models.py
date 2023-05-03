@@ -100,9 +100,10 @@ class TorrentInfo(BaseEntity):
     title = models.CharField(max_length=256, verbose_name='种子名称', default='')
     subtitle = models.CharField(max_length=256, verbose_name='标题', default='')
     category = models.CharField(max_length=128, verbose_name='分类', default='')
+    area = models.CharField(max_length=128, verbose_name='地区', default='')
     poster_url = models.URLField(max_length=512, verbose_name='海报链接', default='')
     detail_url = models.URLField(max_length=512, verbose_name='种子详情', default='')
-    magnet_url = models.URLField(verbose_name='下载链接', unique=True)
+    magnet_url = models.URLField(verbose_name='下载链接', default='')
     size = models.IntegerField(verbose_name='文件大小', default=0)
     hr = models.BooleanField(verbose_name='H&R考核', default=True, help_text='绿色为通过或无需HR考核')
     sale_status = models.CharField(verbose_name='优惠状态', default='无促销', max_length=16)
@@ -116,9 +117,11 @@ class TorrentInfo(BaseEntity):
     douban_url = models.URLField(verbose_name='豆瓣链接', default='')
     year_publish = models.CharField(max_length=16, verbose_name='发行年份', default='')
     files_count = models.IntegerField(verbose_name='文件数目', default=0)
-    peer_list_speed = models.FloatField(max_length=128, verbose_name='平均上传速度', default=0)
+    completed = models.IntegerField(verbose_name='已下载', default=0)
+    uploaded = models.IntegerField(verbose_name='已上传', default=0)
+    pieces_hash = models.TextField(verbose_name='piece', default='')
     save_path = models.FilePathField(verbose_name='保存路径', default='/downloads/')
-    state = models.BooleanField(max_length=16, verbose_name='推送状态', default=False)
+    state = models.BooleanField(verbose_name='推送状态', default=False)
     downloader = models.ForeignKey(to=Downloader,
                                    on_delete=models.CASCADE,
                                    verbose_name='下载器',

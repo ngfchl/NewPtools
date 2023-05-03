@@ -107,7 +107,7 @@ class SignInSchemaIn(ModelSchema):
 
 class TorrentInfoSchemaOut(ModelSchema):
     class Config:
-        model = SignIn
+        model = TorrentInfo
         model_exclude = ['created_at', 'updated_at']
 
 

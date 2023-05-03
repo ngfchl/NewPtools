@@ -334,10 +334,9 @@ def parse_rss(rss_url: str):
         # print(article.published).get('enclosure').get('url'))
         # print(time.strftime('%Y-%m-%d %H:%M:%S', article.published_parsed))
         torrents.append({
-            'hash': article.id,
+            'hash_string': article.id,
             'title': article.title,
             'tid': (article.link.split('=')[-1]),
-            'category': article.links[-1].get('href'),
             'size': article.links[-1].get('length'),
             'published': time.mktime(article.published_parsed),
         })

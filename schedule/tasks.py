@@ -5,6 +5,7 @@ import logging
 import os
 import subprocess
 import time
+import traceback
 from datetime import datetime
 from multiprocessing.dummy import Pool as ThreadPool
 from typing import List
@@ -296,6 +297,62 @@ def auto_get_rss():
 
 
 @shared_task
+def auto_get_rss_torrent_detail(my_site_id: int = None):
+    if not my_site_id:
+        my_site_list = MySite.objects.filter(get_torrents=True, rss__contains='http').all()
+    else:
+        my_site_list = MySite.objects.filter(id=my_site_id, get_torrents=True, rss__contains='http').all()
+    if len(my_site_list) <= 0:
+        return '没有站点需要RSS，请检查RSS链接与抓种开关！'
+    website_list = WebSite.objects.all()
+    results = pool.map(toolbox.parse_rss, [my_site.rss for my_site in my_site_list])
+    for my_site, result in zip(my_site_list, results):
+        try:
+            website = website_list.get(id=my_site.site)
+            torrent_list = []
+            updated = 0
+            created = 0
+            for torrent in result:
+                tid = torrent.get('tid')
+                # 组装种子详情页URL
+                url = website.page_detail.format(tid)
+                url = url if url.startswith(
+                    'http') else f'{website.url}{url.lstrip("/")}'
+                # 解析详情页信息
+                res_detail = pt_spider.get_torrent_detail(my_site, url)
+                print(res_detail)
+                # 如果无报错，将信息合并到torrent
+                if res_detail.code == 0:
+                    torrent.update(res_detail.data)
+                res = TorrentInfo.objects.update_or_create(
+                    site=my_site,
+                    tid=tid,
+                    downloader=my_site.downloader,
+                    defaults=torrent,
+                )
+                if res[1]:
+                    created += 1
+                else:
+                    updated += 1
+                torrent_list.append(res[0].title)
+            msg = f'{my_site.nickname} 新增种子{created} 个，更新{updated}个'
+            logger.info(msg)
+            toolbox.send_text(title='RSS', message=msg)
+            if len(my_site_list) == 1:
+                return {
+                    'torrent_list': torrent_list,
+                    'msg': msg
+                }
+        except Exception as e:
+            msg = f'{my_site.nickname} RSS获取或解析失败'
+            logger.error(msg)
+            logger.error(traceback.format_exc(3))
+            if len(my_site_list) == 1:
+                return msg
+            continue
+
+
+@shared_task
 def auto_push_to_downloader():
     """推送到下载器"""
     start = time.time()
@@ -308,8 +365,8 @@ def auto_push_to_downloader():
 
 
 @shared_task
-def auto_get_torrent_hash():
-    """自动获取种子HASH"""
+def auto_update_torrent_info():
+    """自动获取种子"""
     start = time.time()
     print('自动获取种子HASH')
     time.sleep(5)

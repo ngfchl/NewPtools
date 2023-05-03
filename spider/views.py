@@ -1261,8 +1261,10 @@ class PtSpider:
             # status = SiteStatus.objects.filter(site=my_site, created_at__date=datetime.today()).first()
             return CommonResponse.success(msg=f'{my_site.nickname} 数据更新成功！')
         except RequestException as nce:
+            msg = f'与网站 {my_site.nickname} 建立连接失败，请检查网络？？'
+            logger.error(msg)
             logger.error(traceback.format_exc(limit=3))
-            return CommonResponse.error(msg=f'与网站 {my_site.nickname} 建立连接失败，请检查网络？？')
+            return CommonResponse.error(msg=msg)
         except Exception as e:
             message = f'{my_site.nickname} 访问个人主页信息：失败！原因：{e}'
             logger.error(message)
@@ -1720,9 +1722,36 @@ class PtSpider:
             except Exception as e:
                 return CommonResponse.error(msg=f'{site.name} 站点做种信息解析错误~')
 
-    def parse_status_html(self, my_site: MySite, result: dict):
-        """解析个人状态"""
-        pass
+    def get_torrent_detail(self, my_site, url):
+        """
+        获取种子详情页数据
+        :param my_site:
+        :param url:
+        :return:
+        """
+        try:
+            site = get_object_or_404(WebSite, id=my_site.site)
+            torrent_detail = self.send_request(my_site=my_site, url=url)
+            download_url = ''.join(self.parse(site, torrent_detail, site.detail_download_url_rule))
+            size = ''.join(self.parse(site, torrent_detail, site.detail_size_rule))
+            files_count = ''.join(self.parse(site, torrent_detail, site.detail_count_files_rule))
+            return CommonResponse.success(data={
+                'subtitle': ''.join(self.parse(site, torrent_detail, site.detail_subtitle_rule)),
+                'magnet_url': download_url if download_url.startswith(
+                    'http') else f'{site.url}{download_url.lstrip("/")}',
+                'size': toolbox.FileSizeConvert.parse_2_byte(size.replace('\xa0', '')),
+                'category': ''.join(self.parse(site, torrent_detail, site.detail_category_rule)).strip(),
+                'area': ''.join(self.parse(site, torrent_detail, site.detail_area_rule)),
+                'files_count': toolbox.get_decimals(files_count),
+                # 'hash_string': ''.join(self.parse(site, torrent_detail, site.detail_hash_rule)),
+                'sale_status': ''.join(self.parse(site, torrent_detail, site.detail_free_rule)),
+                'sale_expire': ''.join(self.parse(site, torrent_detail, site.detail_free_expire_rule)),
+                'douban_url': ''.join(self.parse(site, torrent_detail, site.detail_douban_rule)),
+                'year_publish': ''.join(self.parse(site, torrent_detail, site.detail_year_publish_rule)),
+            })
+        except Exception as e:
+            logger.error(traceback.format_exc(3))
+            return CommonResponse.error(msg=f'网址：{url} 访问失败')
 
     def get_hour_sp(self, my_site: MySite, headers={}):
         """获取时魔"""

@@ -203,23 +203,8 @@ def get_update_torrent(request, torrent_id: Union[int, str] = None):
             torrent = get_object_or_404(TorrentInfo, id=torrent_id)
             return pt_spider.get_update_torrent(torrent)
         else:
-            if isinstance(torrent_id, str):
-                torrent_ids = torrent_id.split('|')
-                torrent_list = TorrentInfo.objects.filter(id__in=torrent_ids).all()
-            else:
-                torrent_list = TorrentInfo.objects.filter(state=False).all()
-            count = 0
-            for torrent in torrent_list:
-                try:
-                    res = pt_spider.get_update_torrent(torrent)
-                    if res.code == 0:
-                        count += 1
-                except Exception as e:
-                    logger.error(traceback.format_exc(3))
-                    continue
-            msg = f'共有{len(torrent_list)}种子需要更新，本次更新成功{count}个，失败{len(torrent_list) - count}个'
-            logger.info(msg)
-            return CommonResponse.success(msg=msg)
+            res = autopt.auto_get_update_torrent.delay(torrent_id)
+            return CommonResponse.success(msg=f'正在更新，任务ID：{res.id}')
     except Exception as e:
         logger.error(traceback.format_exc(3))
         return CommonResponse.error(msg='种子信息拉取失败！')

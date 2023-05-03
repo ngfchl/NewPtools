@@ -52,11 +52,11 @@ def edit_downloader(request, downloader: DownloaderSchemaIn):
 def remove_downloader(request, downloader_id: int):
     try:
         count = Downloader.objects.filter(id=downloader_id).delete()
-        if count > 0:
+        if count[0] > 0:
             return CommonResponse.success(msg='删除成功！')
         return CommonResponse.error(msg='删除失败！')
     except Exception as e:
-        logger.error(e)
+        logger.error(traceback.format_exc(3))
         return CommonResponse.error(msg='删除失败！')
 
 

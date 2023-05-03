@@ -101,8 +101,6 @@ class TorrentInfo(BaseEntity):
     subtitle = models.CharField(max_length=256, verbose_name='标题', default='')
     category = models.CharField(max_length=128, verbose_name='分类', default='')
     area = models.CharField(max_length=128, verbose_name='地区', default='')
-    poster_url = models.URLField(max_length=512, verbose_name='海报链接', default='')
-    detail_url = models.URLField(max_length=512, verbose_name='种子详情', default='')
     magnet_url = models.URLField(verbose_name='下载链接', default='')
     size = models.IntegerField(verbose_name='文件大小', default=0)
     hr = models.BooleanField(verbose_name='H&R考核', default=True, help_text='绿色为通过或无需HR考核')

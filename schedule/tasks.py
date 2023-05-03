@@ -348,6 +348,26 @@ def auto_get_rss_torrent_detail(my_site_id: int = None):
 
 
 @shared_task
+def auto_get_update_torrent(torrent_id):
+    if isinstance(torrent_id, str):
+        torrent_ids = torrent_id.split('|')
+        torrent_list = TorrentInfo.objects.filter(id__in=torrent_ids).all()
+    else:
+        torrent_list = TorrentInfo.objects.filter(state=False).all()
+    count = 0
+    for torrent in torrent_list:
+        try:
+            res = pt_spider.get_update_torrent(torrent)
+            if res.code == 0:
+                count += 1
+        except Exception as e:
+            logger.error(traceback.format_exc(3))
+            continue
+    msg = f'共有{len(torrent_list)}种子需要更新，本次更新成功{count}个，失败{len(torrent_list) - count}个'
+    logger.info(msg)
+
+
+@shared_task
 def auto_push_to_downloader():
     """推送到下载器"""
     start = time.time()

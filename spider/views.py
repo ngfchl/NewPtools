@@ -1753,6 +1753,20 @@ class PtSpider:
             logger.error(traceback.format_exc(3))
             return CommonResponse.error(msg=f'网址：{url} 访问失败')
 
+    def get_update_torrent(self, torrent):
+        my_site = torrent.site
+        website = get_object_or_404(WebSite, id=my_site.site)
+        res_detail = self.get_torrent_detail(my_site, f'{website.url}{website.page_detail.format(torrent.tid)}')
+        print(res_detail.data)
+        if res_detail.code == 0:
+            res = TorrentInfo.objects.update_or_create(
+                id=torrent.id,
+                defaults=res_detail.data,
+            )
+            return CommonResponse.success(data=res[0])
+        else:
+            return res_detail
+
     def get_hour_sp(self, my_site: MySite, headers={}):
         """获取时魔"""
         site = get_object_or_404(WebSite, id=my_site.site)

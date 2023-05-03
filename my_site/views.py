@@ -1,6 +1,6 @@
 import logging
 import traceback
-from typing import List
+from typing import List, Union
 
 from django.core.paginator import Paginator
 from django.db import IntegrityError
@@ -194,6 +194,35 @@ def get_newest_status_list(request):
 def get_status(request, site_id: int):
     res = autopt.auto_get_rss_torrent_detail.delay(site_id)
     return CommonResponse.success(msg=f'任务正在执行，任务ID：{res.id}')
+
+
+@router.get('/torrents/update', response=CommonResponse[Optional[TorrentInfoSchemaOut]], description='更新单个种子信息')
+def get_update_torrent(request, torrent_id: Union[int, str] = None):
+    try:
+        if isinstance(torrent_id, int):
+            torrent = get_object_or_404(TorrentInfo, id=torrent_id)
+            return pt_spider.get_update_torrent(torrent)
+        else:
+            if isinstance(torrent_id, str):
+                torrent_ids = torrent_id.split('|')
+                torrent_list = TorrentInfo.objects.filter(id__in=torrent_ids).all()
+            else:
+                torrent_list = TorrentInfo.objects.filter(state=False).all()
+            count = 0
+            for torrent in torrent_list:
+                try:
+                    res = pt_spider.get_update_torrent(torrent)
+                    if res.code == 0:
+                        count += 1
+                except Exception as e:
+                    logger.error(traceback.format_exc(3))
+                    continue
+            msg = f'共有{len(torrent_list)}种子需要更新，本次更新成功{count}个，失败{len(torrent_list) - count}个'
+            logger.info(msg)
+            return CommonResponse.success(msg=msg)
+    except Exception as e:
+        logger.error(traceback.format_exc(3))
+        return CommonResponse.error(msg='种子信息拉取失败！')
 
 
 @router.get('/signin', response=CommonResponse[CommonPaginateSchema[SignInSchemaOut]],

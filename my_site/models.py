@@ -35,6 +35,8 @@ class MySite(BaseEntity):
     custom_server = models.URLField(verbose_name='代理服务器', null=True, blank=True, help_text='部分站点需要')
     downloader = models.ForeignKey(verbose_name='下载服务器', null=True, blank=True, on_delete=models.SET_NULL,
                                    to=Downloader)
+    remove_torrent_rules = models.TextField(verbose_name='刷流删种', null=True, blank=True,
+                                            help_text='详细内容请查看文档')
     # 用户数据 自动拉取
     time_join = models.DateTimeField(verbose_name='注册时间',
                                      default=datetime(2023, 1, 1, 12, 30, 00),

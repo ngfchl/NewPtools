@@ -520,9 +520,14 @@ test_rules = {
 }
 
 
-def package_files(client, hash_string, package_size: int = 10, delete_one_file: bool = False):
+def package_files(
+        client, hash_string, package_size: int = 10,
+        delete_one_file: bool = False,
+        package_percent: float = 0.1
+):
     """
     种子文件拆包，只下载部分，默认大于10G的种子才进行拆包
+    :param package_percent: 拆包到多小,原大小的十分之一
     :param delete_one_file: 只有一个文件且达到拆包标准时是否删除
     :param package_size: 拆包大小，单位GB
     :param client: 下载器
@@ -569,7 +574,7 @@ def package_files(client, hash_string, package_size: int = 10, delete_one_file: 
             for file in files:
                 size += file.size
                 ids.append(file.index)
-                if size > total_size / 10:
+                if size > total_size * package_percent:
                     break
             # 如果最后获取的文件大小小于800M
             # if size < 500 * 1024 * 1024:

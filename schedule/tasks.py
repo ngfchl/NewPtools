@@ -128,24 +128,29 @@ def auto_get_status(site_list: List[int] = []):
             logger.info('自动更新个人数据: {}, {}'.format(my_site.nickname, result))
             # if res.code == 0:
             status = result.data
-            message = message_template.format(
-                my_site.nickname,
-                status.my_level,
-                status.my_bonus,
-                status.bonus_hour,
-                status.my_score,
-                status.ratio,
-                toolbox.FileSizeConvert.parse_2_file_size(status.seed_volume),
-                toolbox.FileSizeConvert.parse_2_file_size(status.uploaded),
-                toolbox.FileSizeConvert.parse_2_file_size(status.downloaded),
-                status.seed,
-                status.leech,
-                status.invitation,
-                status.my_hr,
-            )
-            logger.info(message)
-            # toolbox.send_text(title='通知：个人数据更新', message=my_site.nickname + ' 信息更新成功！' + message)
-            success_message.append(f'✅ {my_site.nickname} 信息更新成功！{message}\n\n')
+            if not status:
+                message = f'🆘 {my_site.nickname} 信息更新失败！原因：{result.msg}'
+                logger.warning(message)
+                failed_message.append(f'{message} \n\n')
+            else:
+                message = message_template.format(
+                    my_site.nickname,
+                    status.my_level,
+                    status.my_bonus,
+                    status.bonus_hour,
+                    status.my_score,
+                    status.ratio,
+                    toolbox.FileSizeConvert.parse_2_file_size(status.seed_volume),
+                    toolbox.FileSizeConvert.parse_2_file_size(status.uploaded),
+                    toolbox.FileSizeConvert.parse_2_file_size(status.downloaded),
+                    status.seed,
+                    status.leech,
+                    status.invitation,
+                    status.my_hr,
+                )
+                logger.info(message)
+                # toolbox.send_text(title='通知：个人数据更新', message=my_site.nickname + ' 信息更新成功！' + message)
+                success_message.append(f'✅ {my_site.nickname} 信息更新成功！{message}\n\n')
         else:
             print(result)
             message = f'🆘 {my_site.nickname} 信息更新失败！原因：{result.msg}'

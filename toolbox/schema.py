@@ -46,3 +46,13 @@ class CommonPaginateSchema(GenericModel, Generic[T]):
     per_page: int
     total: int
     items: List[T]
+
+
+class DotDict(dict):
+    """实现支持 "." 表示法的字典类"""
+
+    def __getattr__(self, attr):
+        return self[attr]
+
+    def __setattr__(self, attr, value):
+        self[attr] = value

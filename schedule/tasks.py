@@ -310,13 +310,14 @@ def auto_get_rss_torrent_detail(my_site_id: int = None):
         try:
             website = website_list.get(id=my_site.site)
             torrent_list = []
+            urls = []
             updated = 0
             created = 0
             for torrent in result:
                 tid = torrent.get('tid')
+                urls.append(f'{website.url}{website.page_download.format(tid)}')
                 # 组装种子详情页URL 解析详情页信息
                 res_detail = pt_spider.get_torrent_detail(my_site, f'{website.url}{website.page_detail.format(tid)}')
-                print(res_detail)
                 # 如果无报错，将信息合并到torrent
                 if res_detail.code == 0:
                     torrent.update(res_detail.data)
@@ -330,14 +331,18 @@ def auto_get_rss_torrent_detail(my_site_id: int = None):
                 else:
                     updated += 1
                 torrent_list.append(res[0].title)
+            if website.func_brush_flow and my_site.brush_flow and my_site.downloader:
+                res = toolbox.push_torrents_to_downloader(
+                    downloader_id=my_site.downloader.id,
+                    urls=urls,
+                    cookie=my_site.cookie,
+                )
+                logging.info(res.msg)
             msg = f'{my_site.nickname} 新增种子{created} 个，更新{updated}个'
             logger.info(msg)
             toolbox.send_text(title='RSS', message=msg)
             if len(my_site_list) == 1:
-                return {
-                    'torrent_list': torrent_list,
-                    'msg': msg
-                }
+                return {'torrent_list': torrent_list, 'msg': msg}
         except Exception as e:
             msg = f'{my_site.nickname} RSS获取或解析失败'
             logger.error(msg)

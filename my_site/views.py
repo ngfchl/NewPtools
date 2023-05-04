@@ -174,7 +174,7 @@ def get_newest_status_list(request):
                 site_id=my_site.site, level_id__lte=level.level_id,
                 level_id__gt=0) if level else None
             if levels and len(levels) > 0:
-                logger.info(len(levels))
+                # logger.info(len(levels))
                 rights = [l.rights for l in levels]
                 level.rights = '||'.join(rights)
         info = {

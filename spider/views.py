@@ -1214,8 +1214,6 @@ class PtSpider:
     def send_status_request(self, my_site: MySite):
         """请求抓取数据相关页面"""
         site = get_object_or_404(WebSite, id=my_site.site)
-        user_detail_url = site.url + site.page_user.lstrip('/').format(my_site.user_id)
-        logger.info(user_detail_url)
         # uploaded_detail_url = site.url + site.page_uploaded.lstrip('/').format(my_site.user_id)
         seeding_detail_url = site.url + site.page_seeding.lstrip('/').format(my_site.user_id)
         # completed_detail_url = site.url + site.page_completed.lstrip('/').format(my_site.user_id)
@@ -1633,6 +1631,7 @@ class PtSpider:
                         'http://www.oshen.win/',
                         'https://sharkpt.net/',
                         'https://pt.soulvoice.club/',
+                        'https://dajiao.cyou/',
                     ]:
                         # 获取到的是整段，需要解析
                         logger.info('做种体积：{}'.format(seed_vol_list))
@@ -1757,7 +1756,6 @@ class PtSpider:
         my_site = torrent.site
         website = get_object_or_404(WebSite, id=my_site.site)
         res_detail = self.get_torrent_detail(my_site, f'{website.url}{website.page_detail.format(torrent.tid)}')
-        print(res_detail.data)
         if res_detail.code == 0:
             res = TorrentInfo.objects.update_or_create(
                 id=torrent.id,

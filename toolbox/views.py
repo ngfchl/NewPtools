@@ -24,9 +24,9 @@ from wxpusher import WxPusher
 from auxiliary.base import PushConfig, DownloaderCategory
 from auxiliary.settings import BASE_DIR
 from download.models import Downloader
-from my_site.models import SiteStatus
+from my_site.models import SiteStatus, TorrentInfo, MySite
 from toolbox.models import BaiduOCR, Notify
-from toolbox.schema import CommonResponse
+from toolbox.schema import CommonResponse, DotDict
 from .wechat_push import WechatPush
 
 # Create your views here.
@@ -489,6 +489,110 @@ def push_torrents_to_downloader(
         if res.hashString and len(res.hashString) >= 0:
             return CommonResponse.success(msg=f'种子已添加，请检查下载器！{res.name}')
         return CommonResponse.error(msg=f'种子添加失败！')
+
+
+test_rules = {
+    # upload_speed_avg,时间秒，速度KB
+    'upload_speed_avg': {
+        # 检测时间段
+        'time': 0,
+        # 时间段内平均速度
+        'upload_speed': 100
+    },
+    'progress_check': {
+        # 达到指定进度后，检测当前速度？还是平均速度？
+        0.05: 100,
+        0.5: 100,
+        0.8: 100,
+        0.9: 100
+    },
+    # 分享率低于某个值，活动时间内低于某个值
+    'ratio': {
+        600: 0.1,
+        1800: 0.5
+    },
+    # 多久不活动, 秒
+    'timeout': 3600,
+    # 完成人数
+    'completers': 10,
+    'max_ratio': 3,
+}
+
+
+def remove_torrent_by_site_rules(my_site: MySite):
+    """
+    站点删种
+    :param my_site:
+    :return:
+    """
+    rules = DotDict(json.loads(my_site.remove_torrent_rules))
+    torrent_infos = TorrentInfo.objects.filter(site=my_site, state=True).all()
+    client, _ = get_downloader_instance(my_site.downloader.id)
+    hash_list = [torrent_info.hash_string for torrent_info in torrent_infos]
+    torrents = client.torrents_info(torrent_hashes=hash_list)
+    hashes = []
+    for torrent in torrents:
+        hash_string = torrent.get('hash')
+        prop = client.torrents_properties(torrent_hash=hash_string)
+        # 下载人数超标删除
+        if rules.completers and rules.completers > 0:
+            num_complete = prop.get('seeds_total')
+            if num_complete > rules.completers:
+                hashes.append(hash_string)
+        # 超时删种
+        if rules.timeout and rules.timeout > 0:
+            last_activity = torrent.get('last_activity')
+            if time.time() - last_activity > rules.timeout:
+                hashes.append(hash_string)
+                continue
+        # 进度与平均上传速度达标检测
+        progress = torrent.get('progress')
+        progress_check = rules.progress_check
+        if progress_check and len(progress_check) > 0:
+            progress_checked = False
+            for key, value in progress_check.items():
+                if progress >= key and prop.get('up_speed_avg') < value * 1024:
+                    hashes.append(hash_string)
+                    progress_checked = True
+                    break
+            if progress_checked:
+                continue
+        # 指定时间段内分享率不达标
+        ratio_check = rules.progress_check
+        ratio = prop.get('share_ratio')
+        if rules.max_ratio and ratio >= rules.max_ratio:
+            hashes.append(hash_string)
+            continue
+        if ratio_check and len(ratio_check) > 0:
+            ratio_checked = False
+            time_active = prop.get('time_elapsed')
+            for key, value in ratio_check.items():
+                if time_active >= key and ratio < value:
+                    hashes.append(hash_string)
+                    ratio_checked = True
+                    break
+            if ratio_checked:
+                continue
+        # 指定时间段内平均速度
+        upload_speed_avg = rules.upload_speed_avg
+        if upload_speed_avg:
+            torrent_info = torrent_infos.filter(hash_string=hash_string).first()
+            if torrent_info:
+                time_delta = time.time() - torrent_info.updated_at.timestamp()
+                if time_delta < upload_speed_avg.time:
+                    continue
+                uploaded_eta = (prop.get('total_uploaded') - torrent_info.uploaded)
+                uploaded_avg = uploaded_eta / time_delta
+                if uploaded_avg < upload_speed_avg.upload_speed * 1024:
+                    hashes.append(hash_string)
+                else:
+                    torrent_info.uploaded = prop.get('total_uploaded')
+                    torrent_info.save()
+    if len(hashes) > 0:
+        client.remove_torrent(ids=hashes)
+    msg = f'本次运行删除种子{len(hashes)}个！' \
+          f'当前{my_site.nickname}有{len(torrent_infos) - len(hashes)}个种子正在运行'
+    send_text(title="删种", message=msg)
 
 
 def torrents_filter_by_percent_completed_rule(client, num_complete_percent, downloaded_percent):

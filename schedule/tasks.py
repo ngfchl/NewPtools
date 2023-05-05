@@ -128,29 +128,24 @@ def auto_get_status(site_list: List[int] = []):
             logger.info('自动更新个人数据: {}, {}'.format(my_site.nickname, result))
             # if res.code == 0:
             status = result.data
-            if not status:
-                message = f'🆘 {my_site.nickname} 信息更新失败！原因：{result.msg}'
-                logger.warning(message)
-                failed_message.append(f'{message} \n\n')
-            else:
-                message = message_template.format(
-                    my_site.nickname,
-                    status.my_level,
-                    status.my_bonus,
-                    status.bonus_hour,
-                    status.my_score,
-                    status.ratio,
-                    toolbox.FileSizeConvert.parse_2_file_size(status.seed_volume),
-                    toolbox.FileSizeConvert.parse_2_file_size(status.uploaded),
-                    toolbox.FileSizeConvert.parse_2_file_size(status.downloaded),
-                    status.seed,
-                    status.leech,
-                    status.invitation,
-                    status.my_hr,
-                )
-                logger.info(message)
-                # toolbox.send_text(title='通知：个人数据更新', message=my_site.nickname + ' 信息更新成功！' + message)
-                success_message.append(f'✅ {my_site.nickname} 信息更新成功！{message}\n\n')
+            message = message_template.format(
+                my_site.nickname,
+                status.my_level,
+                status.my_bonus,
+                status.bonus_hour,
+                status.my_score,
+                status.ratio,
+                toolbox.FileSizeConvert.parse_2_file_size(status.seed_volume),
+                toolbox.FileSizeConvert.parse_2_file_size(status.uploaded),
+                toolbox.FileSizeConvert.parse_2_file_size(status.downloaded),
+                status.seed,
+                status.leech,
+                status.invitation,
+                status.my_hr,
+            )
+            logger.info(message)
+            # toolbox.send_text(title='通知：个人数据更新', message=my_site.nickname + ' 信息更新成功！' + message)
+            success_message.append(f'✅ {my_site.nickname} 信息更新成功！{message}\n\n')
         else:
             print(result)
             message = f'🆘 {my_site.nickname} 信息更新失败！原因：{result.msg}'
@@ -314,7 +309,7 @@ def auto_get_rss_torrent_detail(my_site_id: int = None):
     for my_site, result in zip(my_site_list, results):
         try:
             website = website_list.get(id=my_site.site)
-            torrent_list = []
+            hash_list = []
             urls = []
             updated = 0
             created = 0
@@ -322,10 +317,10 @@ def auto_get_rss_torrent_detail(my_site_id: int = None):
                 tid = torrent.get('tid')
                 urls.append(f'{website.url}{website.page_download.format(tid)}')
                 # 组装种子详情页URL 解析详情页信息
-                res_detail = pt_spider.get_torrent_detail(my_site, f'{website.url}{website.page_detail.format(tid)}')
+                # res_detail = pt_spider.get_torrent_detail(my_site, f'{website.url}{website.page_detail.format(tid)}')
                 # 如果无报错，将信息合并到torrent
-                if res_detail.code == 0:
-                    torrent.update(res_detail.data)
+                # if res_detail.code == 0:
+                #     torrent.update(res_detail.data)
                 res = TorrentInfo.objects.update_or_create(
                     site=my_site,
                     tid=tid,
@@ -335,19 +330,28 @@ def auto_get_rss_torrent_detail(my_site_id: int = None):
                     created += 1
                 else:
                     updated += 1
-                torrent_list.append(res[0].title)
+                logger.info(res)
+                hash_list.append(res[0].hash_string)
             if website.func_brush_flow and my_site.brush_flow and my_site.downloader:
+                downloader = my_site.downloader
                 res = toolbox.push_torrents_to_downloader(
                     downloader_id=my_site.downloader.id,
                     urls=urls,
                     cookie=my_site.cookie,
                 )
+                if downloader.package_files:
+                    client, _ = toolbox.get_downloader_instance(downloader.id)
+                    for hash_string in hash_list:
+                        toolbox.package_files(
+                            client=client,
+                            hash_string=hash_string
+                        )
                 logging.info(res.msg)
             msg = f'{my_site.nickname} 新增种子{created} 个，更新{updated}个'
             logger.info(msg)
             toolbox.send_text(title='RSS', message=msg)
             if len(my_site_list) == 1:
-                return {'torrent_list': torrent_list, 'msg': msg}
+                return {'hash_list': hash_list, 'msg': msg}
         except Exception as e:
             msg = f'{my_site.nickname} RSS获取或解析失败'
             logger.error(msg)

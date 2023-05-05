@@ -1257,7 +1257,7 @@ class PtSpider:
                 self.get_notice_info(my_site, details_html.data)
             # return self.parse_status_html(my_site, data)
             # status = SiteStatus.objects.filter(site=my_site, created_at__date=datetime.today()).first()
-            return CommonResponse.success(msg=f'{my_site.nickname} 数据更新成功！')
+            return CommonResponse.success(msg=f'{my_site.nickname} 数据更新成功!', data=my_site.sitestatus_set.latest())
         except RequestException as nce:
             msg = f'与网站 {my_site.nickname} 建立连接失败，请检查网络？？'
             logger.error(msg)
@@ -1852,7 +1852,7 @@ class PtSpider:
 
     def send_torrent_info_request(self, my_site: MySite):
         site = get_object_or_404(WebSite, id=my_site.site)
-        url = site.url + site.page_index.lstrip('/')
+        url = site.url + site.page_torrents.lstrip('/')
         logger.info(f'种子页面链接：{url}')
         try:
             response = self.send_request(my_site, url)
@@ -1898,24 +1898,24 @@ class PtSpider:
                         title = torrent_json_info.get('title')
                         subtitle = torrent_json_info.get('small_descr')
                         download_url = site.url + torrent_json_info.get('download').lstrip('/')
-                        result = TorrentInfo.objects.update_or_create(download_url=download_url, defaults={
-                            'category': torrent_json_info.get('category'),
-                            'site': site,
-                            'title': title,
-                            'subtitle': subtitle if subtitle != '' else title,
-                            'magnet_url': magnet_url,
-                            'poster_url': torrent_json_info.get('poster'),
-                            'detail_url': torrent_json_info.get('details'),
-                            'sale_status': TorrentBaseInfo.sale_list.get(sale_num),
-                            'sale_expire': torrent_json_info.get('promotion_until'),
-                            'hr': True,
-                            'on_release': torrent_json_info.get('added'),
-                            'size': int(torrent_json_info.get('size')),
-                            'seeders': torrent_json_info.get('seeders'),
-                            'leechers': torrent_json_info.get('leechers'),
-                            'completers': torrent_json_info.get('times_completed'),
-                            'save_path': '/downloads/brush'
-                        })
+                        result = TorrentInfo.objects.update_or_create(
+                            download_url=download_url,
+                            defaults={
+                                'category': torrent_json_info.get('category'),
+                                'site': my_site,
+                                'title': title,
+                                'subtitle': subtitle if subtitle != '' else title,
+                                'magnet_url': magnet_url,
+                                'sale_status': TorrentBaseInfo.sale_list.get(sale_num),
+                                'sale_expire': torrent_json_info.get('promotion_until'),
+                                'hr': True,
+                                'on_release': torrent_json_info.get('added'),
+                                'size': int(torrent_json_info.get('size')),
+                                'seeders': torrent_json_info.get('seeders'),
+                                'leechers': torrent_json_info.get('leechers'),
+                                'completers': torrent_json_info.get('times_completed'),
+                                'save_path': '/downloads/brush'
+                            })
                         # logger.info(result[0].site.url)
                         if not result[1]:
                             count += 1
@@ -2001,7 +2001,7 @@ class PtSpider:
                         #     pass
                         # logger.info(sale_expire)
                         # 如果促销结束时间为空，则为无限期
-                        sale_expire = '无限期' if not sale_expire else sale_expire
+                        sale_expire = '' if not sale_expire else sale_expire
                         # logger.info(torrent_info.sale_expire)
                         # # 发布时间
                         on_release = ''.join(tr.xpath(site.torrent_release_rule))
@@ -2021,42 +2021,34 @@ class PtSpider:
                         logger.info(file_parse_size)
                         file_size = toolbox.FileSizeConvert.parse_2_byte(file_parse_size)
                         # subtitle = subtitle if subtitle else title
-                        poster_url = ''.join(tr.xpath(site.torrent_poster_rule))  # 海报链接
-                        detail_url = site.url + ''.join(
+                        # poster_url = ''.join(tr.xpath(site.torrent_poster_rule))  # 海报链接
+                        tid = ''.join(
                             tr.xpath(site.torrent_detail_url_rule)
-                        ).replace(site.url, '').lstrip('/')
-                        logger.info('title：{}'.format(site))
-                        logger.info('size{}'.format(file_size))
-                        logger.info('category：{}'.format(category))
-                        logger.info('download_url：{}'.format(download_url))
-                        logger.info('magnet_url：{}'.format(magnet_url))
-                        logger.info('subtitle：{}'.format(subtitle))
-                        logger.info('poster_url：{}'.format(poster_url))
-                        logger.info('detail_url：{}'.format(detail_url))
-                        logger.info('sale_status：{}'.format(sale_status))
-                        logger.info('sale_expire：{}'.format(sale_expire))
-                        logger.info('seeders：{}'.format(seeders))
-                        logger.info('leechers：{}'.format(leechers))
-                        logger.info('H&R：{}'.format(hr))
-                        logger.info('completers：{}'.format(completers))
-                        result = TorrentInfo.objects.update_or_create(site=site, detail_url=detail_url, defaults={
-                            'category': category,
-                            'download_url': download_url,
-                            'magnet_url': magnet_url,
-                            'title': title,
-                            'subtitle': subtitle,
-                            'poster_url': poster_url,  # 海报链接
-                            'detail_url': detail_url,
-                            'sale_status': sale_status,
-                            'sale_expire': sale_expire,
-                            'hr': hr,
-                            'on_release': on_release,
-                            'size': file_size,
-                            'seeders': seeders if seeders else '0',
-                            'leechers': leechers if leechers else '0',
-                            'completers': completers if completers else '0',
-                            'save_path': '/downloads/brush'
-                        })
+                        ).replace(site.url, '').split('=')[-1]
+                        logger.info(f'title：{site}\n size: {file_size}\n category：{category}\n '
+                                    f'download_url：{download_url}\n '
+                                    f'magnet_url：{magnet_url}\n subtitle：{subtitle}\n sale_status：{sale_status}\n '
+                                    f'sale_expire：{sale_expire}\n seeders：{seeders}\n leechers：{leechers}\n'
+                                    f'H&R：{hr}\n completers：{completers}')
+                        result = TorrentInfo.objects.update_or_create(
+                            site=my_site,
+                            tid=tid,
+                            defaults={
+                                'category': category,
+                                'magnet_url': magnet_url,
+                                'title': title,
+                                'subtitle': subtitle,
+                                # 'detail_url': detail_url,
+                                'sale_status': sale_status,
+                                'sale_expire': sale_expire,
+                                'hr': hr,
+                                'published': on_release,
+                                'size': file_size,
+                                'seeders': seeders if seeders else '0',
+                                'leechers': leechers if leechers else '0',
+                                'completers': completers if completers else '0',
+                                'save_path': ''
+                            })
                         logger.info('拉取种子：{} {}'.format(site.name, result[0]))
                         # time.sleep(0.5)
                         if not result[1]:

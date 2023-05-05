@@ -517,10 +517,10 @@ def torrents(request):
     return CommonResponse.success(data=list(TorrentInfo.objects.all()))
 
 
-@router.post('/torrents/get/', response=CommonResponse, description='获取种子')
+@router.post('/torrents/get', response=CommonResponse, description='获取种子')
 def update_torrents(request, site_list: List[int] = []):
     try:
-        res = autopt.auto_update_torrents.delay(site_list)
+        res = autopt.auto_get_torrents.delay(site_list)
         return CommonResponse.success(msg=f'抓取种子指令已发送，请注意查收推送消息！任务id：{res}')
     except Exception as e:
         logger.error(f'抓取种子失败：{e}')

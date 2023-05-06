@@ -3,6 +3,9 @@ from django.db import models
 
 from auxiliary.base import BaseEntity, DownloaderCategory
 
+HTTP = 'http://'
+HTTPS = 'https://'
+
 
 # Create your models here.
 class Downloader(BaseEntity):
@@ -12,6 +15,11 @@ class Downloader(BaseEntity):
     category = models.CharField(max_length=128, choices=DownloaderCategory.choices,
                                 default=DownloaderCategory.qBittorrent,
                                 verbose_name='下载器')
+    # https://
+    http = models.CharField(max_length=12, choices=(
+        (HTTP, 'http://'),
+        (HTTPS, 'https://'),
+    ), verbose_name='协议', default=HTTP)
     # 用户名
     username = models.CharField(max_length=16, verbose_name='用户名')
     # 密码
@@ -37,6 +45,8 @@ class Downloader(BaseEntity):
     package_size = models.IntegerField(default=5, verbose_name='种子大小', help_text='单位：GB，需要拆包的种子大小')
     package_percent = models.FloatField(default=0.1, verbose_name='拆包大小', help_text='最小0.1，最大0.5',
                                         validators=[MaxValueValidator(0.8), MinValueValidator(0.1)])
+    count_torrents = models.IntegerField(default=0, verbose_name='种子限制',
+                                         help_text='刷流时推送种子数量的限制，防止卡IO，0为无限制')
 
     class Meta:
         verbose_name = '下载器'

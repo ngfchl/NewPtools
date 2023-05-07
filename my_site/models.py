@@ -23,15 +23,15 @@ class MySite(BaseEntity):
     user_agent = models.TextField(verbose_name='User-Agent', help_text='请填写你获取cookie的浏览器的User-Agent',
                                   default='Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 '
                                           '(KHTML, like Gecko) Chrome/106.0.0.0 Safari/537.36 Edg/106.0.1370.42')
-    rss = models.URLField(verbose_name='rss', null=True, blank=True, help_text='RSS链接')
+    rss = models.URLField(verbose_name='刷流地址', null=True, blank=True, help_text='RSS链接/免费种子链接')
     # 用户设置
-    hr = models.BooleanField(verbose_name='开启HR下载', default=False, help_text='是否下载HR种子')
     sign_in = models.BooleanField(verbose_name='开启签到', default=True, help_text='是否开启签到')
     get_info = models.BooleanField(verbose_name='抓取信息', default=True, help_text='是否抓取站点数据')
-    search = models.BooleanField(verbose_name='开启搜索', default=True, help_text='是否开启搜索')
-    get_torrents = models.BooleanField(verbose_name="拉取种子", default=True)
     repeat_torrents = models.BooleanField(verbose_name="辅种支持", default=False)
-    brush_flow = models.BooleanField(verbose_name="刷流支持", default=False)
+    brush_free = models.BooleanField(verbose_name="Free刷流", default=True)
+    brush_rss = models.BooleanField(verbose_name="RSS刷流", default=False, help_text="硬刚刷流")
+    hr = models.BooleanField(verbose_name='开启HR下载', default=False, help_text='是否下载HR种子')
+    search = models.BooleanField(verbose_name='开启搜索', default=True, help_text='是否开启搜索')
     custom_server = models.URLField(verbose_name='代理服务器', null=True, blank=True, help_text='部分站点需要')
     downloader = models.ForeignKey(verbose_name='下载服务器', null=True, blank=True, on_delete=models.SET_NULL,
                                    to=Downloader)

@@ -49,8 +49,7 @@ class PtSpider:
                      json: dict = None,
                      timeout: int = 75,
                      delay: int = 15,
-                     header: dict = {},
-                     proxies: dict = None):
+                     header: dict = {}):
         scraper = self.get_scraper(delay=delay)
         ssl_context = ssl.SSLContext(ssl.PROTOCOL_TLSv1_2)
         _RESTRICTED_SERVER_CIPHERS = 'ALL'
@@ -61,6 +60,11 @@ class PtSpider:
         headers = {
             'User-Agent': my_site.user_agent,
         }
+        proxy = my_site.custom_server
+        proxies = {
+            'http': proxy if proxy else None,
+            'https': proxy if proxy else None,
+        } if proxy else None
         headers.update(header)
         return scraper.request(
             url=url,

@@ -1257,7 +1257,8 @@ class PtSpider:
                 self.get_notice_info(my_site, details_html.data)
             # return self.parse_status_html(my_site, data)
             # status = SiteStatus.objects.filter(site=my_site, created_at__date=datetime.today()).first()
-            return CommonResponse.success(msg=f'{my_site.nickname} 数据更新成功!', data=my_site.sitestatus_set.latest())
+            return CommonResponse.success(msg=f'{my_site.nickname} 数据更新成功!',
+                                          data=my_site.sitestatus_set.latest('created_at'))
         except RequestException as nce:
             msg = f'与网站 {my_site.nickname} 建立连接失败，请检查网络？？'
             logger.error(msg)

@@ -11,9 +11,9 @@ class WebSiteMonkeySchemaOut(ModelSchema):
         model_exclude = [
             'url', 'nickname', 'logo', 'tags',
             'tracker', 'sp_full', 'nickname', 'limit_speed',
-            'func_sign_in', 'func_get_torrents', 'func_get_userinfo',
+            'func_sign_in', 'func_brush_free', 'func_get_userinfo',
             'func_hr_discern', 'func_repeat_torrents',
-            'func_brush_flow', 'func_search_torrents', 'page_index',
+            'func_brush_rss', 'func_search_torrents', 'page_index',
             'page_torrents', 'page_sign_in',
             'page_control_panel', 'page_detail', 'page_download',
             'page_user', 'page_search',

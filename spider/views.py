@@ -1241,11 +1241,11 @@ class PtSpider:
             # 发送请求，请求个人主页
             details_html = self.get_userinfo_html(my_site, headers=headers)
             if details_html.code != 0:
-                return details_html
+                raise f'{my_site.nickname} 个人主页解析失败!'
             # 请求时魔页面,信息写入数据库
             hour_bonus = self.get_hour_sp(my_site, headers=headers)
             if hour_bonus.code != 0:
-                return hour_bonus
+                raise f'{my_site.nickname} 时魔获取失败！'
             # 请求邮件页面，直接推送通知到手机
             if site.url not in [
                 'https://dicmusic.club/',
@@ -1255,13 +1255,13 @@ class PtSpider:
                 # 发送请求，请求做种信息页面
                 seeding_html = self.get_seeding_html(my_site, headers=headers, details_html=details_html.data)
                 if seeding_html.code != 0:
-                    return seeding_html
+                    raise f'{my_site.nickname} 做种页面访问失败!'
                 self.get_mail_info(my_site, details_html.data, header=headers)
                 # 请求公告信息，直接推送通知到手机
                 self.get_notice_info(my_site, details_html.data)
             # return self.parse_status_html(my_site, data)
             # status = SiteStatus.objects.filter(site=my_site, created_at__date=datetime.today()).first()
-            return CommonResponse.success(msg=f'{my_site.nickname} 数据更新成功!',
+            return CommonResponse.success(msg=f'{my_site.nickname} 数据更新完毕!',
                                           data=my_site.sitestatus_set.latest('created_at'))
         except RequestException as nce:
             msg = f'与网站 {my_site.nickname} 建立连接失败，请检查网络？？'
@@ -1840,6 +1840,10 @@ class PtSpider:
                         res_list = ''.join(res_list).split('，')
                         res_list.reverse()
                     logger.info('时魔字符串：{}'.format(res_list))
+                    if len(res_list) <= 0:
+                        message = f'{site.name} 时魔获取失败！'
+                        logger.error(message)
+                        return CommonResponse.error(msg=message, data=0)
                     bonus_hour = toolbox.get_decimals(res_list[0].replace(',', ''))
             SiteStatus.objects.update_or_create(
                 site=my_site,
@@ -1853,7 +1857,7 @@ class PtSpider:
             message = f'{site.name} 时魔获取失败！{e}'
             logger.error(message)
             logger.error(traceback.format_exc(limit=3))
-            return CommonResponse.success(msg=message, data=0)
+            return CommonResponse.error(msg=message, data=0)
 
     def send_torrent_info_request(self, my_site: MySite):
         site = get_object_or_404(WebSite, id=my_site.site)

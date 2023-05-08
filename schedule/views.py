@@ -47,7 +47,9 @@ def add_crontab_schedule(request, task: CrontabTaskSchemaIn):
         periodic_task = PeriodicTask.objects.create(
             crontab=cron_schedule,
             name=task.name,
-            task=task.task
+            task=task.task,
+            args=task.args,
+            kwargs=task.kwargs,
         )
         logger.info(periodic_task)
         return CommonResponse.success(msg=f'{periodic_task.name} 任务创建成功！')

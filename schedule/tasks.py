@@ -342,7 +342,9 @@ def auto_get_rss(self, site_list: str):
     message_list.append(message)
     message_list.extend(message_failed)
     message_list.extend(message_success)
-    toolbox.send_text(title='通知：RSS 任务运行成功！', message='\n - '.join(message_list))
+    msg = '\n - '.join(message_list)
+    toolbox.send_text(title='通知：RSS 任务运行成功！', message=msg)
+    return msg
 
 
 @shared_task(bind=True, base=BaseTask)

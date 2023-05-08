@@ -981,7 +981,7 @@ class PtSpider:
                 message_list += message
             status.mail = len(mail_list)
             status.save()
-            title = f'{site.name} 有{len(mail_list)}条新消息，请注意及时查收！'
+            title = f'{site.name} 有{len(mail_list)}条新消息！'
             toolbox.send_text(title=title, message=message_list)
         else:
             status.mail = 0
@@ -1046,7 +1046,7 @@ class PtSpider:
                     # notice = '  \n\n### '.join(notice_list[:notice_count])
                     notice = ''.join(notice_list[:1])
                     message_list += f'# 公告  \n## {notice}'
-                    title = f'{site.name} 有{notice_count}条新公告，请注意及时查收！'
+                    title = f'{site.name} 有{notice_count}条新公告！'
                     toolbox.send_text(title=title, message=message_list)
 
     def get_userinfo_html(self, my_site: MySite, headers: dict):

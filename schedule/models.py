@@ -15,3 +15,4 @@ class Task(models.TextChoices):
     # auto_push_to_downloader = 'schedule.tasks.auto_push_to_downloader', '推送到下载器'
     auto_update_license = 'schedule.tasks.auto_update_license', 'auto_update_license'
     # auto_remove_expire_torrents = 'schedule.tasks.auto_remove_expire_torrents', '删除过期种子'
+    auto_get_rss = 'schedule.tasks.auto_get_rss', 'auto_get_rss'

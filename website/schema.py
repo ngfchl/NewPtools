@@ -18,9 +18,9 @@ class WebSiteSchemaOut(ModelSchema):
             # 功能菜单
             'func_sign_in',
             'func_get_userinfo',
-            'func_get_torrents',
+            'func_brush_free',
             'func_hr_discern',
-            'func_brush_flow',
+            'func_brush_rss',
             'func_search_torrents',
             'func_repeat_torrents',
         ]

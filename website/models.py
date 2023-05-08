@@ -29,11 +29,11 @@ class WebSite(BaseEntity):
     iyuu = models.IntegerField(verbose_name='iyuu', default=0)
     # 功能支持
     func_sign_in = models.BooleanField(verbose_name="签到支持", default=True)
-    func_get_torrents = models.BooleanField(verbose_name="拉取种子", default=True)
     func_get_userinfo = models.BooleanField(verbose_name="站点数据", default=True)
-    func_hr_discern = models.BooleanField(verbose_name="HR识别", default=False)
     func_repeat_torrents = models.BooleanField(verbose_name="辅种支持", default=False)
-    func_brush_flow = models.BooleanField(verbose_name="刷流支持", default=False)
+    func_brush_free = models.BooleanField(verbose_name="Free刷流", default=True)
+    func_brush_rss = models.BooleanField(verbose_name="RSS刷流", default=False)
+    func_hr_discern = models.BooleanField(verbose_name="HR识别", default=False)
     func_search_torrents = models.BooleanField(verbose_name="搜索支持", default=False)
 
     # 主要页面

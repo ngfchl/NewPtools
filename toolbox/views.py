@@ -27,7 +27,7 @@ from auxiliary.settings import BASE_DIR
 from download.models import Downloader
 from my_site.models import SiteStatus, TorrentInfo, MySite
 from toolbox.models import BaiduOCR, Notify
-from toolbox.schema import CommonResponse, DotDict
+from toolbox.schema import CommonResponse
 from .wechat_push import WechatPush
 
 # Create your views here.
@@ -491,34 +491,6 @@ def push_torrents_to_downloader(
         return CommonResponse.error(msg=f'种子添加失败！')
 
 
-test_rules = {
-    # upload_speed_avg,时间秒，速度KB
-    'upload_speed_avg': {
-        # 检测时间段
-        'time': 0,
-        # 时间段内平均速度
-        'upload_speed': 100
-    },
-    'progress_check': {
-        # 达到指定进度后，检测当前速度？还是平均速度？
-        0.05: 100,
-        0.5: 100,
-        0.8: 100,
-        0.9: 100
-    },
-    # 分享率低于某个值，活动时间内低于某个值
-    'ratio': {
-        600: 0.1,
-        1800: 0.5
-    },
-    # 多久不活动, 秒
-    'timeout': 3600,
-    # 完成人数
-    'completers': 10,
-    'max_ratio': 3,
-}
-
-
 def package_files(
         client, hash_string, package_size: int = 10,
         delete_one_file: bool = False,
@@ -537,15 +509,15 @@ def package_files(
         # 种子属性
         prop = client.torrents_properties(torrent_hash=hash_string)
         # 种子总大小
-        total_size = prop.total_size
+        total_size = prop.get('total_size')
         # 如果文件总大小大于package_size，则进行拆包，数字自定义
         if total_size > package_size * 1024 * 1024 * 1024:
             # 获取种子文件列表信息
             files = client.torrents_files(torrent_hash=hash_string)
             # 获取所有文件index
-            total_ids = [file.index for file in files]
+            total_ids = [file.get('index') for file in files]
             # 从大到小排列种子
-            files = sorted(files, key=lambda x: x.size, reverse=True)
+            files = sorted(files, key=lambda x: x.get('size'), reverse=True)
             # 只有一个文件且大于15G的删掉
             if len(files) == 1 and total_size > 15 * 1024 * 1024 * 1024 and delete_one_file:
                 client.torrents_delete(torrent_hash=hash_string)
@@ -570,8 +542,8 @@ def package_files(
             size = 0
             # 循环获取文件index，当总大小超过总大小的十分之一时结束
             for file in files:
-                size += file.size
-                ids.append(file.index)
+                size += file.get('size')
+                ids.append(file.get('index'))
                 if size > total_size * package_percent:
                     break
             # 如果最后获取的文件大小小于800M
@@ -589,93 +561,99 @@ def package_files(
         logger.info(traceback.format_exc(3))
 
 
-def remove_torrent_by_site_rules(my_site: MySite):
+def remove_torrent_by_site_rules(my_site: MySite, hash_list: List[str] = []):
     """
     站点删种
+    :param hash_list:
     :param my_site:
-    :return:
+    :return msg
     """
-    rules = DotDict(json.loads(my_site.remove_torrent_rules))
+    rules = json.loads(my_site.remove_torrent_rules)
     torrent_infos = TorrentInfo.objects.filter(site=my_site, state=True).all()
     client, _ = get_downloader_instance(my_site.downloader.id)
-    hash_list = [torrent_info.hash_string for torrent_info in torrent_infos]
+    if len(hash_list) <= 0:
+        hash_list = [torrent_info.hash_string for torrent_info in torrent_infos]
     torrents = client.torrents_info(torrent_hashes=hash_list)
     hashes = []
     for torrent in torrents:
         hash_string = torrent.get('hash')
-        not_registered_msg = [
-            'torrent not registered with this tracker',
-        ]
-        trackers = client.torrents_trackers(torrent_hash=hash_string)
-        tracker_checked = False
-        for tracker in trackers:
-            if tracker.get('msg') in not_registered_msg:
-                hashes.append(hash_string)
-                tracker_checked = True
-                break
-        if tracker_checked:
-            continue
         prop = client.torrents_properties(torrent_hash=hash_string)
-        # 下载人数超标删除
-        if rules.completers and rules.completers > 0:
-            num_complete = prop.get('seeds_total')
-            if num_complete > rules.completers:
-                hashes.append(hash_string)
-                continue
-        # 超时删种
-        if rules.timeout and rules.timeout > 0:
-            last_activity = torrent.get('last_activity')
-            if time.time() - last_activity > rules.timeout:
-                hashes.append(hash_string)
-                continue
-        # 进度与平均上传速度达标检测
-        progress = torrent.get('progress')
-        progress_check = rules.progress_check
-        if progress_check and len(progress_check) > 0:
-            progress_checked = False
-            for key, value in progress_check.items():
-                if progress >= key and prop.get('up_speed_avg') < value * 1024:
+        if prop:
+            # 指定时间段内平均速度
+            upload_speed_avg = rules.get("upload_speed_avg")
+            if upload_speed_avg:
+                torrent_info = torrent_infos.filter(hash_string=hash_string).first()
+                if torrent_info:
+                    time_delta = time.time() - torrent_info.updated_at.timestamp()
+                    if time_delta < upload_speed_avg.get("time"):
+                        continue
+                    uploaded_eta = (prop.get('total_uploaded') - torrent_info.uploaded)
+                    uploaded_avg = uploaded_eta / time_delta
+                    if uploaded_avg < upload_speed_avg.get("upload_speed") * 1024:
+                        hashes.append(hash_string)
+                        continue
+                    else:
+                        torrent_info.uploaded = prop.get('total_uploaded')
+                        torrent_info.save()
+            not_registered_msg = [
+                'torrent not registered with this tracker',
+            ]
+            trackers = client.torrents_trackers(torrent_hash=hash_string)
+            tracker_checked = False
+            for tracker in trackers:
+                if tracker.get('msg') in not_registered_msg:
                     hashes.append(hash_string)
-                    progress_checked = True
+                    tracker_checked = True
                     break
-            if progress_checked:
+            if tracker_checked:
                 continue
-        # 指定时间段内分享率不达标
-        ratio_check = rules.progress_check
-        ratio = prop.get('share_ratio')
-        if rules.max_ratio and ratio >= rules.max_ratio:
-            hashes.append(hash_string)
-            continue
-        if ratio_check and len(ratio_check) > 0:
-            ratio_checked = False
-            time_active = prop.get('time_elapsed')
-            for key, value in ratio_check.items():
-                if time_active >= key and ratio < value:
+            # 下载人数超标删除
+            if rules.get("completers") and rules.get("completers") > 0:
+                num_complete = prop.get('seeds_total')
+                if num_complete > rules.get("completers"):
                     hashes.append(hash_string)
-                    ratio_checked = True
-                    break
-            if ratio_checked:
-                continue
-        # 指定时间段内平均速度
-        upload_speed_avg = rules.upload_speed_avg
-        if upload_speed_avg:
-            torrent_info = torrent_infos.filter(hash_string=hash_string).first()
-            if torrent_info:
-                time_delta = time.time() - torrent_info.updated_at.timestamp()
-                if time_delta < upload_speed_avg.time:
                     continue
-                uploaded_eta = (prop.get('total_uploaded') - torrent_info.uploaded)
-                uploaded_avg = uploaded_eta / time_delta
-                if uploaded_avg < upload_speed_avg.upload_speed * 1024:
+            # 超时删种
+            if rules.get("timeout") and rules.get("timeout") > 0:
+                last_activity = torrent.get('last_activity')
+                if time.time() - last_activity > rules.get("timeout"):
                     hashes.append(hash_string)
-                else:
-                    torrent_info.uploaded = prop.get('total_uploaded')
-                    torrent_info.save()
+                    continue
+            # 进度与平均上传速度达标检测
+            progress = torrent.get('progress')
+            progress_check = rules.get("progress_check")
+            if progress_check and len(progress_check) > 0:
+                progress_checked = False
+                for key, value in progress_check.items():
+                    if progress >= key and prop.get('up_speed_avg') < value * 1024:
+                        hashes.append(hash_string)
+                        progress_checked = True
+                        break
+                if progress_checked:
+                    continue
+            # 指定时间段内分享率不达标
+            ratio_check = rules.get("ratio_check")
+            ratio = prop.get('share_ratio')
+            if rules.get("max_ratio") and ratio >= rules.get("max_ratio"):
+                hashes.append(hash_string)
+                continue
+            if ratio_check and len(ratio_check) > 0:
+                ratio_checked = False
+                time_active = prop.get('time_elapsed')
+                for key, value in ratio_check.items():
+                    if time_active >= key and ratio < value:
+                        hashes.append(hash_string)
+                        ratio_checked = True
+                        break
+                if ratio_checked:
+                    continue
+
     if len(hashes) > 0:
         client.remove_torrent(ids=hashes)
-    msg = f'本次运行删除种子{len(hashes)}个！' \
-          f'当前{my_site.nickname}有{len(torrent_infos) - len(hashes)}个种子正在运行'
+    msg = f'{my_site.nickname}：本次运行删除种子{len(hashes)}个！' \
+          f'当前有{len(torrent_infos) - len(hashes)}个种子正在运行'
     send_text(title="删种", message=msg)
+    return msg
 
 
 def torrents_filter_by_percent_completed_rule(client, num_complete_percent, downloaded_percent):
@@ -690,7 +668,9 @@ def torrents_filter_by_percent_completed_rule(client, num_complete_percent, down
     hashes = []
     for torrent in torrents:
         hash_string = torrent.get('hash')
-
+        progress = torrent.get('progress')
+        if progress >= 1:
+            continue
         not_registered_msg = [
             'torrent not registered with this tracker',
         ]
@@ -701,34 +681,36 @@ def torrents_filter_by_percent_completed_rule(client, num_complete_percent, down
                 hashes.append(hash_string)
                 tracker_checked = True
                 break
+            if tracker.get('num_seeds') > 5:
+                hashes.append(hash_string)
+                tracker_checked = True
+                break
         if tracker_checked:
             continue
-        progress = torrent.get('progress')
-        if progress >= 1:
-            continue
+
         category = torrent.get('category')
         if len(category) <= 0:
             continue
-
         num_complete = torrent.get('num_complete')
         uploaded = torrent.get('uploaded')
         ratio = torrent.get('ratio')
         time_active = torrent.get('time_active')
         if time_active > 1800 and ratio < 0.01:
             hashes.append(hash_string)
-        elif num_complete > 20:
+            continue
+        if num_complete > 5:
             hashes.append(hash_string)
+            continue
         # elif time_active > 600 and uploaded / time_active < 50:
         #     hashes.append(hash_string)
-        else:
-            peer_info = client.sync_torrent_peers(torrent_hash=hash_string)
-            peers = peer_info.get('peers').values()
-            num_peers = len(peers)
-            if num_peers > 0:
-                progress = [peer.get('progress') for peer in peers]
-                high_progress = [p for p in progress if p > downloaded_percent]
-                if len(high_progress) / num_peers > num_complete_percent:
-                    hashes.append(hash_string)
+        peer_info = client.sync_torrent_peers(torrent_hash=hash_string)
+        peers = peer_info.get('peers').values()
+        num_peers = len(peers)
+        if num_peers > 0:
+            progress = [peer.get('progress') for peer in peers]
+            high_progress = [p for p in progress if p > downloaded_percent]
+            if len(high_progress) / num_peers > num_complete_percent:
+                hashes.append(hash_string)
     return hashes
 
 

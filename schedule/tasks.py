@@ -13,6 +13,8 @@ from typing import List
 import requests
 import toml
 from celery.app import shared_task
+from django.core.cache import cache
+from django.db.models import Q
 from lxml import etree
 
 from auxiliary.base import MessageTemplate
@@ -323,14 +325,16 @@ def auto_get_rss(self, site_list: str):
                     urls=urls,
                     cookie=my_site.cookie,
                 )
+                logging.info(res.msg)
                 if downloader.package_files:
                     client, _ = toolbox.get_downloader_instance(downloader.id)
+                    time.sleep(5)
                     for hash_string in hash_list:
-                        toolbox.package_files(
-                            client=client,
-                            hash_string=hash_string
-                        )
-                logging.info(res.msg)
+                        toolbox.package_files(client=client, hash_string=hash_string)
+                cache_hash = cache.get(f'brush-{my_site.id}-{my_site.nickname}')
+                if cache_hash:
+                    hash_list.extend(cache_hash)
+                cache.set(f'brush-{my_site.id}-{my_site.nickname}', hash_list, 6000)
         except Exception as e:
             logger.error(traceback.format_exc(3))
             msg = f'{my_site.nickname} RSS获取或解析失败'
@@ -345,6 +349,21 @@ def auto_get_rss(self, site_list: str):
     msg = '\n - '.join(message_list)
     toolbox.send_text(title='通知：RSS 任务运行成功！', message=msg)
     return msg
+
+
+@shared_task(bind=True, base=BaseTask)
+def auto_remove_brush_task(self):
+    my_site_list = MySite.objects.filter(Q(brush_rss=True) | Q(brush_free=True)).all()
+    message_list = []
+    for my_site in my_site_list:
+        hash_list = cache.get(f'brush-{my_site.id}-{my_site.nickname}')
+        msg = toolbox.remove_torrent_by_site_rules(my_site, hash_list)
+        logger.info(msg)
+        message_list.append(msg)
+    message = '\n > '.join(message_list)
+    logger.info(message)
+    toolbox.send_text(title='刷流删种', message=message)
+    return message
 
 
 @shared_task(bind=True, base=BaseTask)

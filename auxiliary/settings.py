@@ -66,8 +66,7 @@ ROOT_URLCONF = "auxiliary.urls"
 TEMPLATES = [
     {
         "BACKEND": "django.template.backends.django.DjangoTemplates",
-        "DIRS": [BASE_DIR / 'templates']
-        ,
+        "DIRS": [BASE_DIR / 'templates'],
         "APP_DIRS": True,
         "OPTIONS": {
             "context_processors": [
@@ -106,7 +105,26 @@ DATABASES = {
     },
 
 }
-
+CACHES = {
+    # 'default': {
+    #     'BACKEND': 'django_redis.cache.RedisCache',
+    #     'LOCATION': 'redis://100.64.152.70:6379/15',
+    #     'OPTIONS': {
+    #         'CLIENT_CLASS': 'django_redis.client.DefaultClient',
+    #         'CONNECTION_POOL_KWARGS': {'max_connections': 100},
+    #     },
+    #     'KEY_PREFIX': 'django',
+    #     "DECODE_RESPONSES": True
+    # }
+    'default': {
+        'BACKEND': 'django.core.cache.backends.db.DatabaseCache',
+        'LOCATION': 'cache_table',  # 数据库表
+        'TIMEOUT': 600,  # 默认的缓存有效时间,以秒计. 默认值是 300 秒(五分钟).
+        'OPTIONS': {
+            'MAX_ENTRIES': 1000  # 缓存的最大条目数(超出该数旧的缓存会被清除,默认值是 300).
+        }
+    }
+}
 # Password validation
 # https://docs.djangoproject.com/en/4.1/ref/settings/#auth-password-validators
 

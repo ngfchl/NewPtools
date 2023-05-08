@@ -373,7 +373,6 @@ def get_torrents_hash_from_iyuu(iyuu_token: str, hash_list: List[str]):
 
 def get_downloader_instance(downloader_id):
     """根据id获取下载实例"""
-    logger.info('当前下载器id：{}'.format(downloader_id))
     downloader = Downloader.objects.filter(id=downloader_id).first()
     if downloader.category == DownloaderCategory.qBittorrent:
         client = qbittorrentapi.Client(
@@ -537,7 +536,6 @@ def package_files(
     try:
         # 种子属性
         prop = client.torrents_properties(torrent_hash=hash_string)
-        print(prop)
         # 种子总大小
         total_size = prop.total_size
         # 如果文件总大小大于package_size，则进行拆包，数字自定义
@@ -582,14 +580,13 @@ def package_files(
             #     return
             # 计算需要取消下载的文件index列表，将总列表和需要下载的列表转为集合后相减
             delete_ids = list(set(total_ids) - set(ids))
-            print(delete_ids)
             client.torrents_file_priority(
                 torrent_hash=hash_string,
                 file_ids=delete_ids,
                 priority=0
             )
     except Exception as e:
-        logger.info(e)
+        logger.info(traceback.format_exc(3))
 
 
 def remove_torrent_by_site_rules(my_site: MySite):
@@ -606,12 +603,25 @@ def remove_torrent_by_site_rules(my_site: MySite):
     hashes = []
     for torrent in torrents:
         hash_string = torrent.get('hash')
+        not_registered_msg = [
+            'torrent not registered with this tracker',
+        ]
+        trackers = client.torrents_trackers(torrent_hash=hash_string)
+        tracker_checked = False
+        for tracker in trackers:
+            if tracker.get('msg') in not_registered_msg:
+                hashes.append(hash_string)
+                tracker_checked = True
+                break
+        if tracker_checked:
+            continue
         prop = client.torrents_properties(torrent_hash=hash_string)
         # 下载人数超标删除
         if rules.completers and rules.completers > 0:
             num_complete = prop.get('seeds_total')
             if num_complete > rules.completers:
                 hashes.append(hash_string)
+                continue
         # 超时删种
         if rules.timeout and rules.timeout > 0:
             last_activity = torrent.get('last_activity')
@@ -679,6 +689,20 @@ def torrents_filter_by_percent_completed_rule(client, num_complete_percent, down
     torrents = client.torrents.info()
     hashes = []
     for torrent in torrents:
+        hash_string = torrent.get('hash')
+
+        not_registered_msg = [
+            'torrent not registered with this tracker',
+        ]
+        trackers = client.torrents_trackers(torrent_hash=hash_string)
+        tracker_checked = False
+        for tracker in trackers:
+            if tracker.get('msg') in not_registered_msg:
+                hashes.append(hash_string)
+                tracker_checked = True
+                break
+        if tracker_checked:
+            continue
         progress = torrent.get('progress')
         if progress >= 1:
             continue
@@ -686,7 +710,6 @@ def torrents_filter_by_percent_completed_rule(client, num_complete_percent, down
         if len(category) <= 0:
             continue
 
-        hash_string = torrent.get('hash')
         num_complete = torrent.get('num_complete')
         uploaded = torrent.get('uploaded')
         ratio = torrent.get('ratio')
@@ -705,9 +728,7 @@ def torrents_filter_by_percent_completed_rule(client, num_complete_percent, down
                 progress = [peer.get('progress') for peer in peers]
                 high_progress = [p for p in progress if p > downloaded_percent]
                 if len(high_progress) / num_peers > num_complete_percent:
-                    print(True)
                     hashes.append(hash_string)
-
     return hashes
 
 

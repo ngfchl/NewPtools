@@ -16,7 +16,7 @@ from celery.app import shared_task
 from lxml import etree
 
 from auxiliary.base import MessageTemplate
-from auxiliary.celery import app
+from auxiliary.celery import BaseTask
 from my_site.models import MySite, TorrentInfo
 from spider.views import PtSpider, toolbox
 from toolbox.schema import CommonResponse
@@ -30,8 +30,8 @@ pt_spider = PtSpider()
 
 
 # @boost('do_sign_in', broker_kind=BrokerEnum.REDIS_STREAM)
-@app.task
-def auto_sign_in(site_list: List[int] = []):
+@shared_task(bind=True, base=BaseTask)
+def auto_sign_in(self, site_list: List[int] = []):
     """执行签到"""
     start = time.time()
     logger.info('开始执行签到任务')
@@ -100,14 +100,14 @@ def auto_sign_in(site_list: List[int] = []):
     logger.info(message)
     logger.info(len(message_list))
     toolbox.send_text(title='通知：自动签到', message='\n'.join(message_list))
-    toolbox.send_text(title='通知：自动签到-成功', message='\n'.join(message_list))
+    toolbox.send_text(title='通知：签到成功', message='\n'.join(success_message))
     # 释放内存
     gc.collect()
     return message_list
 
 
-@shared_task
-def auto_get_status(site_list: List[int] = []):
+@shared_task(bind=True, base=BaseTask)
+def auto_get_status(self, site_list: List[int] = []):
     """
     更新个人数据
     """
@@ -184,8 +184,8 @@ def auto_get_status(site_list: List[int] = []):
     return message_list
 
 
-@shared_task
-def auto_get_torrents(site_list: List[int] = []):
+@shared_task(bind=True, base=BaseTask)
+def auto_get_torrents(self, site_list: List[int] = []):
     """
     拉取最新种子
     """
@@ -193,7 +193,7 @@ def auto_get_torrents(site_list: List[int] = []):
     message_list = '# 拉取免费种子  \n\n'
     websites = WebSite.objects.all()
     queryset = MySite.objects.filter(id__in=site_list) if len(site_list) > 0 else MySite.objects.all()
-    site_list = [my_site for my_site in queryset if websites.get(id=my_site.site).func_get_torrents]
+    site_list = [my_site for my_site in queryset if websites.get(id=my_site.site).func_brush_free]
     results = pool.map(pt_spider.send_torrent_info_request, site_list)
     for my_site, result in zip(site_list, results):
         logger.info('获取种子：{}{}'.format(my_site.nickname, result))
@@ -231,8 +231,8 @@ def auto_get_torrents(site_list: List[int] = []):
     gc.collect()
 
 
-@app.task
-def auto_remove_expire_torrents():
+@shared_task(bind=True, base=BaseTask)
+def auto_remove_expire_torrents(self, ):
     """
     删除过期种子
     """
@@ -277,31 +277,80 @@ def auto_remove_expire_torrents():
     gc.collect()
 
 
-@shared_task
-def auto_get_rss():
-    my_site_list = MySite.objects.filter(rss__contains='http').all()
-    websites = WebSite.objects.all()
+@shared_task(bind=True, base=BaseTask)
+def auto_get_rss(self, site_list: str):
+    start = time.time()
+    site_list = site_list.split('|')
+    my_site_list = MySite.objects.filter(id__in=site_list, brush_rss=True).all()
+    websites = WebSite.objects.filter(func_brush_rss=True).all()
+    message_list = []
+    message_failed = []
+    message_success = []
     for my_site in my_site_list:
         try:
             website = websites.get(id=my_site.site)
+            if not website:
+                # 聊胜于无？
+                logger.warning(f'{my_site.nickname} 暂不支持RSS刷流！')
+                continue
             torrents = toolbox.parse_rss(my_site.rss)
-            torrent_info_list = [TorrentInfo(**torrentInfo, site=my_site) for torrentInfo in torrents]
-            res = TorrentInfo.objects.bulk_create(torrent_info_list, ignore_conflicts=True)
-            logger.info(f'{my_site.nickname} 抓取并存储种子：{len(res)} 个')
-            if my_site.brush_flow:
-                torrent_list = [website.page_download.format(torrent.id) for torrent in torrents]
-                toolbox.push_torrents_to_downloader(my_site.downloader, torrent_list)
+            updated = 0
+            created = 0
+            hash_list = []
+            urls = []
+            for torrent in torrents:
+                tid = torrent.get('tid')
+                # 组装种子详情页URL 解析详情页信息
+                # res_detail = pt_spider.get_torrent_detail(my_site, f'{website.url}{website.page_detail.format(tid)}')
+                # 如果无报错，将信息合并到torrent
+                # if res_detail.code == 0:
+                #     torrent.update(res_detail.data)
+                res = TorrentInfo.objects.update_or_create(site=my_site, tid=tid, defaults=torrent, )
+                urls.append(f'{website.url}{website.page_download.format(tid)}')
+                hash_list.append(res[0].hash_string)
+                if res[1]:
+                    created += 1
+                else:
+                    updated += 1
+                # logger.info(res)
+            msg = f'{my_site.nickname} 新增种子：{created} 个，更新种子：{updated}个！'
+            logger.info(msg)
+            message_success.append(msg)
+            if my_site.downloader:
+                downloader = my_site.downloader
+                res = toolbox.push_torrents_to_downloader(
+                    downloader_id=my_site.downloader.id,
+                    urls=urls,
+                    cookie=my_site.cookie,
+                )
+                if downloader.package_files:
+                    client, _ = toolbox.get_downloader_instance(downloader.id)
+                    for hash_string in hash_list:
+                        toolbox.package_files(
+                            client=client,
+                            hash_string=hash_string
+                        )
+                logging.info(res.msg)
         except Exception as e:
-            logger.info(f'{my_site.nickname} RSS获取或解析失败')
+            logger.error(traceback.format_exc(3))
+            msg = f'{my_site.nickname} RSS获取或解析失败'
+            logger.error(msg)
+            message_failed.append(msg)
             continue
+    end = time.time()
+    message = f'> RSS 任务运行成功！耗时：{end - start}  \n{time.strftime("%Y-%m-%d %H:%M:%S")}'
+    message_list.append(message)
+    message_list.extend(message_failed)
+    message_list.extend(message_success)
+    toolbox.send_text(title='通知：RSS 任务运行成功！', message='\n - '.join(message_list))
 
 
-@shared_task
-def auto_get_rss_torrent_detail(my_site_id: int = None):
+@shared_task(bind=True, base=BaseTask)
+def auto_get_rss_torrent_detail(self, my_site_id: int = None):
     if not my_site_id:
-        my_site_list = MySite.objects.filter(get_torrents=True, rss__contains='http').all()
+        my_site_list = MySite.objects.filter(brush_free=True, rss__contains='http').all()
     else:
-        my_site_list = MySite.objects.filter(id=my_site_id, get_torrents=True, rss__contains='http').all()
+        my_site_list = MySite.objects.filter(id=my_site_id, brush_free=True, rss__contains='http').all()
     if len(my_site_list) <= 0:
         return '没有站点需要RSS，请检查RSS链接与抓种开关！'
     website_list = WebSite.objects.all()
@@ -332,7 +381,7 @@ def auto_get_rss_torrent_detail(my_site_id: int = None):
                     updated += 1
                 logger.info(res)
                 hash_list.append(res[0].hash_string)
-            if website.func_brush_flow and my_site.brush_flow and my_site.downloader:
+            if website.func_brush_rss and my_site.brush_rss and my_site.downloader:
                 downloader = my_site.downloader
                 res = toolbox.push_torrents_to_downloader(
                     downloader_id=my_site.downloader.id,
@@ -361,8 +410,8 @@ def auto_get_rss_torrent_detail(my_site_id: int = None):
             continue
 
 
-@shared_task
-def auto_get_update_torrent(torrent_id):
+@shared_task(bind=True, base=BaseTask)
+def auto_get_update_torrent(self, torrent_id):
     if isinstance(torrent_id, str):
         torrent_ids = torrent_id.split('|')
         torrent_list = TorrentInfo.objects.filter(id__in=torrent_ids).all()
@@ -381,8 +430,8 @@ def auto_get_update_torrent(torrent_id):
     logger.info(msg)
 
 
-@shared_task
-def auto_push_to_downloader():
+@shared_task(bind=True, base=BaseTask)
+def auto_push_to_downloader(self, ):
     """推送到下载器"""
     start = time.time()
     print('推送到下载器')
@@ -393,8 +442,8 @@ def auto_push_to_downloader():
     gc.collect()
 
 
-@shared_task
-def auto_update_torrent_info():
+@shared_task(bind=True, base=BaseTask)
+def auto_update_torrent_info(self, ):
     """自动获取种子"""
     start = time.time()
     print('自动获取种子HASH')
@@ -406,8 +455,8 @@ def auto_update_torrent_info():
     gc.collect()
 
 
-@shared_task
-def exec_command(commands):
+@shared_task(bind=True, base=BaseTask)
+def exec_command(self, commands):
     """执行命令行命令"""
     result = []
     for key, command in commands.items():
@@ -422,8 +471,8 @@ def exec_command(commands):
     return result
 
 
-@shared_task
-def auto_program_upgrade():
+@shared_task(bind=True, base=BaseTask)
+def auto_program_upgrade(self, ):
     """程序更新"""
     try:
         logger.info('开始自动更新')
@@ -460,8 +509,8 @@ def auto_program_upgrade():
         gc.collect()
 
 
-@shared_task
-def auto_update_license():
+@shared_task(bind=True, base=BaseTask)
+def auto_update_license(self, ):
     """auto_update_license"""
     res = toolbox.generate_config_file()
     if res.code != 0:
@@ -520,8 +569,8 @@ def auto_update_license():
     )
 
 
-@shared_task
-def import_from_ptpp(data_list: List):
+@shared_task(bind=True, base=BaseTask)
+def import_from_ptpp(self, data_list: List):
     results = pool.map(pt_spider.get_uid_and_passkey, data_list)
 
     message_list = [result.msg for result in results]

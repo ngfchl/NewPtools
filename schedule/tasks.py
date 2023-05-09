@@ -308,9 +308,9 @@ def auto_get_rss(self, site_list: str):
                 # if res_detail.code == 0:
                 #     torrent.update(res_detail.data)
                 res = TorrentInfo.objects.update_or_create(site=my_site, tid=tid, defaults=torrent, )
-                urls.append(f'{website.url}{website.page_download.format(tid)}')
-                hash_list.append(res[0].hash_string)
                 if res[1]:
+                    urls.append(f'{website.url}{website.page_download.format(tid)}')
+                    hash_list.append(res[0].hash_string)
                     created += 1
                 else:
                     updated += 1
@@ -324,17 +324,45 @@ def auto_get_rss(self, site_list: str):
                     downloader_id=my_site.downloader.id,
                     urls=urls,
                     cookie=my_site.cookie,
+                    is_paused=downloader.package_files,
                 )
-                logging.info(res.msg)
+                logging.info(f'本次任务推送状态：{res.msg}')
+                cache_hash_list = cache.get(f'brush-{my_site.id}-{my_site.nickname}')
+                if not cache_hash_list or len(cache_hash_list) <= 0:
+                    cache_hash_list = hash_list
+                else:
+                    cache_hash_list.extend(hash_list)
+                cache.set(f'brush-{my_site.id}-{my_site.nickname}', cache_hash_list, 24 * 60 * 60)
+                message = f'> RSS 任务运行成功！耗时：{time.time() - start}  \n{time.strftime("%Y-%m-%d %H:%M:%S")} \n'
+                logging.info(f'下载器拆包状态：{downloader.package_files}')
                 if downloader.package_files:
+                    package_start = time.time()
                     client, _ = toolbox.get_downloader_instance(downloader.id)
-                    time.sleep(5)
+                    time.sleep(25)
                     for hash_string in hash_list:
-                        toolbox.package_files(client=client, hash_string=hash_string)
-                cache_hash = cache.get(f'brush-{my_site.id}-{my_site.nickname}')
-                if cache_hash:
-                    hash_list.extend(cache_hash)
-                cache.set(f'brush-{my_site.id}-{my_site.nickname}', hash_list, 6000)
+                        try:
+                            toolbox.package_files(client=client, hash_string=hash_string)
+                        except Exception as e:
+                            logger.error(traceback.format_exc(3))
+                            continue
+                    toolbox.send_text(
+                        title='拆包',
+                        message=f'拆包任务执行结束！耗时：{time.time() - package_start}\n{time.strftime("%Y-%m-%d %H:%M:%S")} \n')
+                    # package_files = {
+                    #     'time': time.strftime("%Y-%m-%d %H:%M:%S"),
+                    #     'site': my_site.nickname,
+                    #     'downloader_id': downloader.id,
+                    #     'hash_list': hash_list
+                    # }
+                    # # 从缓存获取需要拆包的任务参数列表
+                    # cache_package_files_list = cache.get(f'cache_package_files_list')
+                    # if not cache_package_files_list or len(cache_package_files_list) <= 0:
+                    #     cache_package_files_list = [package_files]
+                    # else:
+                    #     # 如果列表存在就讲本次生成的参数添加到列表末尾
+                    #     cache_package_files_list.append(package_files)
+                    # # 更新参数列表
+                    # cache.set(f'cache_package_files_list', cache_package_files_list, 60 * 60 * 24)
         except Exception as e:
             logger.error(traceback.format_exc(3))
             msg = f'{my_site.nickname} RSS获取或解析失败'
@@ -342,7 +370,7 @@ def auto_get_rss(self, site_list: str):
             message_failed.append(msg)
             continue
     end = time.time()
-    message = f'> RSS 任务运行成功！耗时：{end - start}  \n{time.strftime("%Y-%m-%d %H:%M:%S")}'
+    message = f'> RSS + 拆包 任务运行成功！耗时：{end - start}  \n{time.strftime("%Y-%m-%d %H:%M:%S")} \n'
     message_list.append(message)
     message_list.extend(message_failed)
     message_list.extend(message_success)
@@ -352,15 +380,69 @@ def auto_get_rss(self, site_list: str):
 
 
 @shared_task(bind=True, base=BaseTask)
+def auto_torrents_package_files(self):
+    """
+    拆包并下载
+    :param self:
+    :return:
+    """
+    cache_package_files_list = cache.get(f'cache_package_files_list')
+    if not cache_package_files_list or len(cache_package_files_list) <= 0:
+        logger.info('没有任务，我去玩耍了，一会儿再来！')
+        pass
+    else:
+        for index, package in enumerate(cache_package_files_list):
+            try:
+                client, _ = toolbox.get_downloader_instance(package.get("downloader_id"))
+                # 拆包
+                hash_list = package.get("hash_list")
+                packaged_hashes = []
+                for hash_string in hash_list:
+                    try:
+                        toolbox.package_files(client=client, hash_string=hash_string)
+                    except Exception as e:
+                        logger.error(traceback.format_exc(3))
+                    finally:
+                        packaged_hashes.append(hash_string)
+                # 开始下载
+                if len(packaged_hashes) == len(hash_list):
+                    # 拆包完成的任务从列表中移除
+                    del cache_package_files_list[index]
+                    msg = f"{package.get('site')} {package.get('time')}拆包结束，开始下载"
+                    logger.info(msg)
+                else:
+                    msg = f"{package.get('site')} {package.get('time')}拆包结束，部分种子操作失败，下次重试，现在开始下载已拆包种子"
+                    logger.info(msg)
+                torrents = client.torrents_info(status_filter='paused')
+                if len(torrents) > 0:
+                    for torrent in torrents:
+                        try:
+                            toolbox.package_files(client=client, hash_string=torrent.get('hash'))
+                        except Exception as e:
+                            logger.error(e)
+                            continue
+                client.torrents_resume(torrent_hashes=packaged_hashes)
+                msg = f"{package.get('site')} {package.get('time')}推送的种子拆包完成，开始下载"
+                logger.info(msg)
+            except Exception as e:
+                logger.error(traceback.format_exc(3))
+                continue
+        toolbox.send_text(title='拆包', message=f'拆包任务执行结束！{time.strftime("%Y-%m-%d %H:%M:%S")} \n')
+
+
+@shared_task(bind=True, base=BaseTask)
 def auto_remove_brush_task(self):
-    my_site_list = MySite.objects.filter(Q(brush_rss=True) | Q(brush_free=True)).all()
+    my_site_list = MySite.objects.filter(Q(brush_rss=True) | Q(brush_free=True),
+                                         remove_torrent_rules__startswith='{').all()
     message_list = []
     for my_site in my_site_list:
         hash_list = cache.get(f'brush-{my_site.id}-{my_site.nickname}')
-        msg = toolbox.remove_torrent_by_site_rules(my_site, hash_list)
+        if not hash_list or len(hash_list) <= 0:
+            continue
+        msg = toolbox.remove_torrent_by_site_rules(my_site.id, hash_list)
         logger.info(msg)
         message_list.append(msg)
-    message = '\n > '.join(message_list)
+    message = ' \n' + '\n > '.join(message_list)
     logger.info(message)
     toolbox.send_text(title='刷流删种', message=message)
     return message

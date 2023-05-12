@@ -2052,13 +2052,13 @@ class PtSpider:
                                 'completers': completers if completers else '0',
                                 'save_path': ''
                             })
-                        torrents.append(result[0])
                         logger.info('拉取种子：{} {}'.format(site.name, result[0]))
                         # time.sleep(0.5)
                         if not result[1]:
                             count += 1
                         else:
                             new_count += 1
+                            torrents.append(result[0])
                             # logger.info(torrent_info)
                 if count + new_count <= 0:
                     return CommonResponse.error(msg='抓取失败或无促销种子！')

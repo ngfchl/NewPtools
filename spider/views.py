@@ -6,6 +6,7 @@ import threading
 import time
 import traceback
 from datetime import datetime
+from urllib.parse import urlparse, parse_qs
 
 import cloudscraper
 import requests
@@ -1245,7 +1246,7 @@ class PtSpider:
             # 请求时魔页面,信息写入数据库
             hour_bonus = self.get_hour_sp(my_site, headers=headers)
             if hour_bonus.code != 0:
-                raise f'{my_site.nickname} 时魔获取失败！'
+                raise Exception(f'{my_site.nickname} 时魔获取失败!')
             # 请求邮件页面，直接推送通知到手机
             if site.url not in [
                 'https://dicmusic.club/',
@@ -1887,6 +1888,7 @@ class PtSpider:
         count = 0
         new_count = 0
         site = get_object_or_404(WebSite, id=my_site.site)
+        torrents = []
         # if not my_site.passkey:
         #     return CommonResponse.error(msg='{}站点未设置Passkey，无法拼接种子链接！'.format(site.name))
         # logger.info(response.text.encode('utf8'))
@@ -1965,13 +1967,9 @@ class PtSpider:
                             site.url,
                             href.replace('&type=zip', '').replace(site.url, '').lstrip('/')
                         )
+                        parsed_url = urlparse(magnet_url)
+                        tid = parse_qs(parsed_url.query).get("id")[0]
                         logger.info('magnet_url: {}'.format(magnet_url))
-                        if href.count('passkey') <= 0 and href.count('&sign=') <= 0:
-                            download_url = '{}&passkey={}'.format(magnet_url, my_site.passkey)
-                        else:
-                            download_url = magnet_url
-                        logger.info('download_url: {}'.format(download_url))
-
                         # 如果种子有HR，则为否 HR绿色表示无需，红色表示未通过HR考核
                         hr = False if tr.xpath(site.torrent_hr_rule) else True
                         # H&R 种子有HR且站点设置不下载HR种子,跳过，
@@ -2031,11 +2029,7 @@ class PtSpider:
                         file_size = toolbox.FileSizeConvert.parse_2_byte(file_parse_size)
                         # subtitle = subtitle if subtitle else title
                         # poster_url = ''.join(tr.xpath(site.torrent_poster_rule))  # 海报链接
-                        tid = ''.join(
-                            tr.xpath(site.torrent_detail_url_rule)
-                        ).replace(site.url, '').split('=')[-1]
                         logger.info(f'title：{site}\n size: {file_size}\n category：{category}\n '
-                                    f'download_url：{download_url}\n '
                                     f'magnet_url：{magnet_url}\n subtitle：{subtitle}\n sale_status：{sale_status}\n '
                                     f'sale_expire：{sale_expire}\n seeders：{seeders}\n leechers：{leechers}\n'
                                     f'H&R：{hr}\n completers：{completers}')
@@ -2058,6 +2052,7 @@ class PtSpider:
                                 'completers': completers if completers else '0',
                                 'save_path': ''
                             })
+                        torrents.append(result[0])
                         logger.info('拉取种子：{} {}'.format(site.name, result[0]))
                         # time.sleep(0.5)
                         if not result[1]:
@@ -2067,6 +2062,18 @@ class PtSpider:
                             # logger.info(torrent_info)
                 if count + new_count <= 0:
                     return CommonResponse.error(msg='抓取失败或无促销种子！')
+                if my_site.brush_free:
+                    for torrent in torrents:
+                        # todo 解析刷流推送规则
+                        # toolbox.parse(my_site.rule)
+                        toolbox.push_torrents_to_downloader(
+                            my_site.downloader.id,
+                            urls=torrent.magnet_url,
+                            cookie=my_site.cookie,
+                            category=f'{site.nickname}{torrent.tid}'
+                        )
+                        torrent.downloader = my_site.downloader
+                        torrent.save()
                 return CommonResponse.success(data=(new_count, count))
         except Exception as e:
             # raise

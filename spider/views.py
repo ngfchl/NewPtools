@@ -2064,7 +2064,7 @@ class PtSpider:
                             # logger.info(torrent_info)
                 if count + new_count <= 0:
                     return CommonResponse.error(msg='抓取失败或无促销种子！')
-                if my_site.brush_free:
+                if my_site.brush_free and my_site.downloader:
                     for torrent in torrents:
                         # todo 解析刷流推送规则
                         # toolbox.parse(my_site.rule)

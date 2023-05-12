@@ -215,6 +215,9 @@ CELERY_BROKER_URL = 'redis://100.64.152.70:6379/15'
 
 # BACKEND配置，使用redis
 CELERY_RESULT_BACKEND = 'django-db'
+# celery切换为同步模式，仅用于代码调试
+# CELERY_TASK_EAGER_PROPAGATES_EXCEPTIONS = True
+# CELERY_TASK_ALWAYS_EAGER = True
 
 # CELERY_accept_content = ['json']
 

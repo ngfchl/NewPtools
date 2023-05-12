@@ -27,7 +27,7 @@ from auxiliary.settings import BASE_DIR
 from download.models import Downloader
 from my_site.models import SiteStatus, TorrentInfo, MySite
 from toolbox.models import BaiduOCR, Notify
-from toolbox.schema import CommonResponse
+from toolbox.schema import CommonResponse, DotDict
 from .wechat_push import WechatPush
 
 # Create your views here.
@@ -458,7 +458,6 @@ def push_torrents_to_downloader(
         is_skip_checking: bool = None,
         is_paused: bool = None,
         use_auto_torrent_management: bool = None,
-
 ):
     """将辅种数据推送至下载器"""
     client, downloader_category = get_downloader_instance(downloader_id)
@@ -471,8 +470,8 @@ def push_torrents_to_downloader(
             category=category,
             is_skip_checking=is_skip_checking,
             is_paused=is_paused,
-            upload_limit=upload_limit,
-            download_limit=download_limit,
+            upload_limit=upload_limit * 1024,
+            download_limit=download_limit * 1024,
             use_auto_torrent_management=use_auto_torrent_management,
             cookie=cookie
         )
@@ -480,15 +479,15 @@ def push_torrents_to_downloader(
             return CommonResponse.success(msg=f'种子已添加，请检查下载器！{res}')
         return CommonResponse.error(msg=f'种子添加失败！{res}')
     if downloader_category == DownloaderCategory.Transmission:
-        res = client.add_torrent(
-            torrent=urls,
-            labels=category,
-            paused=is_paused,
-            cookies=cookie
-        )
-        if res.hashString and len(res.hashString) >= 0:
-            return CommonResponse.success(msg=f'种子已添加，请检查下载器！{res.name}')
-        return CommonResponse.error(msg=f'种子添加失败！')
+        # res = client.add_torrent(
+        #     torrent=urls,
+        #     labels=category,
+        #     paused=is_paused,
+        #     cookies=cookie
+        # )
+        # if res.hashString and len(res.hashString) >= 0:
+        #     return CommonResponse.success(msg=f'种子已添加，请检查下载器！{res.name}')
+        return CommonResponse.error(msg=f'种子添加失败！暂不支持Transmission！')
 
 
 def package_files(
@@ -565,6 +564,58 @@ def package_files(
             logger.info('无需拆包？？？')
 
 
+def filter_torrent_by_rules(my_site_id: int, torrents: List[TorrentInfo]):
+    """
+    使用站点选中规则筛选种子
+    :param my_site_id: 我的站点id
+    :param torrents: 种子列表
+    :return: 筛选过后的种子列表
+    """
+    my_site = MySite.objects.get(id=my_site_id)
+    logger.info(f"当前站点：{my_site}, 删种规则：{my_site.remove_torrent_rules}")
+    rules = DotDict(json.loads(my_site.remove_torrent_rules).get('push'))
+    torrent_list = []
+    for torrent in torrents:
+        push_flag = False
+        # 发种时间命中
+        if rules.published:
+            published = datetime.strptime(torrent.published, '%Y-%m-%d %H:%M:%S').timestamp()
+            push_flag = time.time() - published < rules.published
+        # 做种人数命中
+        if rules.seeders:
+            push_flag = torrent.seeders < rules.seeders
+        # 下载人数命中
+        if rules.leechers:
+            push_flag = torrent.leechers < rules.leechers
+        # 剩余免费时间
+        if rules.sale_expire:
+            sale_expire = datetime.strptime(torrent.sale_expire, '%Y-%m-%d %H:%M:%S').timestamp()
+            push_flag = time.time() - sale_expire < rules.sale_expire
+        # 要刷流的种子大小
+        if rules.size:
+            min_size = rules.size.get('min')
+            max_size = rules.size.get('max')
+            push_flag = min_size < torrent.size / 1024 / 1024 / 1024 < max_size
+        if not push_flag:
+            continue
+        # 包含关键字命中
+        for rule in rules.include:
+            if torrent.title.find(rule):
+                push_flag = True
+                break
+        if not push_flag:
+            continue
+        # 排除关键字命中
+        for rule in rules.include:
+            if torrent.title.find(rule):
+                push_flag = False
+                break
+        if not push_flag:
+            continue
+        torrent_list.append(torrent)
+    return torrent_list
+
+
 def remove_torrent_by_site_rules(my_site_id: int, hash_list: List[str] = []):
     """
     站点删种
@@ -574,7 +625,7 @@ def remove_torrent_by_site_rules(my_site_id: int, hash_list: List[str] = []):
     """
     my_site = MySite.objects.get(id=my_site_id)
     logger.info(f"当前站点：{my_site}, 删种规则：{my_site.remove_torrent_rules}")
-    rules = json.loads(my_site.remove_torrent_rules)
+    rules = json.loads(my_site.remove_torrent_rules).get('remove')
     torrent_infos = TorrentInfo.objects.filter(site=my_site, state=True).all()
     client, _ = get_downloader_instance(my_site.downloader.id)
     if hash_list and len(hash_list) <= 0:
@@ -603,11 +654,14 @@ def remove_torrent_by_site_rules(my_site_id: int, hash_list: List[str] = []):
                         torrent_info.save()
             not_registered_msg = [
                 'torrent not registered with this tracker',
+                'err torrent deleted due to other',
+                'err torrent deleted due to repack, related torrent: /details.php?id='
             ]
             trackers = client.torrents_trackers(torrent_hash=hash_string)
             tracker_checked = False
             for tracker in trackers:
-                if tracker.get('msg') in not_registered_msg:
+                delete_msg = [msg for msg in not_registered_msg if msg in tracker.get('msg')]
+                if len(delete_msg) > 0:
                     hashes.append(hash_string)
                     tracker_checked = True
                     break
@@ -690,15 +744,18 @@ def torrents_filter_by_percent_completed_rule(client, num_complete_percent, down
             continue
         not_registered_msg = [
             'torrent not registered with this tracker',
+            'err torrent deleted due to other',
+            'err torrent deleted due to repack, related torrent: /details.php?id='
         ]
         trackers = client.torrents_trackers(torrent_hash=hash_string)
         tracker_checked = False
         for tracker in trackers:
-            if tracker.get('msg') in not_registered_msg:
+            delete_msg = [msg for msg in not_registered_msg if msg in tracker.get('msg')]
+            if len(delete_msg) > 0:
                 hashes.append(hash_string)
                 tracker_checked = True
                 break
-            if tracker.get('num_seeds') > 5:
+            if tracker.get('num_seeds') > 10:
                 hashes.append(hash_string)
                 tracker_checked = True
                 break

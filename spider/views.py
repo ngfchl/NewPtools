@@ -2065,14 +2065,16 @@ class PtSpider:
                 if count + new_count <= 0:
                     return CommonResponse.error(msg='抓取失败或无促销种子！')
                 if my_site.brush_free and my_site.downloader:
+                    # 解析刷流推送规则,筛选符合条件的种子并推送到下载器
+                    torrents = toolbox.filter_torrent_by_rules(my_site.id, torrents)
                     for torrent in torrents:
-                        # todo 解析刷流推送规则
-                        # toolbox.parse(my_site.rule)
+                        # 限速到站点限速的92%。以防超速
                         toolbox.push_torrents_to_downloader(
                             my_site.downloader.id,
                             urls=torrent.magnet_url,
                             cookie=my_site.cookie,
-                            category=f'{site.nickname}{torrent.tid}'
+                            category=f'{site.nickname}{torrent.tid}',
+                            upload_limit=int(site.limit_speed * 1024 * 0.92)
                         )
                         torrent.downloader = my_site.downloader
                         torrent.save()

@@ -206,26 +206,27 @@ def auto_get_torrents(self, site_list: List[int] = []):
             res = pt_spider.get_torrent_info_list(my_site, result.data)
             # 通知推送
             if res.code == 0:
-                message = f'> <font color="orange">{my_site.nickname}种子抓取成功！</font> {res.msg}  \n\n'
+                message = f'> ✅ {my_site.nickname}种子抓取成功！ {res.msg}  \n\n'
                 message_success.append(message)
                 logger.info(message)
             else:
-                message = f'> <font color="red"> {my_site.nickname} 抓取种子信息失败！原因：{res.msg} </font>  \n'
+                message = f'> 🆘 {my_site.nickname} 抓取种子信息失败！原因：{res.msg}  \n'
                 message_failed.append(message)
                 logger.error(message)
         else:
             # toolbox.send_text(my_site.nickname + ' 抓取种子信息失败！原因：' + result[0])
-            message = f'> <font color="red"> {my_site.nickname} 抓取种子信息失败！原因：{result.msg}</font>  \n'
+            message = f'> 🆘 {my_site.nickname} 抓取种子信息失败！原因：{result.msg}  \n'
             logger.error(message)
             message_failed.append(message)
     end = time.time()
-    consuming = f'> 拉取最新种子 任务运行成功！共有{len(site_list)}个站点需要执行，执行成功{len(message_success)}个，失败{len(message_failed)}个。' \
+    consuming = f'> ♻️ 拉取最新种子 任务运行成功！共有{len(site_list)}个站点需要执行，执行成功{len(message_success)}个，失败{len(message_failed)}个。' \
                 f'本次任务耗时：{end - start} 当前时间：{time.strftime("%Y-%m-%d %H:%M:%S")}  \n'
     message_list.append(consuming)
+    message_list.extend(message_failed)
     logger.info(consuming)
     toolbox.send_text(title='通知：拉取最新种子', message=''.join(message_list))
-    toolbox.send_text(title='通知：拉取最新种子-失败', message=''.join(message_failed))
-    toolbox.send_text(title='通知：拉取最新种子-成功', message=''.join(message_success))
+    if len(message_success) > 0:
+        toolbox.send_text(title='通知：拉取最新种子-成功', message=''.join(message_success))
     # 释放内存
     gc.collect()
 

@@ -192,7 +192,9 @@ def auto_get_torrents(self, site_list: List[int] = []):
     拉取最新种子
     """
     start = time.time()
-    message_list = '# 拉取免费种子  \n\n'
+    message_list = ['# 拉取免费种子  \n\n']
+    message_success = []
+    message_failed = []
     websites = WebSite.objects.all()
     queryset = MySite.objects.filter(id__in=site_list) if len(site_list) > 0 else MySite.objects.all()
     site_list = [my_site for my_site in queryset if websites.get(id=my_site.site).func_brush_free]
@@ -204,31 +206,26 @@ def auto_get_torrents(self, site_list: List[int] = []):
             res = pt_spider.get_torrent_info_list(my_site, result.data)
             # 通知推送
             if res.code == 0:
-                message = '> <font color="orange">{}</font> 种子抓取成功！新增种子{}条，更新种子{}条!  \n\n'.format(
-                    my_site.nickname,
-                    res.data[0],
-                    res.data[1])
-                message_list += message
+                message = f'> <font color="orange">{my_site.nickname}种子抓取成功！</font> {res.msg}  \n\n'
+                message_success.append(message)
+                logger.info(message)
             else:
-                message = '> <font color="red">' + my_site.nickname + '抓取种子信息失败！原因：' + res.msg + '</font>  \n'
-                message_list = message + message_list
-            # 日志
-            logger.info(
-                '{} 种子抓取成功！新增种子{}条，更新种子{}条! '.format(my_site.nickname, res.data[0], res.data[
-                    1]) if res.code == 0 else my_site.nickname + '抓取种子信息失败！原因：' + res.msg)
+                message = f'> <font color="red"> {my_site.nickname} 抓取种子信息失败！原因：{res.msg} </font>  \n'
+                message_failed.append(message)
+                logger.error(message)
         else:
             # toolbox.send_text(my_site.nickname + ' 抓取种子信息失败！原因：' + result[0])
-            message = '> <font color="red">' + my_site.nickname + ' 抓取种子信息失败！原因：' + result.msg + '</font>  \n'
-            message_list = message + message_list
-            logger.info(my_site.nickname + '抓取种子信息失败！原因：' + result.msg)
+            message = f'> <font color="red"> {my_site.nickname} 抓取种子信息失败！原因：{result.msg}</font>  \n'
+            logger.error(message)
+            message_failed.append(message)
     end = time.time()
-    consuming = '> {} 任务运行成功！耗时：{} 当前时间：{}  \n'.format(
-        '拉取最新种子',
-        end - start,
-        time.strftime("%Y-%m-%d %H:%M:%S"))
-    logger.info(message_list + consuming)
-    message = message_list + consuming
-    toolbox.send_text(title='通知：拉取最新种子', message=message)
+    consuming = f'> 拉取最新种子 任务运行成功！共有{len(site_list)}个站点需要执行，执行成功{len(message_success)}个，失败{len(message_failed)}个。' \
+                f'本次任务耗时：{end - start} 当前时间：{time.strftime("%Y-%m-%d %H:%M:%S")}  \n'
+    message_list.append(consuming)
+    logger.info(consuming)
+    toolbox.send_text(title='通知：拉取最新种子', message=''.join(message_list))
+    toolbox.send_text(title='通知：拉取最新种子-失败', message=''.join(message_failed))
+    toolbox.send_text(title='通知：拉取最新种子-成功', message=''.join(message_success))
     # 释放内存
     gc.collect()
 

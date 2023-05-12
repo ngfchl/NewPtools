@@ -2076,7 +2076,7 @@ class PtSpider:
                         )
                         torrent.downloader = my_site.downloader
                         torrent.save()
-                return CommonResponse.success(data=(new_count, count))
+                return CommonResponse.success(msg=f'种子抓取成功！新增种子{new_count}条，更新种子{count}条!')
         except Exception as e:
             # raise
             title = f'{site.name} 解析种子信息：失败！'

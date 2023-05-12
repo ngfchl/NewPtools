@@ -1862,7 +1862,9 @@ class PtSpider:
 
     def send_torrent_info_request(self, my_site: MySite):
         site = get_object_or_404(WebSite, id=my_site.site)
-        url = site.url + site.page_torrents.lstrip('/')
+        url = my_site.rss
+        if not url or len(url) <= 10:
+            url = site.url + site.page_torrents.lstrip('/')
         logger.info(f'种子页面链接：{url}')
         try:
             response = self.send_request(my_site, url)

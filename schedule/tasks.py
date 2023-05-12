@@ -1,6 +1,7 @@
 from __future__ import absolute_import, unicode_literals
 
 import gc
+import hashlib
 import logging
 import os
 import subprocess
@@ -186,7 +187,7 @@ def auto_get_status(self, site_list: List[int] = []):
     return message_list
 
 
-@shared_task(bind=True, base=BaseTask)
+@shared_task(bind=True, base=BaseTask, autoretry_for=(Exception,), )
 def auto_get_torrents(self, site_list: List[int] = []):
     """
     拉取最新种子
@@ -232,47 +233,43 @@ def auto_get_torrents(self, site_list: List[int] = []):
 
 
 @shared_task(bind=True, base=BaseTask)
-def auto_remove_expire_torrents(self, ):
+def auto_calc_torrent_pieces_hash(self, ):
     """
-    删除过期种子
+    计算种子块HASH
     """
     start = time.time()
-    torrent_info_list = TorrentInfo.objects.all()
+    torrent_info_list = TorrentInfo.objects.filter(downloader__isnull=False).all()
+    website_list = WebSite.objects.all()
     count = 0
     for torrent_info in torrent_info_list:
         logger.info('种子名称：{}'.format(torrent_info.name))
-        expire_time = torrent_info.sale_expire
-        if '无限期' in expire_time:
-            # ToDo 先更新种子信息，然后再判断
-            continue
-        if expire_time.endswith(':'):
-            expire_time += '00'
-            torrent_info.sale_expire = expire_time
-            torrent_info.save()
-        time_now = datetime.now()
         try:
-            expire_time_parse = datetime.strptime(expire_time, '%Y-%m-%d %H:%M:%S')
-            logger.info('优惠到期时间：{}'.format(expire_time))
+            client, _ = toolbox.get_downloader_instance(torrent_info.downloader_id)
+            if not torrent_info.hash_string:
+                # 种子信息未填写hash的，组装分类信息，到下载器查询种子信息
+                site = website_list.get(id=torrent_info.site.site)
+                category = f'{site.nickname}{torrent_info.tid}'
+                torrents = client.torrents_info(category=category)
+            else:
+                # 以后hash的直接查询
+                torrents = client.torrents_info(torrent_hashes=torrent_info.hash_string)
+            if len(torrents) == 1:
+                # 保存种子hash
+                hash_string = torrents[0].hash_string
+                torrent_info.hash_string = hash_string
+                # 获取种子块HASH列表，并生成种子块HASH列表字符串的sha1值，保存
+                pieces_hash_list = client.torrents_piece_hashes(torrent_hash=hash_string)
+                pieces_hash_string = str(client.torrents_piece_hashes(torrent_hash=torrent_info.hash)).replace(' ', '')
+                torrent_info.pieces_hash = hashlib.sha1(pieces_hash_string.encode()).hexdigest()
+            torrent_info.state = True
+            torrent_info.save()
+            count += 1
         except Exception as e:
-            logger.info('优惠到期时间解析错误：{}'.format(e))
-            torrent_info.delete()
-            count += 1
+            logging.error(traceback.format_exc(3))
             continue
-        if (expire_time_parse - time_now).days <= 0:
-            logger.info('优惠已到期时间：{}'.format(expire_time))
-            if torrent_info.downloader:
-                # 未推送到下载器，跳过或删除？
-                pass
-            if pt_spider.get_torrent_info_from_downloader(torrent_info).code == 0:
-                # todo 设定任务规则：
-                #  免费到期后，下载完毕的种子是删除还是保留？
-                #  未下载完成的，是暂停还是删除？
-                pass
-            count += 1
-            torrent_info.delete()
     end = time.time()
-    message = f'> 清除种子 任务运行成功！共清除过期种子{count}个，耗时：{end - start}  \n{time.strftime("%Y-%m-%d %H:%M:%S")}'
-    toolbox.send_text(title='通知：清除种子任务', message=message)
+    message = f'> 计算种子Pieces的HASH值 任务运行成功！共成功处理种子{count}个，耗时：{end - start}  \n{time.strftime("%Y-%m-%d %H:%M:%S")}'
+    toolbox.send_text(title='通知：计算种子HASH', message=message)
     # 释放内存
     gc.collect()
 

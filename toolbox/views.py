@@ -720,6 +720,7 @@ def remove_torrent_by_site_rules(my_site_id: int, hash_list: List[str] = []):
         client.torrents_reannounce(torrent_hashes=hashes)
         # 单次最多删种数量
         num_delete = rules.get("num_delete")
+        random.shuffle(hashes)
         client.torrents_delete(torrent_hashes=hashes[:num_delete], delete_files=True)
     msg = f'{my_site.nickname}：本次运行删除种子{len(hashes)}个！' \
           f'当前有{len(torrent_infos) - len(hashes)}个种子正在运行'

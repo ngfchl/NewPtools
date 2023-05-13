@@ -444,8 +444,8 @@ def auto_cleanup_not_registered(self):
         'torrent not registered with this tracker',
         'err torrent deleted due to other',
     ]
-    hashes = []
     for downloader in downloaders:
+        hashes = []
         client, _ = toolbox.get_downloader_instance(downloader.id)
         torrents = client.torrents_info(status_filter='stalled_downloading')
         for torrent in torrents:

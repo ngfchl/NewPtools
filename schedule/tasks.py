@@ -235,7 +235,7 @@ def auto_get_torrents(self, site_list: List[int] = []):
 @shared_task(bind=True, base=BaseTask)
 def auto_calc_torrent_pieces_hash(self, ):
     """
-    计算种子块HASH
+    计算种子块HASH(根据种子信息进行补全)
     """
     start = time.time()
     torrent_info_list = TorrentInfo.objects.filter(downloader__isnull=False).all()
@@ -265,6 +265,7 @@ def auto_calc_torrent_pieces_hash(self, ):
                 file_list = client.torrents_files(torrent_hash=hash_string)
                 file_list_hash_string = str(file_list).replace(' ', '')
                 torrent_info.filelist = hashlib.sha1(file_list_hash_string.encode()).hexdigest()
+                torrent_info.files_count = len(file_list)
             torrent_info.state = True
             torrent_info.save()
             count += 1

@@ -561,7 +561,7 @@ def package_files(
             )
             logger.info('拆包完成')
         else:
-            logger.info('无需拆包？？？')
+            logger.info(f'种子 {hash_string} 无需拆包，跳过')
 
 
 def filter_torrent_by_rules(my_site_id: int, torrents: List[TorrentInfo]):

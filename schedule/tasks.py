@@ -460,9 +460,9 @@ def auto_cleanup_not_registered(self):
                     break
             if tracker_checked:
                 continue
-        logger.info(f'本次任务共删除{len(hashes)}个已删除种子！')
+        logger.info(f'{downloader.name} 本次任务共删除{len(hashes)}个已删除种子！')
         if len(hashes) > 0:
-            toolbox.send_text(title='已删除种子HASH', message='\n'.join(hashes))
+            toolbox.send_text(title='已删除种子HASH', message='{}\n{}'.format(downloader.name, '\n'.join(hashes)))
             # todo 未来在这里会将已被删除的种子HASH发送至服务器
             client.torrents_delete(torrent_hashes=hashes, delete_files=True)
 

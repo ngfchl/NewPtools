@@ -259,8 +259,12 @@ def auto_calc_torrent_pieces_hash(self, ):
                 torrent_info.hash_string = hash_string
                 # 获取种子块HASH列表，并生成种子块HASH列表字符串的sha1值，保存
                 pieces_hash_list = client.torrents_piece_hashes(torrent_hash=hash_string)
-                pieces_hash_string = str(client.torrents_piece_hashes(torrent_hash=torrent_info.hash)).replace(' ', '')
+                pieces_hash_string = str(pieces_hash_list).replace(' ', '')
                 torrent_info.pieces_hash = hashlib.sha1(pieces_hash_string.encode()).hexdigest()
+                # 获取文件列表，并生成文件列表字符串的sha1值，保存
+                file_list = client.torrents_files(torrent_hash=hash_string)
+                file_list_hash_string = str(file_list).replace(' ', '')
+                torrent_info.filelist = hashlib.sha1(file_list_hash_string.encode()).hexdigest()
             torrent_info.state = True
             torrent_info.save()
             count += 1

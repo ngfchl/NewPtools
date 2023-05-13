@@ -655,12 +655,11 @@ def remove_torrent_by_site_rules(my_site_id: int, hash_list: List[str] = []):
             not_registered_msg = [
                 'torrent not registered with this tracker',
                 'err torrent deleted due to other',
-                'err torrent deleted due to repack, related torrent: /details.php?id='
             ]
             trackers = client.torrents_trackers(torrent_hash=hash_string)
             tracker_checked = False
             for tracker in trackers:
-                delete_msg = [msg for msg in not_registered_msg if msg in tracker.get('msg')]
+                delete_msg = [msg for msg in not_registered_msg if tracker.get('msg').startswith(msg)]
                 if len(delete_msg) > 0:
                     hashes.append(hash_string)
                     tracker_checked = True

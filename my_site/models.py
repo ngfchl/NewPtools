@@ -110,11 +110,11 @@ class TorrentInfo(BaseEntity):
     size = models.IntegerField(verbose_name='文件大小', default=0)
     hr = models.BooleanField(verbose_name='H&R考核', default=True, help_text='绿色为通过或无需HR考核')
     sale_status = models.CharField(verbose_name='优惠状态', default='', max_length=16)
-    sale_expire = models.CharField(verbose_name='到期时间', default='', max_length=24)
-    published = models.CharField(verbose_name='发布时间', default='', max_length=32)
-    seeders = models.CharField(verbose_name='做种人数', default='0', max_length=8)
-    leechers = models.CharField(verbose_name='下载人数', default='0', max_length=8)
-    completers = models.CharField(verbose_name='完成人数', default='0', max_length=8)
+    sale_expire = models.DateTimeField(verbose_name='到期时间', blank=True, null=True, )
+    published = models.DateTimeField(verbose_name='发布时间', blank=True, null=True)
+    seeders = models.IntegerField(verbose_name='做种人数', default=0, )
+    leechers = models.IntegerField(verbose_name='下载人数', default=0, )
+    completers = models.IntegerField(verbose_name='完成人数', default=0, )
     hash_string = models.CharField(max_length=128, verbose_name='Info_hash', default='')
     filelist = models.CharField(max_length=128, verbose_name='文件列表', default='')
     douban_url = models.URLField(verbose_name='豆瓣链接', default='')
@@ -122,11 +122,15 @@ class TorrentInfo(BaseEntity):
     files_count = models.IntegerField(verbose_name='文件数目', default=0)
     completed = models.IntegerField(verbose_name='已下载', default=0)
     uploaded = models.IntegerField(verbose_name='已上传', default=0)
-    pieces_hash = models.TextField(verbose_name='piece', default='')
-    save_path = models.FilePathField(verbose_name='保存路径', default='/downloads/')
-    state = models.BooleanField(verbose_name='推送状态', default=False)
+    pieces_qb = models.CharField(verbose_name='pieces_qb', default='', max_length=128)
+    pieces_tr = models.CharField(verbose_name='pieces_tr', default='', max_length=128)
+    state = models.BooleanField(verbose_name='推送状态', choices=(
+        ('未推送', 0),
+        ('已推送', 1),
+        ('已删除', 2),
+    ), default=0)
     downloader = models.ForeignKey(to=Downloader,
-                                   on_delete=models.CASCADE,
+                                   on_delete=models.SET_NULL,
                                    verbose_name='下载器',
                                    blank=True, null=True)
 

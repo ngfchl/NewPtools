@@ -2049,10 +2049,9 @@ class PtSpider:
                                 'hr': hr,
                                 'published': on_release,
                                 'size': file_size,
-                                'seeders': seeders if seeders else '0',
-                                'leechers': leechers if leechers else '0',
-                                'completers': completers if completers else '0',
-                                'save_path': ''
+                                'seeders': int(seeders) if seeders else 0,
+                                'leechers': int(leechers) if leechers else 0,
+                                'completers': int(completers) if completers else 0,
                             })
                         logger.info('拉取种子：{} {}'.format(site.name, result[0]))
                         # time.sleep(0.5)

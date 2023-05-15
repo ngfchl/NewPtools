@@ -33,16 +33,16 @@ class Downloader(BaseEntity):
         MaxValueValidator(65535),
         MinValueValidator(1001)
     ])
+    brush = models.BooleanField(default=False, verbose_name='刷流专用', help_text='刷流和保种一定要分开！')
     # 预留空间
     reserved_space = models.IntegerField(default=30, verbose_name='预留磁盘空间', validators=[
         MinValueValidator(1),
-        MaxValueValidator(512)
-    ], help_text='单位GB，最小为1G，最大512G')
+    ], help_text='单位：GB，最小为1G')
     # 拆包
     package_files = models.BooleanField(default=False, verbose_name='自动拆包')
     delete_one_file = models.BooleanField(default=False, verbose_name='删除单文件种子',
                                           help_text='拆包时是否删除单文件的达到拆包标准的种子')
-    package_size = models.IntegerField(default=5, verbose_name='种子大小', help_text='单位：GB，需要拆包的种子大小')
+    package_size = models.IntegerField(default=5, verbose_name='种子大小', help_text='单位：GB，大于这个体积才拆包')
     package_percent = models.FloatField(default=0.1, verbose_name='拆包大小', help_text='最小0.1，最大0.5',
                                         validators=[MaxValueValidator(0.8), MinValueValidator(0.1)])
     count_torrents = models.IntegerField(default=0, verbose_name='种子限制',

@@ -1285,8 +1285,7 @@ class PtSpider:
             # status = SiteStatus.objects.filter(site=my_site, created_at__date=datetime.today()).first()
             if len(err_msg) <= 3:
                 return CommonResponse.success(
-                    msg=f'{my_site.nickname} 数据更新完毕! {("🆘 " + " ".join(err_msg)) if len(err_msg) > 0 else None}',
-                    data=my_site.sitestatus_set.latest('created_at'))
+                    msg=f'{my_site.nickname} 数据更新完毕! {("🆘 " + " ".join(err_msg)) if len(err_msg) > 0 else ""}')
             return CommonResponse.error(
                 msg=f'{my_site.nickname} 数据更新失败! 🆘 {" ".join(err_msg)}')
         except RequestException as nce:

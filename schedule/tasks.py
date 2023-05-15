@@ -653,6 +653,33 @@ def auto_program_upgrade(self, ):
 
 
 @shared_task(bind=True, base=BaseTask)
+def auto_remove_expire_torrent(self):
+    """
+    清理免费到期的种子
+    :param self:
+    :return:
+    """
+    # 筛选标记为刷流的下载器
+    downloaders = Downloader.objects.filter(brush=True).all()
+    # 筛选已推送到下载器的种子
+    torrent_info_list = TorrentInfo.objects.filter(state=True, downloader__in=downloaders).all()
+    for downloader in downloaders:
+        client, _ = toolbox.get_downloader_instance(downloader.id)
+        # 筛选已过期和剩余免费时间小于三分钟的种子
+        torrents = [torrent for torrent in torrent_info_list if
+                    torrent.downloader.id == downloader.id and time.strptime(
+                        torrent.sale_expire).timestamp() < time.time() - 60 * 3]
+        hashes = [torrent.hash for torrent in torrents]
+        # 如果开启了保留已下载完毕种子选项，则选下载中的种子
+        if downloader.keep_completed:
+            downloading_torrents = client.torrents_info(
+                status_filter=['downloading', 'stalled_downloading'], torrent_hashes=hashes)
+            print(downloading_torrents)
+            hashes = [torrent.get('hash') for torrent in downloading_torrents]
+        client.torrents_delete(torrent_hashes=hashes, delete_files=True)
+
+
+@shared_task(bind=True, base=BaseTask)
 def auto_update_license(self, ):
     """auto_update_license"""
     res = toolbox.generate_config_file()

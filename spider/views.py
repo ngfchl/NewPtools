@@ -1223,6 +1223,20 @@ class PtSpider:
         seeding_detail_url = site.url + site.page_seeding.lstrip('/').format(my_site.user_id)
         # completed_detail_url = site.url + site.page_completed.lstrip('/').format(my_site.user_id)
         # leeching_detail_url = site.url + site.page_leeching.lstrip('/').format(my_site.user_id)
+        status_today = my_site.sitestatus_set.filter(created_at__date__gte=datetime.today()).first()
+        if not status_today:
+            status_today = SiteStatus(site=my_site)
+            status_latest = my_site.sitestatus_set.latest('created_at')
+            if status_latest:
+                status_today.uploaded = status_latest.uploaded
+                status_today.downloaded = status_latest.downloaded
+                status_today.ratio = status_latest.ratio
+                status_today.my_bonus = status_latest.my_bonus
+                status_today.my_score = status_latest.my_score
+                status_today.seed_volume = status_latest.seed_volume
+                status_today.my_level = status_latest.my_level
+            status_today.save()
+        err_msg = []
         try:
             headers = {}
             if site.url in [
@@ -1242,11 +1256,15 @@ class PtSpider:
             # 发送请求，请求个人主页
             details_html = self.get_userinfo_html(my_site, headers=headers)
             if details_html.code != 0:
-                raise f'{my_site.nickname} 个人主页解析失败!'
+                detail_msg = f'个人主页解析失败!'
+                err_msg.append(detail_msg)
+                logger.warning(f'{my_site.nickname} {detail_msg}')
             # 请求时魔页面,信息写入数据库
             hour_bonus = self.get_hour_sp(my_site, headers=headers)
             if hour_bonus.code != 0:
-                raise Exception(f'{my_site.nickname} 时魔获取失败!')
+                bonus_msg = f'时魔获取失败!'
+                err_msg.append(bonus_msg)
+                logger.warning(f'{my_site.nickname} {bonus_msg}')
             # 请求邮件页面，直接推送通知到手机
             if site.url not in [
                 'https://dicmusic.club/',
@@ -1256,21 +1274,28 @@ class PtSpider:
                 # 发送请求，请求做种信息页面
                 seeding_html = self.get_seeding_html(my_site, headers=headers, details_html=details_html.data)
                 if seeding_html.code != 0:
-                    raise f'{my_site.nickname} 做种页面访问失败!'
-                self.get_mail_info(my_site, details_html.data, header=headers)
-                # 请求公告信息，直接推送通知到手机
-                self.get_notice_info(my_site, details_html.data)
+                    seeding_msg = f'做种页面访问失败!'
+                    err_msg.append(seeding_msg)
+                    logger.warning(f'{my_site.nickname} {seeding_msg}')
+                if details_html.code == 0:
+                    self.get_mail_info(my_site, details_html.data, header=headers)
+                    # 请求公告信息，直接推送通知到手机
+                    self.get_notice_info(my_site, details_html.data)
             # return self.parse_status_html(my_site, data)
             # status = SiteStatus.objects.filter(site=my_site, created_at__date=datetime.today()).first()
-            return CommonResponse.success(msg=f'{my_site.nickname} 数据更新完毕!',
-                                          data=my_site.sitestatus_set.latest('created_at'))
+            if len(err_msg) <= 3:
+                return CommonResponse.success(
+                    msg=f'{my_site.nickname} 数据更新完毕! {("🆘 " + " ".join(err_msg)) if len(err_msg) > 0 else None}',
+                    data=my_site.sitestatus_set.latest('created_at'))
+            return CommonResponse.error(
+                msg=f'{my_site.nickname} 数据更新失败! 🆘 {" ".join(err_msg)}')
         except RequestException as nce:
-            msg = f'与网站 {my_site.nickname} 建立连接失败，请检查网络？？'
+            msg = f'🆘 与网站 {my_site.nickname} 建立连接失败，请检查网络？？'
             logger.error(msg)
             logger.error(traceback.format_exc(limit=3))
             return CommonResponse.error(msg=msg)
         except Exception as e:
-            message = f'{my_site.nickname} 访问个人主页信息：失败！原因：{e}'
+            message = f'🆘 {my_site.nickname} 统计个人数据失败！原因：{err_msg} {e}'
             logger.error(message)
             logger.error(traceback.format_exc(limit=3))
             return CommonResponse.error(msg=message)
@@ -1322,7 +1347,7 @@ class PtSpider:
                     my_site.latest_active = datetime.now()
                     my_site.save()
             except Exception as e:
-                msg = f'{site.name} 注册时间获取出错啦！'
+                msg = f'🆘 {site.name} 注册时间获取出错啦！'
                 logger.info(traceback.format_exc(3))
 
     def parse_userinfo_html(self, my_site, details_html):
@@ -1834,18 +1859,23 @@ class PtSpider:
                     # 获取朱雀时魔
                     bonus_hour = response.json().get('response').get('userstats').get('seedingBonusPointsPerHour')
                 else:
-                    res_list = self.parse(site, response, site.my_per_hour_bonus_rule)
-                    if len(res_list) <= 0:
-                        CommonResponse.error(msg='时魔获取失败！')
-                    if 'u2.dmhy.org' in site.url:
-                        res_list = ''.join(res_list).split('，')
-                        res_list.reverse()
-                    logger.info('时魔字符串：{}'.format(res_list))
-                    if len(res_list) <= 0:
+                    if response.status_code == 200:
+                        res_list = self.parse(site, response, site.my_per_hour_bonus_rule)
+                        if len(res_list) <= 0:
+                            CommonResponse.error(msg='时魔获取失败！')
+                        if 'u2.dmhy.org' in site.url:
+                            res_list = ''.join(res_list).split('，')
+                            res_list.reverse()
+                        logger.info('时魔字符串：{}'.format(res_list))
+                        if len(res_list) <= 0:
+                            message = f'{site.name} 时魔获取失败！'
+                            logger.error(message)
+                            return CommonResponse.error(msg=message, data=0)
+                        bonus_hour = toolbox.get_decimals(res_list[0].replace(',', ''))
+                    else:
                         message = f'{site.name} 时魔获取失败！'
                         logger.error(message)
-                        return CommonResponse.error(msg=message, data=0)
-                    bonus_hour = toolbox.get_decimals(res_list[0].replace(',', ''))
+                        return CommonResponse.error(msg=message)
             SiteStatus.objects.update_or_create(
                 site=my_site,
                 created_at__date__gte=datetime.today(),

@@ -44,8 +44,12 @@ def add_downloader(request, downloader: DownloaderSchemaIn):
 
 @router.put('/downloader', response=CommonResponse[DownloaderSchemaIn])
 def edit_downloader(request, downloader: DownloaderSchemaIn):
-    new_downloader = Downloader.objects.update_or_create(defaults=downloader.dict(), id=downloader.id)
-    return CommonResponse.success(data=new_downloader[0])
+    try:
+        new_downloader = Downloader.objects.update_or_create(defaults=downloader.dict(), id=downloader.id).first()
+        return CommonResponse.success(data=new_downloader, msg=f'{new_downloader.name} 修改成功！')
+    except Exception as e:
+        logger.error(traceback.format_exc(3))
+        return CommonResponse.error(msg=f'{downloader.name} 修改成功！')
 
 
 @router.delete('/downloader', response=CommonResponse)

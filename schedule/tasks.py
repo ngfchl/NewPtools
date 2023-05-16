@@ -35,48 +35,26 @@ pt_spider = PtSpider()
 
 # @boost('do_sign_in', broker_kind=BrokerEnum.REDIS_STREAM)
 @shared_task(bind=True, base=BaseTask)
-def auto_sign_in(self, site_list: List[int] = []):
+def auto_sign_in(self, *site_list: List[int]):
     """执行签到"""
     start = time.time()
     logger.info('开始执行签到任务')
     toolbox.send_text(title='通知：正在签到', message=f'开始执行签到任务，当前时间：{datetime.fromtimestamp(start)}')
     logger.info('筛选需要签到的站点')
     message_list = []
-    sign_list = MySite.objects.filter(
-        sign_in=True
-    ) if len(site_list) == 0 else MySite.objects.filter(sign_in=True, id__in=site_list)
-    # chatgpt 优化的代码：
     queryset = [
-        my_site for my_site in sign_list
+        my_site for my_site in MySite.objects.filter(sign_in=True, id__in=site_list)
         if my_site.cookie and WebSite.objects.get(id=my_site.site).sign_in and
            my_site.signin_set.filter(created_at__date__gte=datetime.today(), sign_in_today=True).count() == 0 and
            (datetime.now().hour >= 9 or WebSite.objects.get(id=my_site.site).url not in ['https://u2.dmhy.org/'])
     ]
-    """
-    # 获取工具支持且本人开启签到的所有站点
-    websites = WebSite.objects.all()
-    sign_list = MySite.objects.filter(
-        sign_in=True
-    ) if len(site_list) == 0 else MySite.objects.filter(sign_in=True, id__in=site_list)
-    # 获取已配置Cookie 且站点支持签到，今日无签到数据的站点列表
-    queryset = [my_site for my_site in sign_list if my_site.cookie and websites.get(id=my_site.site).sign_in
-                and my_site.signin_set.filter(created_at__date__gte=datetime.today(), sign_in_today=True).count() <= 0]
-    if datetime.now().hour < 9 and len(queryset) > 0:
-        print(queryset)
-        print(type(queryset))
-        # U2/52PT 每天九点前不签到
-        queryset = [my_site for my_site in queryset if WebSite.objects.get(id=my_site.site).url not in [
-            'https://u2.dmhy.org/',
-            # 'https://52pt.site/'
-        ]]
-    """
     message = '站点：`U2` 早上九点之前不执行签到任务哦！ \n\n'
     logger.info(message)
     message_list.append(message)
     if len(queryset) <= 0:
         message_list = ['已全部签到或无需签到！ \n\n']
         logger.info(message_list)
-        toolbox.send_text(title='通知：自动签到', message='\n'.join(message_list))
+        # toolbox.send_text(title='通知：自动签到', message='\n'.join(message_list))
         return message_list
     results = pool.map(pt_spider.sign_in, queryset)
     logger.info('执行签到任务')
@@ -111,7 +89,7 @@ def auto_sign_in(self, site_list: List[int] = []):
 
 
 @shared_task(bind=True, base=BaseTask)
-def auto_get_status(self, site_list: List[int] = []):
+def auto_get_status(self, *site_list: List[int]):
     """
     更新个人数据
     """
@@ -120,13 +98,14 @@ def auto_get_status(self, site_list: List[int] = []):
     failed_message = []
     success_message = []
     websites = WebSite.objects.all()
-    queryset = MySite.objects.filter(
-        get_info=True
-    ) if len(site_list) == 0 else MySite.objects.filter(get_info=True, id__in=site_list)
-    site_list = [my_site for my_site in queryset if websites.get(id=my_site.site).get_info]
-    results = pool.map(pt_spider.send_status_request, site_list)
+    # queryset = MySite.objects.filter(
+    #     get_info=True
+    # ) if len(site_list) == 0 else MySite.objects.filter(get_info=True, id__in=site_list)
+    queryset = [my_site for my_site in MySite.objects.filter(get_info=True, id__in=site_list) if
+                websites.get(id=my_site.site).get_info]
+    results = pool.map(pt_spider.send_status_request, queryset)
     message_template = MessageTemplate.status_message_template
-    for my_site, result in zip(site_list, results):
+    for my_site, result in zip(queryset, results):
         if result.code == 0:
             # res = pt_spider.parse_status_html(my_site, result.data)
             logger.info('自动更新个人数据: {}, {}'.format(my_site.nickname, result))
@@ -173,7 +152,7 @@ def auto_get_status(self, site_list: List[int] = []):
     logger.info(incremental)
     toolbox.send_text(title='通知：今日数据', message=incremental)
     end = time.time()
-    consuming = f'自动更新个人数据 任务运行成功！' \
+    consuming = f'自动更新个人数据 任务运行成功！共有{len(queryset)}个站点需要执行，' \
                 f'共计成功 {len(success_message)} 个站点，失败 {len(failed_message)} 个站点，' \
                 f'耗时：{round(end - start, 2)} 完成时间：{time.strftime("%Y-%m-%d %H:%M:%S")}  \n'
     message_list.append(consuming)
@@ -189,7 +168,7 @@ def auto_get_status(self, site_list: List[int] = []):
 
 
 @shared_task(bind=True, base=BaseTask, autoretry_for=(Exception,), )
-def auto_get_torrents(self, site_list: List[int] = []):
+def auto_get_torrents(self, *site_list: List[int]):
     """
     拉取最新种子
     """
@@ -198,10 +177,10 @@ def auto_get_torrents(self, site_list: List[int] = []):
     message_success = []
     message_failed = []
     websites = WebSite.objects.all()
-    queryset = MySite.objects.filter(id__in=site_list) if len(site_list) > 0 else MySite.objects.all()
-    site_list = [my_site for my_site in queryset if websites.get(id=my_site.site).brush_free]
-    results = pool.map(pt_spider.send_torrent_info_request, site_list)
-    for my_site, result in zip(site_list, results):
+    queryset = [my_site for my_site in MySite.objects.filter(id__in=site_list) if
+                websites.get(id=my_site.site).brush_free]
+    results = pool.map(pt_spider.send_torrent_info_request, queryset)
+    for my_site, result in zip(queryset, results):
         logger.info('获取种子：{}{}'.format(my_site.nickname, result))
         # print(result is tuple[int])
         if result.code == 0:
@@ -221,7 +200,7 @@ def auto_get_torrents(self, site_list: List[int] = []):
             logger.error(message)
             message_failed.append(message)
     end = time.time()
-    consuming = f'> ♻️ 拉取最新种子 任务运行成功！共有{len(site_list)}个站点需要执行，执行成功{len(message_success)}个，失败{len(message_failed)}个。' \
+    consuming = f'> ♻️ 拉取最新种子 任务运行成功！共有{len(queryset)}个站点需要执行，执行成功{len(message_success)}个，失败{len(message_failed)}个。' \
                 f'本次任务耗时：{end - start} 当前时间：{time.strftime("%Y-%m-%d %H:%M:%S")}  \n'
     message_list.append(consuming)
     message_list.extend(message_failed)
@@ -249,7 +228,7 @@ def auto_calc_torrent_pieces_hash(self, ):
             if not torrent_info.hash_string:
                 # 种子信息未填写hash的，组装分类信息，到下载器查询种子信息
                 site = website_list.get(id=torrent_info.site.site)
-                category = f'{site.nickname}{torrent_info.tid}'
+                category = f'{site.nickname}-{torrent_info.tid}'
                 torrents = client.torrents_info(category=category)
             else:
                 # 以后hash的直接查询
@@ -267,7 +246,7 @@ def auto_calc_torrent_pieces_hash(self, ):
                 file_list_hash_string = str(file_list).replace(' ', '')
                 torrent_info.filelist = hashlib.sha1(file_list_hash_string.encode()).hexdigest()
                 torrent_info.files_count = len(file_list)
-            torrent_info.state = True
+            torrent_info.state = 1
             torrent_info.save()
             count += 1
         except Exception as e:
@@ -296,20 +275,20 @@ def auto_get_rss(self, *site_list: List[int]):
             website = websites.get(id=my_site.site)
             updated = 0
             created = 0
-            hash_list = []
-            urls = []
-            for torrent in result:
-                tid = torrent.get('tid')
+            torrent_list = []
+            # urls = []
+            for t in result:
+                tid = t.get('tid')
                 # 组装种子详情页URL 解析详情页信息
                 # res_detail = pt_spider.get_torrent_detail(my_site, f'{website.url}{website.page_detail.format(tid)}')
                 # 如果无报错，将信息合并到torrent
                 # if res_detail.code == 0:
                 #     torrent.update(res_detail.data)
-                logger.info(torrent)
-                res = TorrentInfo.objects.update_or_create(site=my_site, tid=tid, defaults=torrent, )
+                logger.info(t)
+                res = TorrentInfo.objects.update_or_create(site=my_site, tid=tid, defaults=t, )
                 if res[1]:
-                    urls.append(f'{website.url}{website.page_download.format(tid)}')
-                    hash_list.append(res[0].hash_string)
+                    res[0].update(downloader=my_site.downloader)
+                    torrent_list.append(res[0])
                     created += 1
                 else:
                     updated += 1
@@ -317,52 +296,67 @@ def auto_get_rss(self, *site_list: List[int]):
             msg = f'{my_site.nickname} 新增种子：{created} 个，更新种子：{updated}个！'
             logger.info(msg)
             message_success.append(msg)
-            if my_site.downloader:
+            if my_site.brush_rss and my_site.downloader:
                 downloader = my_site.downloader
-                res = toolbox.push_torrents_to_downloader(
-                    downloader_id=my_site.downloader.id,
-                    urls=urls,
-                    cookie=my_site.cookie,
-                    is_paused=downloader.package_files,
-                )
-                logging.info(f'本次任务推送状态：{res.msg}')
-
-                message = f'> RSS 任务运行成功！耗时：{time.time() - start}  \n{time.strftime("%Y-%m-%d %H:%M:%S")} \n'
+                client, downloader_category = toolbox.get_downloader_instance(downloader.id)
+                push_message = []
+                for torrent in torrent_list:
+                    torrent.magnet_url = f'{website.url}{website.page_download.format(torrent.tid)}'
+                    res = toolbox.push_torrents_to_downloader(
+                        client, downloader_category,
+                        urls=torrent.magnet_url,
+                        cookie=my_site.cookie,
+                        is_paused=my_site.package_file and downloader.package_files,
+                        category=f'{website.nickname}-{torrent.tid}'
+                    )
+                    if res.code == 0:
+                        torrent.downloader = downloader
+                        torrent.state = 1
+                        torrent.save()
+                    msg = f'{torrent.title} 推送状态：{res.msg}'
+                    logging.info(msg)
+                    push_message.append(msg)
+                message = f'> RSS 任务运行成功！耗时：{time.time() - start}  \n' \
+                          f'当前时间：{time.strftime("%Y-%m-%d %H:%M:%S")} \n 种子推送记录' + '\n'.join(push_message)
                 logging.info(f'站点拆包状态：{my_site.package_file}，下载器拆包状态：{downloader.package_files}')
+                # 拆包
                 if my_site.package_file and downloader.package_files:
                     package_start = time.time()
-                    cache_hash_list = cache.get(f'brush-{my_site.id}-{my_site.nickname}')
-                    if not cache_hash_list or len(cache_hash_list) <= 0:
-                        cache_hash_list = hash_list
+                    # 30秒等待种子下载到下载器
+                    time.sleep(30)
+                    hash_list = []
+                    for hash_string in [torrent.hash for torrent in torrent_list]:
+                        try:
+                            toolbox.package_files(
+                                client=client, hash_string=hash_string,
+                                package_size=downloader.package_size,
+                                package_percent=downloader.package_percent,
+                                delete_one_file=downloader.delete_one_file,
+                            )
+                        except Exception as e:
+                            logger.error(traceback.format_exc(3))
+                            # 拆包失败的写入hash_list
+                            hash_list.append(hash_string)
+                            continue
+                    message = f'拆包任务执行结束！耗时：{time.time() - package_start} \n ' \
+                              f'当前时间：{time.strftime("%Y-%m-%d %H:%M:%S")} \n' \
+                              f'成功拆包{len(torrent_list) - len(hash_list)}个，失败{len(hash_list)}个！'
+                    toolbox.send_text(title='拆包', message=message)
+                    package_files = {
+                        'site': my_site.nickname,
+                        'time': time.strftime("%Y-%m-%d %H:%M:%S"),
+                        'downloader_id': downloader.id,
+                        'hash_list': hash_list
+                    }
+                    # 从缓存获取需要拆包的任务参数列表
+                    cache_package_files_list = cache.get(f'cache_package_files_list')
+                    if not cache_package_files_list or len(cache_package_files_list) <= 0:
+                        cache_package_files_list = [package_files]
                     else:
-                        cache_hash_list.extend(hash_list)
-                    cache.set(f'brush-{my_site.id}-{my_site.nickname}', cache_hash_list, 24 * 60 * 60)
-                    # client, _ = toolbox.get_downloader_instance(downloader.id)
-                    # time.sleep(25)
-                    # for hash_string in hash_list:
-                    #     try:
-                    #         toolbox.package_files(client=client, hash_string=hash_string)
-                    #     except Exception as e:
-                    #         logger.error(traceback.format_exc(3))
-                    #         continue
-                    # toolbox.send_text(
-                    #     title='拆包',
-                    #     message=f'拆包任务执行结束！耗时：{time.time() - package_start}\n{time.strftime("%Y-%m-%d %H:%M:%S")} \n')
-                    # package_files = {
-                    #     'time': time.strftime("%Y-%m-%d %H:%M:%S"),
-                    #     'site': my_site.nickname,
-                    #     'downloader_id': downloader.id,
-                    #     'hash_list': hash_list
-                    # }
-                    # # 从缓存获取需要拆包的任务参数列表
-                    # cache_package_files_list = cache.get(f'cache_package_files_list')
-                    # if not cache_package_files_list or len(cache_package_files_list) <= 0:
-                    #     cache_package_files_list = [package_files]
-                    # else:
-                    #     # 如果列表存在就讲本次生成的参数添加到列表末尾
-                    #     cache_package_files_list.append(package_files)
-                    # # 更新参数列表
-                    # cache.set(f'cache_package_files_list', cache_package_files_list, 60 * 60 * 24)
+                        # 如果列表存在就讲本次生成的参数添加到列表末尾
+                        cache_package_files_list.append(package_files)
+                    # 更新参数列表
+                    cache.set(f'cache_package_files_list', cache_package_files_list, 60 * 60 * 24)
         except Exception as e:
             logger.error(traceback.format_exc(3))
             msg = f'{my_site.nickname} RSS获取或解析失败'
@@ -394,14 +388,21 @@ def auto_torrents_package_files(self):
         message_list = []
         for index, package in enumerate(cache_package_files_list):
             try:
-                client, _ = toolbox.get_downloader_instance(package.get("downloader_id"))
+                downloader_id = package.get("downloader_id")
+                client, _ = toolbox.get_downloader_instance(downloader_id)
+                downloader = Downloader.objects.get(id=downloader_id)
                 # 拆包
                 hash_list = package.get("hash_list")
                 packaged_hashes = []
                 succeed = 0
                 for hash_string in hash_list:
                     try:
-                        toolbox.package_files(client=client, hash_string=hash_string)
+                        toolbox.package_files(
+                            client=client, hash_string=hash_string,
+                            package_size=downloader.package_size,
+                            package_percent=downloader.package_percent,
+                            delete_one_file=downloader.delete_one_file,
+                        )
                         packaged_hashes.append(hash_string)
                         succeed += 1
                     except Exception as e:
@@ -410,7 +411,7 @@ def auto_torrents_package_files(self):
                 if len(packaged_hashes) == len(hash_list):
                     # 拆包完成的任务从列表中移除
                     del cache_package_files_list[index]
-                    msg = f"✅ {package.get('site')} {package.get('time')}拆包结束，开始下载"
+                    msg = f"✅ {package.get('site')} {package.get('time')}写入的拆包任务执行结束，开始下载"
                     logger.info(msg)
                 else:
                     msg = f"🆘 {package.get('site')} {package.get('time')}拆包结束，部分种子操作失败，下次重试，现在开始下载已拆包种子"
@@ -431,13 +432,13 @@ def auto_torrents_package_files(self):
             except Exception as e:
                 logger.error(traceback.format_exc(3))
                 continue
-        toolbox.send_text(
-            title='拆包', message=f'拆包任务执行结束！{time.strftime("%Y-%m-%d %H:%M:%S")} \n {"".join(message_list)}')
+        message = f'拆包任务执行结束！{time.strftime("%Y-%m-%d %H:%M:%S")} \n {"".join(message_list)}'
+        toolbox.send_text(title='拆包', message=message)
 
 
 @shared_task(bind=True, base=BaseTask)
 def auto_cleanup_not_registered(self):
-    downloaders = Downloader.objects.filter(category=DownloaderCategory.qBittorrent)
+    downloaders = Downloader.objects.filter(category=DownloaderCategory.qBittorrent, brush=True)
     not_registered_msg = [
         'torrent not registered with this tracker',
         'err torrent deleted due to other',
@@ -467,23 +468,25 @@ def auto_cleanup_not_registered(self):
 
 
 @shared_task(bind=True, base=BaseTask)
-def auto_remove_brush_task(self):
-    my_site_list = MySite.objects.filter(Q(brush_rss=True) | Q(brush_free=True),
-                                         remove_torrent_rules__startswith='{').all()
+def auto_remove_brush_task(self, *site_list: List[int]):
+    my_site_list = MySite.objects.filter(
+        Q(brush_rss=True) | Q(brush_free=True), downloader__isnull=False,
+        remove_torrent_rules__startswith='{', id__in=site_list).all()
     message_list = []
+    websites = WebSite.objects.filter(brush_rss=True, id__in=[my_site.site for my_site in my_site_list]).all()
+
     for my_site in my_site_list:
-        hash_list = cache.get(f'brush-{my_site.id}-{my_site.nickname}')
-        if not hash_list or len(hash_list) <= 0:
-            continue
-        msg = toolbox.remove_torrent_by_site_rules(my_site.id, hash_list)
+        website = websites.get(my_site.site)
+
+        msg = toolbox.remove_torrent_by_site_rules(my_site)
         logger.info(msg)
         message_list.append(msg)
-    if len(message_list) > 0:
-        message = ' \n' + '\n > '.join(message_list)
-        logger.info(message)
-        toolbox.send_text(title='刷流删种', message=message)
-        return message
-    return '没有需要删除的种子！'
+        if len(message_list) > 0:
+            message = ' \n' + '\n > '.join(message_list)
+            logger.info(message)
+            toolbox.send_text(title='刷流删种', message=message)
+            return message
+        return '没有需要删除的种子！'
 
 
 @shared_task(bind=True, base=BaseTask)
@@ -524,8 +527,9 @@ def auto_get_rss_torrent_detail(self, my_site_id: int = None):
                 hash_list.append(res[0].hash_string)
             if website.brush_rss and my_site.brush_rss and my_site.downloader:
                 downloader = my_site.downloader
+                client, downloader_category = toolbox.get_downloader_instance(downloader.id)
                 res = toolbox.push_torrents_to_downloader(
-                    downloader_id=my_site.downloader.id,
+                    client, downloader_category,
                     urls=urls,
                     cookie=my_site.cookie,
                 )
@@ -660,7 +664,7 @@ def auto_remove_expire_torrent(self):
     # 筛选标记为刷流的下载器
     downloaders = Downloader.objects.filter(brush=True).all()
     # 筛选已推送到下载器的种子
-    torrent_info_list = TorrentInfo.objects.filter(state=True, downloader__in=downloaders).all()
+    torrent_info_list = TorrentInfo.objects.filter(state=1, downloader__in=downloaders).all()
     for downloader in downloaders:
         client, _ = toolbox.get_downloader_instance(downloader.id)
         # 筛选已过期和剩余免费时间小于三分钟的种子

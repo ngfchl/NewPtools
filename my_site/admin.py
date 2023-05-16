@@ -22,3 +22,8 @@ class SiteStatusAdmin(admin.ModelAdmin):
 @admin.register(SignIn)
 class SignInAdmin(admin.ModelAdmin):
     pass
+
+
+@admin.register(TorrentInfo)
+class TorrentInfoAdmin(admin.ModelAdmin):
+    pass

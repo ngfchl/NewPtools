@@ -33,8 +33,8 @@ class MySite(BaseEntity):
     brush_rss = models.BooleanField(verbose_name="RSS刷流", default=False, help_text="硬刚刷流")
     package_file = models.BooleanField(verbose_name="拆包刷流", default=False,
                                        help_text="拆包刷流，只下载一部分，针对大包小硬盘")
-    hr = models.BooleanField(verbose_name='开启HR下载', default=False, help_text='是否下载HR种子')
-    search = models.BooleanField(verbose_name='开启搜索', default=True, help_text='是否开启搜索')
+    hr_discern = models.BooleanField(verbose_name='开启HR下载', default=False, help_text='是否下载HR种子')
+    search_torrents = models.BooleanField(verbose_name='开启搜索', default=True, help_text='是否开启搜索')
     custom_server = models.URLField(verbose_name='代理服务器', null=True, blank=True, help_text='部分站点需要')
     downloader = models.ForeignKey(verbose_name='下载服务器', null=True, blank=True, on_delete=models.SET_NULL,
                                    to=Downloader)

@@ -16,13 +16,13 @@ class WebSiteSchemaOut(ModelSchema):
             # 常用地址
             'page_message', 'url',
             # 功能菜单
-            'func_sign_in',
-            'func_get_userinfo',
-            'func_brush_free',
-            'func_hr_discern',
-            'func_brush_rss',
-            'func_search_torrents',
-            'func_repeat_torrents',
+            'sign_in',
+            'get_info',
+            'brush_free',
+            'hr_discern',
+            'brush_rss',
+            'search_torrents',
+            'repeat_torrents',
         ]
 
 

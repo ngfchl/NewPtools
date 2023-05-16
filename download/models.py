@@ -3,8 +3,8 @@ from django.db import models
 
 from auxiliary.base import BaseEntity, DownloaderCategory
 
-HTTP = 'http://'
-HTTPS = 'https://'
+HTTP = 'http'
+HTTPS = 'https'
 
 
 # Create your models here.
@@ -17,8 +17,8 @@ class Downloader(BaseEntity):
                                 verbose_name='下载器')
     # https://
     http = models.CharField(max_length=12, choices=(
-        (HTTP, 'http://'),
-        (HTTPS, 'https://'),
+        (HTTP, 'http'),
+        (HTTPS, 'https'),
     ), verbose_name='协议', default=HTTP)
     # 用户名
     username = models.CharField(max_length=16, verbose_name='用户名')

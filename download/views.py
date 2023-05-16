@@ -247,8 +247,9 @@ def control_torrent(request, control_command: ControlTorrentCommandIn):
 def add_torrent(request, new_torrent: AddTorrentCommandIn):
     torrent = new_torrent.new_torrent
     try:
+        client, downloader_category = toolbox.get_downloader_instance(new_torrent.downloader_id)
         return toolbox.push_torrents_to_downloader(
-            downloader_id=new_torrent.downloader_id,
+            client, downloader_category,
             urls=torrent.urls,
             category=torrent.category,
             is_skip_checking=torrent.is_skip_checking,

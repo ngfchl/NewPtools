@@ -449,7 +449,8 @@ def get_downloader_speed(downloader: Downloader):
 
 
 def push_torrents_to_downloader(
-        downloader_id: int,
+        client,
+        downloader_category: DownloaderCategory.choices,
         urls: Union[List[str], str],
         category: str = '',
         cookie: str = '',
@@ -460,7 +461,6 @@ def push_torrents_to_downloader(
         use_auto_torrent_management: bool = None,
 ):
     """将辅种数据推送至下载器"""
-    client, downloader_category = get_downloader_instance(downloader_id)
     # 暂停模式推送至下载器（包含参数，下载链接，Cookie，分类或者下载路径）
     # 开始校验
     # 验证校验结果，不为百分百的，暂停任务
@@ -505,63 +505,71 @@ def package_files(
     :return:
     """
     # 种子属性
-    prop = client.torrents_properties(torrent_hash=hash_string)
-    # 种子总大小
-    total_size = prop.get('total_size')
-    # 如果文件总大小大于package_size，则进行拆包，数字自定义
-    if total_size <= package_size * 1024 * 1024 * 1024:
-        client.torrents_resume(torrent_hashes=hash_string)
-    if total_size > package_size * 1024 * 1024 * 1024:
-        # 获取种子文件列表信息
-        files = client.torrents_files(torrent_hash=hash_string)
-        # 获取所有文件index
-        total_ids = [file.get('index') for file in files if file.get('priority') == 1]
-        # 从大到小排列种子
-        files = sorted(files, key=lambda x: x.get('size'), reverse=True)
-        # 只有一个文件且大于15G的删掉
-        if len(files) == 1 and total_size > 15 * 1024 * 1024 * 1024 and delete_one_file:
-            client.torrents_delete(torrent_hash=hash_string)
-            return
-        # 两个文件的
-        if len(files) == 2:
-            # 如果第二个文件大小小于500M或者大于15G的删掉
-            # if files[1].size < 500 * 1024 * 1024 or files[1].size > 15 * 1024 * 1024 * 1024:
+    try:
+        prop = client.torrents_properties(torrent_hash=hash_string)
+        # 种子总大小
+        total_size = prop.get('total_size')
+        # 如果文件总大小大于package_size，则进行拆包，数字自定义
+        if total_size <= package_size * 1024 * 1024 * 1024:
+            client.torrents_resume(torrent_hashes=hash_string)
+        if total_size > package_size * 1024 * 1024 * 1024:
+            # 获取种子文件列表信息
+            files = client.torrents_files(torrent_hash=hash_string)
+            # 获取所有文件index
+            total_ids = [file.get('index') for file in files if file.get('priority') == 1]
+            # 从大到小排列种子
+            files = sorted(files, key=lambda x: x.get('size'), reverse=True)
+            # 只有一个文件且大于15G的删掉
+            if len(files) == 1 and total_size > 15 * 1024 * 1024 * 1024 and delete_one_file:
+                client.torrents_delete(torrent_hash=hash_string)
+                return
+            # 两个文件的
+            if len(files) == 2:
+                # 如果第二个文件大小小于500M或者大于15G的删掉
+                # if files[1].size < 500 * 1024 * 1024 or files[1].size > 15 * 1024 * 1024 * 1024:
+                #     client.torrents_delete(torrent_hash=hash_string)
+                # 设置只下载第二个文件
+                client.torrents_file_priority(
+                    torrent_hash=hash_string,
+                    file_ids=0,
+                    priority=0
+                )
+                return
+            # 超过三个文件的，先排除最大的和最小的
+            files = files[1:-1]
+            # 然后打乱顺序
+            random.shuffle(files)
+            ids = []
+            size = 0
+            # 循环获取文件index，当总大小超过总大小的十分之一时结束
+            for file in files:
+                size += file.get('size')
+                ids.append(file.get('index'))
+                if size > total_size * package_percent:
+                    break
+            # 如果最后获取的文件大小小于800M
+            # if size < 500 * 1024 * 1024:
             #     client.torrents_delete(torrent_hash=hash_string)
-            # 设置只下载第二个文件
-            client.torrents_file_priority(
-                torrent_hash=hash_string,
-                file_ids=0,
-                priority=0
-            )
-            return
-        # 超过三个文件的，先排除最大的和最小的
-        files = files[1:-1]
-        # 然后打乱顺序
-        random.shuffle(files)
-        ids = []
-        size = 0
-        # 循环获取文件index，当总大小超过总大小的十分之一时结束
-        for file in files:
-            size += file.get('size')
-            ids.append(file.get('index'))
-            if size > total_size * package_percent:
-                break
-        # 如果最后获取的文件大小小于800M
-        # if size < 500 * 1024 * 1024:
-        #     client.torrents_delete(torrent_hash=hash_string)
-        #     return
-        # 计算需要取消下载的文件index列表，将总列表和需要下载的列表转为集合后相减
-        delete_ids = list(set(total_ids) - set(ids))
-        if len(delete_ids) > 0:
-            logger.info(f'需要取消下载的文件ID：{delete_ids}')
-            client.torrents_file_priority(
-                torrent_hash=hash_string,
-                file_ids=delete_ids,
-                priority=0
-            )
-            logger.info('拆包完成')
-        else:
-            logger.info(f'种子 {hash_string} 无需拆包，跳过')
+            #     return
+            # 计算需要取消下载的文件index列表，将总列表和需要下载的列表转为集合后相减
+            delete_ids = list(set(total_ids) - set(ids))
+            if len(delete_ids) > 0:
+                logger.info(f'需要取消下载的文件ID：{delete_ids}')
+                client.torrents_file_priority(
+                    torrent_hash=hash_string,
+                    file_ids=delete_ids,
+                    priority=0
+                )
+                msg = f'种子 {hash_string} 拆包完成'
+                logger.info(msg)
+            else:
+                msg = f'种子 {hash_string} 无需拆包，跳过'
+                logger.info(msg)
+            return CommonResponse.success(msg=msg)
+    except Exception as e:
+        msg = f'种子 {hash_string} 拆包失败！'
+        logger.error(f'{traceback.format_exc(3)} \n {msg}')
+        return CommonResponse.error(msg=msg)
 
 
 def filter_torrent_by_rules(my_site_id: int, torrents: List[TorrentInfo]):

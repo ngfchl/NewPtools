@@ -96,6 +96,8 @@ def edit_crontab_schedule(request, task: CrontabTaskSchemaIn):
     periodic_task.name = task.name
     periodic_task.task = task.task
     periodic_task.enabled = task.enabled
+    periodic_task.args = task.args
+    periodic_task.kwargs = task.kwargs
     periodic_task.save()
     logger.info(periodic_task)
     return CommonResponse.success(msg=f'{periodic_task.name} 任务修改成功!')

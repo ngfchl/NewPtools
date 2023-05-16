@@ -339,7 +339,7 @@ def parse_rss(rss_url: str):
             'title': article.title,
             'tid': (article.link.split('=')[-1]),
             'size': article.links[-1].get('length'),
-            'published': time.mktime(article.published_parsed),
+            'published': datetime.fromtimestamp(time.mktime(article.published_parsed)),
         })
     return torrents
 

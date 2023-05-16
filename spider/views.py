@@ -2004,7 +2004,7 @@ class PtSpider:
                         # 如果种子有HR，则为否 HR绿色表示无需，红色表示未通过HR考核
                         hr = False if tr.xpath(site.torrent_hr_rule) else True
                         # H&R 种子有HR且站点设置不下载HR种子,跳过，
-                        if not hr and not my_site.hr:
+                        if not hr and not my_site.hr_discern:
                             logger.info('hr种子，未开启HR跳过')
                             continue
                         # # 促销到期时间

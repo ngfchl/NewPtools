@@ -199,7 +199,7 @@ def auto_get_torrents(self, site_list: List[int] = []):
     message_failed = []
     websites = WebSite.objects.all()
     queryset = MySite.objects.filter(id__in=site_list) if len(site_list) > 0 else MySite.objects.all()
-    site_list = [my_site for my_site in queryset if websites.get(id=my_site.site).func_brush_free]
+    site_list = [my_site for my_site in queryset if websites.get(id=my_site.site).brush_free]
     results = pool.map(pt_spider.send_torrent_info_request, site_list)
     for my_site, result in zip(site_list, results):
         logger.info('获取种子：{}{}'.format(my_site.nickname, result))

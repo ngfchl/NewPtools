@@ -48,7 +48,7 @@ def auto_sign_in(self, site_list: List[int] = []):
     # chatgpt 优化的代码：
     queryset = [
         my_site for my_site in sign_list
-        if my_site.cookie and WebSite.objects.get(id=my_site.site).func_sign_in and
+        if my_site.cookie and WebSite.objects.get(id=my_site.site).sign_in and
            my_site.signin_set.filter(created_at__date__gte=datetime.today(), sign_in_today=True).count() == 0 and
            (datetime.now().hour >= 9 or WebSite.objects.get(id=my_site.site).url not in ['https://u2.dmhy.org/'])
     ]
@@ -59,7 +59,7 @@ def auto_sign_in(self, site_list: List[int] = []):
         sign_in=True
     ) if len(site_list) == 0 else MySite.objects.filter(sign_in=True, id__in=site_list)
     # 获取已配置Cookie 且站点支持签到，今日无签到数据的站点列表
-    queryset = [my_site for my_site in sign_list if my_site.cookie and websites.get(id=my_site.site).func_sign_in
+    queryset = [my_site for my_site in sign_list if my_site.cookie and websites.get(id=my_site.site).sign_in
                 and my_site.signin_set.filter(created_at__date__gte=datetime.today(), sign_in_today=True).count() <= 0]
     if datetime.now().hour < 9 and len(queryset) > 0:
         print(queryset)
@@ -123,7 +123,7 @@ def auto_get_status(self, site_list: List[int] = []):
     queryset = MySite.objects.filter(
         get_info=True
     ) if len(site_list) == 0 else MySite.objects.filter(get_info=True, id__in=site_list)
-    site_list = [my_site for my_site in queryset if websites.get(id=my_site.site).func_get_userinfo]
+    site_list = [my_site for my_site in queryset if websites.get(id=my_site.site).get_info]
     results = pool.map(pt_spider.send_status_request, site_list)
     message_template = MessageTemplate.status_message_template
     for my_site, result in zip(site_list, results):
@@ -281,33 +281,31 @@ def auto_calc_torrent_pieces_hash(self, ):
 
 
 @shared_task(bind=True, base=BaseTask)
-def auto_get_rss(self, site_list: str):
+def auto_get_rss(self, *site_list: List[int]):
     start = time.time()
-    site_list = site_list.split('|')
+    # site_list = site_list.split('|')
+    logger.info(site_list)
     my_site_list = MySite.objects.filter(id__in=site_list, brush_rss=True).all()
-    websites = WebSite.objects.filter(func_brush_rss=True).all()
+    websites = WebSite.objects.filter(brush_rss=True).all()
     message_list = []
     message_failed = []
     message_success = []
-    for my_site in my_site_list:
+    results = pool.map(toolbox.parse_rss, [my_site.rss for my_site in my_site_list])
+    for my_site, result in zip(my_site_list, results):
         try:
             website = websites.get(id=my_site.site)
-            if not website:
-                # 聊胜于无？
-                logger.warning(f'{my_site.nickname} 暂不支持RSS刷流！')
-                continue
-            torrents = toolbox.parse_rss(my_site.rss)
             updated = 0
             created = 0
             hash_list = []
             urls = []
-            for torrent in torrents:
+            for torrent in result:
                 tid = torrent.get('tid')
                 # 组装种子详情页URL 解析详情页信息
                 # res_detail = pt_spider.get_torrent_detail(my_site, f'{website.url}{website.page_detail.format(tid)}')
                 # 如果无报错，将信息合并到torrent
                 # if res_detail.code == 0:
                 #     torrent.update(res_detail.data)
+                logger.info(torrent)
                 res = TorrentInfo.objects.update_or_create(site=my_site, tid=tid, defaults=torrent, )
                 if res[1]:
                     urls.append(f'{website.url}{website.page_download.format(tid)}')
@@ -524,7 +522,7 @@ def auto_get_rss_torrent_detail(self, my_site_id: int = None):
                     updated += 1
                 logger.info(res)
                 hash_list.append(res[0].hash_string)
-            if website.func_brush_rss and my_site.brush_rss and my_site.downloader:
+            if website.brush_rss and my_site.brush_rss and my_site.downloader:
                 downloader = my_site.downloader
                 res = toolbox.push_torrents_to_downloader(
                     downloader_id=my_site.downloader.id,

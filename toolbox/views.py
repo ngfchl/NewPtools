@@ -27,7 +27,8 @@ from auxiliary.settings import BASE_DIR
 from download.models import Downloader
 from my_site.models import SiteStatus, TorrentInfo, MySite
 from toolbox.models import BaiduOCR, Notify
-from toolbox.schema import CommonResponse, DotDict
+from toolbox.schema import CommonResponse
+from website.models import WebSite
 from .wechat_push import WechatPush
 
 # Create your views here.
@@ -572,72 +573,124 @@ def package_files(
         return CommonResponse.error(msg=msg)
 
 
-def filter_torrent_by_rules(my_site_id: int, torrents: List[TorrentInfo]):
+def filter_torrent_by_rules(my_site: MySite, torrents: List[TorrentInfo]):
     """
     使用站点选中规则筛选种子
-    :param my_site_id: 我的站点id
+    :param my_site: 我的站点
     :param torrents: 种子列表
     :return: 筛选过后的种子列表
     """
-    my_site = MySite.objects.get(id=my_site_id)
-    logger.info(f"当前站点：{my_site}, 删种规则：{my_site.remove_torrent_rules}")
-    rules = DotDict(json.loads(my_site.remove_torrent_rules).get('push'))
+    rules = json.loads(my_site.remove_torrent_rules).get('push')
+    logger.info(f"当前站点：{my_site.nickname}, 选种规则：{rules}")
     torrent_list = []
     for torrent in torrents:
-        push_flag = False
-        # 发种时间命中
-        if rules.published:
-            published = datetime.strptime(torrent.published, '%Y-%m-%d %H:%M:%S').timestamp()
-            push_flag = time.time() - published < rules.published
-        # 做种人数命中
-        if rules.seeders:
-            push_flag = torrent.seeders < rules.seeders
-        # 下载人数命中
-        if rules.leechers:
-            push_flag = torrent.leechers < rules.leechers
-        # 剩余免费时间
-        if rules.sale_expire:
-            sale_expire = datetime.strptime(torrent.sale_expire, '%Y-%m-%d %H:%M:%S').timestamp()
-            push_flag = time.time() - sale_expire < rules.sale_expire
-        # 要刷流的种子大小
-        if rules.size:
-            min_size = rules.size.get('min')
-            max_size = rules.size.get('max')
-            push_flag = min_size < torrent.size / 1024 / 1024 / 1024 < max_size
-        if not push_flag:
+        try:
+            push_flag = False
+            # 发种时间命中
+            published = rules.get('published')
+            if published:
+                print(isinstance(torrent.published, str))
+                print(isinstance(torrent.published, datetime))
+                push_flag = time.time() - torrent.published.timestamp() < published
+            logger.info(f"{my_site.nickname} {torrent.tid} 发种时间命中：{push_flag}")
+            if not push_flag:
+                continue
+            # 做种人数命中
+            seeders = rules.get('seeders')
+            if seeders:
+                push_flag = torrent.seeders < seeders
+            logger.info(f"{my_site.nickname} {torrent.tid} 做种人数命中：{push_flag}")
+            if not push_flag:
+                continue
+            # 下载人数命中
+            leechers = rules.get('leechers')
+            if leechers:
+                push_flag = torrent.leechers > leechers
+            logger.info(f"{my_site.nickname} {torrent.tid} 下载人数命中：{push_flag}")
+            if not push_flag:
+                continue
+            # 剩余免费时间
+            sale_expire = rules.get('sale_expire')
+            if sale_expire:
+                push_flag = time.time() - torrent.sale_expire.timestamp() < sale_expire
+            logger.info(f"{my_site.nickname} {torrent.tid} 剩余免费时间命中：{push_flag}")
+            if not push_flag:
+                continue
+            # 要刷流的种子大小
+            size = rules.get('size')
+            if size:
+                min_size = size.get('min')
+                max_size = size.get('max')
+                push_flag = min_size < torrent.size / 1024 / 1024 / 1024 < max_size
+                logger.info(f"{my_site.nickname} {torrent.tid} 种子大小命中：{push_flag}")
+            if not push_flag:
+                continue
+            # 包含关键字命中
+            if rules.get('include'):
+                for rule in rules.get('include'):
+                    if torrent.title.find(rule) > 0:
+                        push_flag = True
+                        break
+                logger.info(f"{my_site.nickname} {torrent.tid} 包含关键字命中：{push_flag}")
+            if not push_flag:
+                continue
+            # 排除关键字命中
+            if rules.get('exclude'):
+                for rule in rules.get('exclude'):
+                    if torrent.title.find(rule) > 0:
+                        push_flag = False
+                        break
+                logger.info(f"{my_site.nickname} {torrent.tid} 排除关键字命中：{push_flag}")
+            if not push_flag:
+                continue
+            torrent_list.append(torrent)
+        except Exception as e:
+            logger.error(traceback.format_exc(3))
             continue
-        # 包含关键字命中
-        for rule in rules.include:
-            if torrent.title.find(rule):
-                push_flag = True
-                break
-        if not push_flag:
-            continue
-        # 排除关键字命中
-        for rule in rules.include:
-            if torrent.title.find(rule):
-                push_flag = False
-                break
-        if not push_flag:
-            continue
-        torrent_list.append(torrent)
     return torrent_list
 
 
-def remove_torrent_by_site_rules(my_site_id: int, hash_list: List[str] = []):
+def get_hash_by_category(my_site: MySite):
+    torrent_infos = my_site.torrentinfo_set.all()
+    website = WebSite.objects.get(id=my_site.site)
+    no_hash_torrents = [torrent for torrent in torrent_infos if len(torrent.hash_string) <= 32]
+    client, _ = get_downloader_instance(my_site.downloader.id)
+    count = 0
+    for torrent in no_hash_torrents:
+        category = f'{website.nickname}-{torrent.tid}'
+        t = client.torrents_info(category=category)
+        if len(t) == 1:
+            hash_string = t[0].get('hash')
+            torrent.hash_string = hash_string
+            # 获取种子块HASH列表，并生成种子块HASH列表字符串的sha1值，保存
+            pieces_hash_list = client.torrents_piece_hashes(torrent_hash=hash_string)
+            pieces_hash_string = str(pieces_hash_list).replace(' ', '')
+            torrent.pieces_hash = hashlib.sha1(pieces_hash_string.encode()).hexdigest()
+            # 获取文件列表，并生成文件列表字符串的sha1值，保存
+            file_list = client.torrents_files(torrent_hash=hash_string)
+            file_list_hash_string = str(file_list).replace(' ', '')
+            torrent.filelist = hashlib.sha1(file_list_hash_string.encode()).hexdigest()
+            torrent.files_count = len(file_list)
+            torrent.save()
+            count += 1
+    return CommonResponse.success(msg=f'{my_site.nickname}: 完善种子信息 {count} 个。')
+
+
+def remove_torrent_by_site_rules(my_site: MySite):
     """
     站点删种
-    :param my_site_id:
-    :param hash_list:
+    :param my_site:
     :return msg
     """
-    my_site = MySite.objects.get(id=my_site_id)
     logger.info(f"当前站点：{my_site}, 删种规则：{my_site.remove_torrent_rules}")
     rules = json.loads(my_site.remove_torrent_rules).get('remove')
-    torrent_infos = TorrentInfo.objects.filter(site=my_site, state=True).all()
     client, _ = get_downloader_instance(my_site.downloader.id)
-    if hash_list and len(hash_list) <= 0:
-        hash_list = [torrent_info.hash_string for torrent_info in torrent_infos]
+    torrent_infos = TorrentInfo.objects.filter(site=my_site, state=1).all()
+    hash_list = [torrent.hash for torrent in torrent_infos if torrent.hash and len(torrent.hash) > 0]
+    if not hash_list or len(hash_list) <= 0:
+        msg = '没有种子需要删除！'
+        logger.info(msg)
+        return msg
     torrents = client.torrents_info(torrent_hashes=hash_list)
     hashes = []
     for torrent in torrents:
@@ -667,7 +720,7 @@ def remove_torrent_by_site_rules(my_site_id: int, hash_list: List[str] = []):
             trackers = client.torrents_trackers(torrent_hash=hash_string)
             tracker_checked = False
             for tracker in trackers:
-                delete_msg = [msg for msg in not_registered_msg if tracker.get('msg').startswith(msg)]
+                delete_msg = [msg for msg in not_registered_msg if tracker.get('msg').lower().startswith(msg)]
                 if len(delete_msg) > 0:
                     hashes.append(hash_string)
                     tracker_checked = True

@@ -287,7 +287,8 @@ def auto_get_rss(self, *site_list: List[int]):
                 logger.info(t)
                 res = TorrentInfo.objects.update_or_create(site=my_site, tid=tid, defaults=t, )
                 if res[1]:
-                    res[0].update(downloader=my_site.downloader)
+                    res[0].downloader = my_site.downloader
+                    res[0].save()
                     torrent_list.append(res[0])
                     created += 1
                 else:
@@ -296,6 +297,7 @@ def auto_get_rss(self, *site_list: List[int]):
             msg = f'{my_site.nickname} 新增种子：{created} 个，更新种子：{updated}个！'
             logger.info(msg)
             message_success.append(msg)
+            logging.info(f'站点RSS刷流：{my_site.brush_rss}，绑定下载器：{my_site.downloader}')
             if my_site.brush_rss and my_site.downloader:
                 downloader = my_site.downloader
                 client, downloader_category = toolbox.get_downloader_instance(downloader.id)
@@ -452,7 +454,7 @@ def auto_cleanup_not_registered(self):
             trackers = client.torrents_trackers(torrent_hash=hash_string)
             tracker_checked = False
             for tracker in trackers:
-                delete_msg = [msg for msg in not_registered_msg if tracker.get('msg').startswith(msg)]
+                delete_msg = [msg for msg in not_registered_msg if tracker.get('msg').lower().startswith(msg)]
                 if len(delete_msg) > 0:
                     # hashes.append(hash_string)
                     hashes.append(f'{torrent.get("name")} - {hash_string}')
@@ -474,10 +476,8 @@ def auto_remove_brush_task(self, *site_list: List[int]):
         remove_torrent_rules__startswith='{', id__in=site_list).all()
     message_list = []
     websites = WebSite.objects.filter(brush_rss=True, id__in=[my_site.site for my_site in my_site_list]).all()
-
     for my_site in my_site_list:
         website = websites.get(my_site.site)
-
         msg = toolbox.remove_torrent_by_site_rules(my_site)
         logger.info(msg)
         message_list.append(msg)

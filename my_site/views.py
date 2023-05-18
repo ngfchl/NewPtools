@@ -43,7 +43,11 @@ def add_mysite(request, my_site_params: MySiteSchemaEdit):
         logger.info(f'开始处理：{my_site_params.nickname}')
         logger.info(my_site_params)
         my_site_params.id = None
-        my_site = MySite.objects.create(**my_site_params.dict())
+        params = my_site_params.dict()
+        params.update({
+            'downloader_id': my_site_params.downloader
+        })
+        my_site = MySite.objects.create(params)
         if my_site:
             msg = f'处理完毕：{my_site.nickname}，保存成功！'
             logger.info(msg)
@@ -62,6 +66,7 @@ def add_mysite(request, my_site_params: MySiteSchemaEdit):
 async def edit_mysite(request, my_site_params: MySiteSchemaEdit):
     try:
         logger.info(f'开始更新：{my_site_params.nickname}')
+        print(my_site_params)
         my_site_res = await MySite.objects.filter(id=my_site_params.id).aupdate(**my_site_params.dict())
         if my_site_res > 0:
             logger.info(f'处理完毕：{my_site_params.nickname}，成功处理 {my_site_res} 条数据！')

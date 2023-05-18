@@ -28,6 +28,9 @@ class MySiteSchemaOut(ModelSchema):
     def resolve_joined(self, obj):
         return datetime.strftime(self.time_join, '%Y年%m月%d日%H:%M:%S')
 
+    def resolve_downloader_id(self, obj):
+        return self.downloader.id
+
 
 class MySiteDoSchemaIn(Schema):
     site_id: int
@@ -36,6 +39,10 @@ class MySiteDoSchemaIn(Schema):
 
 class MySiteSchemaEdit(ModelSchema):
     # site: create_schema(WebSite, fields=['id', 'name'])
+    downloader_id: Optional[int]
+
+    def resolve_downloader_id(self, obj):
+        return self.downloader.id
 
     class Config:
         model = MySite

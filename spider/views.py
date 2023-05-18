@@ -1918,10 +1918,6 @@ class PtSpider:
         count = 0
         new_count = 0
         site = get_object_or_404(WebSite, id=my_site.site)
-        torrents = []
-        # if not my_site.passkey:
-        #     return CommonResponse.error(msg='{}站点未设置Passkey，无法拼接种子链接！'.format(site.name))
-        # logger.info(response.text.encode('utf8'))
         try:
             with lock:
                 trs = self.parse(site, response, site.torrents_rule)
@@ -2047,33 +2043,14 @@ class PtSpider:
                         count += 1
                     else:
                         new_count += 1
-                        torrents.append(result[0])
                         # logger.info(torrent_info)
                 if count + new_count <= 0:
                     return CommonResponse.error(msg='抓取失败或无促销种子！')
-                logging.info(f'站点Free刷流：{my_site.brush_free}，绑定下载器：{my_site.downloader}')
-                if my_site.brush_free and my_site.downloader:
-                    # 解析刷流推送规则,筛选符合条件的种子并推送到下载器
-                    torrents = toolbox.filter_torrent_by_rules(my_site, torrents)
-                    logger.info(f'共有符合条件的种子：{len(torrents)} 个')
-                    client, downloader_category = toolbox.get_downloader_instance(my_site.downloader_id)
-                    for torrent in torrents:
-                        # 限速到站点限速的92%。以防超速
-                        toolbox.push_torrents_to_downloader(
-                            client, downloader_category,
-                            urls=torrent.magnet_url,
-                            cookie=my_site.cookie,
-                            category=f'{site.nickname}-{torrent.tid}',
-                            upload_limit=int(site.limit_speed * 1024 * 0.92)
-                        )
-                        torrent.downloader = my_site.downloader
-                        torrent.state = 1
-                        torrent.save()
                 return CommonResponse.success(msg=f'种子抓取成功！新增种子{new_count}条，更新种子{count}条!')
         except Exception as e:
             # raise
             title = f'{site.name} 解析种子信息：失败！'
-            msg = '解析种子页面失败！{}'.format(e)
+            msg = f'{site.name} 解析种子页面失败！{e}'
             # toolbox.send_text(title=title, message=msg)
             logger.error(msg)
             logger.error(traceback.format_exc(limit=3))

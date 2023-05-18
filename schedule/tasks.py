@@ -576,10 +576,35 @@ def auto_get_update_torrent(self, torrent_id):
 
 
 @shared_task(bind=True, base=BaseTask)
-def auto_push_to_downloader(self, ):
+def auto_push_to_downloader(self, *site_list: List[int]):
     """推送到下载器"""
     start = time.time()
     print('推送到下载器')
+    my_site_list = MySite.objects.filter(brush_free=True, id__in=site_list).all()
+    if len(my_site_list) <= 0:
+        return '没有开启Free刷流！'
+    website_list = WebSite.objects.all()
+    for my_site in my_site_list:
+        site = website_list.get(id=my_site.site)
+        logging.info(f'站点Free刷流：{my_site.brush_free}，绑定下载器：{my_site.downloader}')
+        torrents = TorrentInfo.objects.filter(site=my_site, state=0, sale_status__contains='Free')
+        if my_site.brush_free and my_site.downloader:
+            # 解析刷流推送规则,筛选符合条件的种子并推送到下载器
+            torrents = toolbox.filter_torrent_by_rules(my_site, torrents)
+            logger.info(f'共有符合条件的种子：{len(torrents)} 个')
+            client, downloader_category = toolbox.get_downloader_instance(my_site.downloader_id)
+            for torrent in torrents:
+                # 限速到站点限速的92%。以防超速
+                toolbox.push_torrents_to_downloader(
+                    client, downloader_category,
+                    urls=torrent.magnet_url,
+                    cookie=my_site.cookie,
+                    category=f'{site.nickname}-{torrent.tid}',
+                    upload_limit=int(site.limit_speed * 1024 * 0.92)
+                )
+                torrent.downloader = my_site.downloader
+                torrent.state = 1
+                torrent.save()
     end = time.time()
     message = f'> 签到 任务运行成功！耗时：{end - start}  \n{time.strftime("%Y-%m-%d %H:%M:%S")}'
     toolbox.send_text(title='通知：推送种子任务', message=message)

@@ -579,16 +579,16 @@ def auto_get_update_torrent(self, torrent_id):
 def auto_push_to_downloader(self, *site_list: List[int]):
     """推送到下载器"""
     start = time.time()
-    print('推送到下载器')
+    logging.info('推送种子到下载器任务开始')
     my_site_list = MySite.objects.filter(brush_free=True, id__in=site_list).all()
-    if len(my_site_list) <= 0:
-        return '没有开启Free刷流！'
     website_list = WebSite.objects.all()
+    message_list = []
     for my_site in my_site_list:
         site = website_list.get(id=my_site.site)
         logging.info(f'站点Free刷流：{my_site.brush_free}，绑定下载器：{my_site.downloader}')
         torrents = TorrentInfo.objects.filter(site=my_site, state=0, sale_status__contains='Free')
-        if my_site.brush_free and my_site.downloader:
+        logger.info(f'站点有{len(torrents)}条种子未推送')
+        if my_site.downloader:
             # 解析刷流推送规则,筛选符合条件的种子并推送到下载器
             torrents = toolbox.filter_torrent_by_rules(my_site, torrents)
             logger.info(f'共有符合条件的种子：{len(torrents)} 个')
@@ -605,8 +605,11 @@ def auto_push_to_downloader(self, *site_list: List[int]):
                 torrent.downloader = my_site.downloader
                 torrent.state = 1
                 torrent.save()
+            msg = f'{my_site.nickname} 站点共有{len(torrents)}条种子未推送,有符合条件的种子：{len(torrents)} 个'
+            message_list.append('\n')
+            message_list.append(msg)
     end = time.time()
-    message = f'> 签到 任务运行成功！耗时：{end - start}  \n{time.strftime("%Y-%m-%d %H:%M:%S")}'
+    message = f'> 签到 任务运行成功！耗时：{end - start}  \n{time.strftime("%Y-%m-%d %H:%M:%S")} \n{"".join(message_list)}'
     toolbox.send_text(title='通知：推送种子任务', message=message)
     # 释放内存
     gc.collect()

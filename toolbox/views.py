@@ -615,6 +615,8 @@ def filter_torrent_by_rules(my_site: MySite, torrents: List[TorrentInfo]):
                 push_flag = time.time() - torrent.sale_expire.timestamp() < sale_expire
             logger.info(f"{my_site.nickname} {torrent.tid} 剩余免费时间命中：{push_flag}")
             if not push_flag:
+                torrent.state = 4
+                torrent.save()
                 continue
             # 要刷流的种子大小
             size = rules.get('size')

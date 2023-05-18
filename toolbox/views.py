@@ -688,7 +688,8 @@ def remove_torrent_by_site_rules(my_site: MySite):
     rules = json.loads(my_site.remove_torrent_rules).get('remove')
     client, _ = get_downloader_instance(my_site.downloader.id)
     torrent_infos = TorrentInfo.objects.filter(site=my_site, state=1).all()
-    hash_list = [torrent.hash for torrent in torrent_infos if torrent.hash and len(torrent.hash) > 0]
+    hash_list = [torrent.hash_string for torrent in torrent_infos if
+                 torrent.hash_string and len(torrent.hash_string) > 0]
     if not hash_list or len(hash_list) <= 0:
         msg = '没有种子需要删除！'
         logger.info(msg)

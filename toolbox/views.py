@@ -590,9 +590,11 @@ def filter_torrent_by_rules(my_site: MySite, torrents: List[TorrentInfo]):
             # 发种时间命中
             published = rules.get('published')
             if published:
-                print(isinstance(torrent.published, str))
-                print(isinstance(torrent.published, datetime))
-                push_flag = time.time() - torrent.published.timestamp() < published
+                if isinstance(torrent.published, str):
+                    torrent_published = datetime.strptime(torrent.published, "%Y-%m-%d %H:%M:%S").timestamp()
+                else:
+                    torrent_published = torrent.published.timestamp()
+                push_flag = time.time() - torrent_published < published
             logger.info(f"{my_site.nickname} {torrent.tid} 发种时间命中：{push_flag}")
             if not push_flag:
                 continue

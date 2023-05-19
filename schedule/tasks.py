@@ -172,9 +172,10 @@ def auto_get_torrents(self, *site_list: List[int]):
     拉取最新种子
     """
     start = time.time()
-    message_list = ['# 拉取免费种子  \n\n']
-    message_success = []
-    message_failed = []
+    message_list = []
+    message_success = ['### 这些成功了  \n']
+    message_failed = ['### 这些出错了  \n']
+    message_push = ['### 这是推到下载器的  \n']
     websites = WebSite.objects.all()
     queryset = [my_site for my_site in MySite.objects.filter(id__in=site_list) if
                 websites.get(id=my_site.site).brush_free]
@@ -188,13 +189,16 @@ def auto_get_torrents(self, *site_list: List[int]):
             if res.code == 0:
                 message = f'> ✅ {my_site.nickname}种子抓取成功！ {res.msg}  \n\n'
                 logger.debug(message)
+                message_success.append(message)
                 site = websites.get(id=my_site.site)
                 logging.info(f'站点Free刷流：{my_site.brush_free}，绑定下载器：{my_site.downloader}')
                 if my_site.downloader:
                     torrents = res.data
+                    if len(res.data) <= 0:
+                        continue
                     # 解析刷流推送规则,筛选符合条件的种子并推送到下载器
                     torrents = toolbox.filter_torrent_by_rules(my_site, torrents)
-                    msg = f'{my_site.nickname} 站点共有{len(res.data)}条种子未推送,有符合条件的种子：{len(torrents)} 个'
+                    msg = f'> {my_site.nickname} 站点共有{len(res.data)}条种子未推送,有符合条件的种子：{len(torrents)} 个！  \n\n'
                     logger.debug(msg)
                     client, downloader_category = toolbox.get_downloader_instance(my_site.downloader_id)
                     for torrent in torrents:
@@ -210,8 +214,7 @@ def auto_get_torrents(self, *site_list: List[int]):
                         torrent.downloader = my_site.downloader
                         torrent.state = 1
                         torrent.save()
-                    message = f'{message} \n {msg} '
-                message_success.append(message)
+                    message_push.append(msg)
             else:
                 message = f'> 🆘 {my_site.nickname} 抓取种子信息失败！原因：{res.msg}  \n'
                 message_failed.append(message)
@@ -222,13 +225,16 @@ def auto_get_torrents(self, *site_list: List[int]):
             logger.error(message)
             message_failed.append(message)
     end = time.time()
-    consuming = f'> ♻️ 拉取最新种子 任务运行成功！共有{len(queryset)}个站点需要执行，执行成功{len(message_success)}个，失败{len(message_failed)}个。' \
-                f'本次任务耗时：{end - start} 当前时间：{time.strftime("%Y-%m-%d %H:%M:%S")}  \n'
+    consuming = f'> ♻️ 拉取最新种子 任务运行成功！共有{len(site_list)}个站点需要执行，执行成功{len(message_success)}个，失败{len(message_failed)}个。' \
+                f'本次任务耗时：{end - start} 当前时间：{time.strftime("%Y-%m-%d %H:%M:%S")}  \n\n'
     message_list.append(consuming)
-    message_list.extend(message_failed)
+    if len(message_failed) > 1:
+        message_list.extend(message_failed)
     message_list.extend(message_success)
+    if len(message_push) > 1:
+        message_list.extend(message_push)
     logger.info(consuming)
-    toolbox.send_text(title='通知：拉取最新种子', message=''.join(message_list))
+    toolbox.send_text(title='通知：拉取最新种子', message='\n'.join(message_list))
     # if len(message_success) > 0:
     #     toolbox.send_text(title='通知：拉取最新种子-成功', message=''.join(message_success))
     # 释放内存
@@ -236,26 +242,28 @@ def auto_get_torrents(self, *site_list: List[int]):
     return consuming
 
 
-# @shared_task(bind=True, base=BaseTask)
-# def auto_get_hash_by_category(self, ):
-#     start = time.time()
-#     my_site_list = MySite.objects.all()
-#     results = pool.map(toolbox.get_hash_by_category, my_site_list)
-#     failed_msg = []
-#     succeeded_msg = []
-#     for result in results:
-#         succeeded_msg.append(result.msg) if result.code == 0 else failed_msg.append(result.msg)
-#     end = time.time()
-#     consuming = f'> ♻️ 完善种子信息 任务运行成功！执行成功{len(succeeded_msg)}个，失败{len(failed_msg)}个。' \
-#                 f'本次任务耗时：{end - start} 当前时间：{time.strftime("%Y-%m-%d %H:%M:%S")}  \n'
-#     logger.info(consuming)
-#     message_list = [consuming]
-#     message_list.extend(failed_msg)
-#     toolbox.send_text(title='通知：完善种子信息', message='\n'.join(message_list))
-#     if len(succeeded_msg) > 0:
-#         toolbox.send_text(title='通知：完善种子信息-成功', message='\n'.join(succeeded_msg))
-#     # 释放内存
-#     gc.collect()
+@shared_task(bind=True, base=BaseTask)
+def auto_get_hash_by_category(self, ):
+    start = time.time()
+    my_site_list = MySite.objects.filter(brush_free=True, downloader__isnull=False).all()
+    results = pool.map(toolbox.get_hash_by_category, my_site_list)
+    failed_msg = []
+    succeeded_msg = []
+    for result in results:
+        succeeded_msg.append(result.msg) if result.code == 0 else failed_msg.append(result.msg)
+    end = time.time()
+    consuming = f'> ♻️ 完善种子信息 任务运行成功！执行成功{len(succeeded_msg)}个，失败{len(failed_msg)}个。' \
+                f'本次任务耗时：{end - start} 当前时间：{time.strftime("%Y-%m-%d %H:%M:%S")}  \n'
+    logger.info(consuming)
+    message_list = [consuming]
+    message_list.extend(failed_msg)
+    message_list.extend(succeeded_msg)
+    toolbox.send_text(title='通知：完善种子信息', message='\n'.join(message_list))
+    # if len(succeeded_msg) > 0:
+    #     toolbox.send_text(title='通知：完善种子信息-成功', message='\n'.join(succeeded_msg))
+    # 释放内存
+    gc.collect()
+    return '\n'.join(message_list)
 
 
 # @shared_task(bind=True, base=BaseTask)
@@ -532,11 +540,10 @@ def auto_remove_brush_task(self, *site_list: List[int]):
             website = websites.get(id=my_site.site)
             msg = toolbox.remove_torrent_by_site_rules(my_site)
             logger.debug(msg)
-            message_list.append(msg)
-
+            message_list.append(f'> {msg} \n\n')
         except Exception as e:
             logger.error(traceback.format_exc(3))
-    message = '\n > '.join(message_list)
+    message = ''.join(message_list)
     logger.debug(message)
     if len(message_list) > 0:
         toolbox.send_text(title='刷流删种', message=message)

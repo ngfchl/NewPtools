@@ -597,6 +597,8 @@ def filter_torrent_by_rules(my_site: MySite, torrents: List[TorrentInfo]):
                 push_flag = time.time() - torrent_published < published
             logger.info(f"{my_site.nickname} {torrent.tid} 发种时间命中：{push_flag}")
             if not push_flag:
+                torrent.state = 5
+                torrent.save()
                 continue
             # 做种人数命中
             seeders = rules.get('seeders')
@@ -604,6 +606,8 @@ def filter_torrent_by_rules(my_site: MySite, torrents: List[TorrentInfo]):
                 push_flag = torrent.seeders < seeders
             logger.info(f"{my_site.nickname} {torrent.tid} 做种人数命中：{push_flag}")
             if not push_flag:
+                torrent.state = 5
+                torrent.save()
                 continue
             # 下载人数命中
             leechers = rules.get('leechers')
@@ -611,14 +615,20 @@ def filter_torrent_by_rules(my_site: MySite, torrents: List[TorrentInfo]):
                 push_flag = torrent.leechers > leechers
             logger.info(f"{my_site.nickname} {torrent.tid} 下载人数命中：{push_flag}")
             if not push_flag:
+                torrent.state = 5
+                torrent.save()
                 continue
             # 剩余免费时间
             sale_expire = rules.get('sale_expire')
             if sale_expire:
-                push_flag = time.time() - torrent.sale_expire.timestamp() < sale_expire
+                if isinstance(torrent.published, str):
+                    torrent_published = datetime.strptime(torrent.published, "%Y-%m-%d %H:%M:%S").timestamp()
+                else:
+                    torrent_published = torrent.published.timestamp()
+                push_flag = time.time() - torrent_published < sale_expire
             logger.info(f"{my_site.nickname} {torrent.tid} 剩余免费时间命中：{push_flag}")
             if not push_flag:
-                torrent.state = 4
+                torrent.state = 5
                 torrent.save()
                 continue
             # 要刷流的种子大小
@@ -629,6 +639,8 @@ def filter_torrent_by_rules(my_site: MySite, torrents: List[TorrentInfo]):
                 push_flag = min_size < torrent.size / 1024 / 1024 / 1024 < max_size
                 logger.info(f"{my_site.nickname} {torrent.tid} 种子大小命中：{push_flag}")
             if not push_flag:
+                torrent.state = 5
+                torrent.save()
                 continue
             # 包含关键字命中
             if rules.get('include'):
@@ -638,6 +650,8 @@ def filter_torrent_by_rules(my_site: MySite, torrents: List[TorrentInfo]):
                         break
                 logger.info(f"{my_site.nickname} {torrent.tid} 包含关键字命中：{push_flag}")
             if not push_flag:
+                torrent.state = 5
+                torrent.save()
                 continue
             # 排除关键字命中
             if rules.get('exclude'):
@@ -647,6 +661,8 @@ def filter_torrent_by_rules(my_site: MySite, torrents: List[TorrentInfo]):
                         break
                 logger.info(f"{my_site.nickname} {torrent.tid} 排除关键字命中：{push_flag}")
             if not push_flag:
+                torrent.state = 5
+                torrent.save()
                 continue
             torrent_list.append(torrent)
         except Exception as e:
@@ -798,12 +814,17 @@ def remove_torrent_by_site_rules(my_site: MySite):
 
     if len(hashes) > 0:
         client.torrents_reannounce(torrent_hashes=hashes)
-        # 单次最多删种数量
-        num_delete = rules.get("num_delete")
+        # 单次最多删种数量, 不填写默认5
+        num_delete = rules.get("num_delete", 5)
         random.shuffle(hashes)
         client.torrents_delete(torrent_hashes=hashes[:num_delete], delete_files=True)
-    msg = f'{my_site.nickname}：本次运行删除种子{len(hashes)}个！' \
-          f'当前有{len(torrent_infos) - len(hashes)}个种子正在运行'
+        # 对已删除的种子信息进行归档
+        count = TorrentInfo.objects.filter(
+            hash_string__in=hashes[:num_delete]
+        ).update(state=5, downloader=None)
+        msg = f'{my_site.nickname}：本次运行删除种子{count}个！'
+    else:
+        msg = f'{my_site.nickname}：本次运行没有种子要删除！'
     logger.info(msg)
     return msg
 

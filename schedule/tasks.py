@@ -158,9 +158,9 @@ def auto_get_status(self, *site_list: List[int]):
     logger.info(message_list)
     message_list.extend(failed_message)
     message_list.append('*' * 20)
-    # message_list.extend(success_message)
+    message_list.extend(success_message)
     toolbox.send_text(title='通知：更新个人数据', message='\n'.join(message_list))
-    toolbox.send_text(title='通知：更新个人数据-成功', message='\n'.join(success_message))
+    # toolbox.send_text(title='通知：更新个人数据-成功', message='\n'.join(success_message))
     # 释放内存
     gc.collect()
     return message_list
@@ -311,7 +311,7 @@ def auto_get_rss(self, *site_list: List[int]):
     start = time.time()
     # site_list = site_list.split('|')
     logger.info(site_list)
-    my_site_list = MySite.objects.filter(id__in=site_list, brush_rss=True).all()
+    my_site_list = MySite.objects.filter(id__in=site_list, rss__startswith='https://').all()
     websites = WebSite.objects.filter(brush_rss=True).all()
     message_list = []
     message_failed = []
@@ -344,7 +344,6 @@ def auto_get_rss(self, *site_list: List[int]):
             msg = f'{my_site.nickname} 新增种子：{created} 个，更新种子：{updated}个！'
             logger.info(msg)
             message_success.append(msg)
-            """
             logging.info(f'站点RSS刷流：{my_site.brush_rss}，绑定下载器：{my_site.downloader}')
             if my_site.brush_rss and my_site.downloader:
                 downloader = my_site.downloader
@@ -407,7 +406,6 @@ def auto_get_rss(self, *site_list: List[int]):
                         cache_package_files_list.append(package_files)
                     # 更新参数列表
                     cache.set(f'cache_package_files_list', cache_package_files_list, 60 * 60 * 24)
-                """
         except Exception as e:
             logger.error(traceback.format_exc(3))
             msg = f'{my_site.nickname} RSS获取或解析失败'

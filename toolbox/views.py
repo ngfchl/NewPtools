@@ -676,7 +676,11 @@ def sha1_hash(string: str) -> str:
 
 
 def get_hash_by_category(my_site: MySite):
-    torrent_infos = my_site.torrentinfo_set.filter(Q(hash_string=None) | Q(pieces_qb=None), state=1, ).all()
+    if not my_site.downloader:
+        return CommonResponse.error(msg=f'{my_site.nickname}: 未配置下载器，跳过！.')
+    torrent_infos = my_site.torrentinfo_set.filter(
+        Q(hash_string=None) | Q(pieces_qb=None), state=1,
+        downloader__isnull=False).all()
     website = WebSite.objects.get(id=my_site.site)
     client, _ = get_downloader_instance(my_site.downloader.id)
     count = 0
@@ -721,10 +725,9 @@ def remove_torrent_by_site_rules(my_site: MySite):
     if res.code == 0:
         logger.info(res.msg)
     torrent_infos = TorrentInfo.objects.filter(site=my_site, state=1).all()
-    hash_list = [torrent.hash_string for torrent in torrent_infos if
-                 torrent.hash_string and len(torrent.hash_string) > 0]
+    hash_list = [torrent.hash_string for torrent in torrent_infos if torrent.hash_string]
     if not hash_list or len(hash_list) <= 0:
-        msg = '没有种子需要删除！'
+        msg = f'{my_site.nickname}：本次运行没有种子要删除！'
         logger.info(msg)
         return msg
     torrents = client.torrents_info(torrent_hashes=hash_list)

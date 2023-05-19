@@ -124,11 +124,7 @@ class TorrentInfo(BaseEntity):
     uploaded = models.IntegerField(verbose_name='已上传', default=0)
     pieces_qb = models.CharField(verbose_name='pieces_qb', default='', max_length=128)
     pieces_tr = models.CharField(verbose_name='pieces_tr', default='', max_length=128)
-    state = models.BooleanField(verbose_name='推送状态', choices=(
-        ('未推送', 0),
-        ('已推送', 1),
-        ('已删除', 2),
-    ), default=0)
+    state = models.IntegerField(verbose_name='推送状态', default=0)
     downloader = models.ForeignKey(to=Downloader,
                                    on_delete=models.SET_NULL,
                                    verbose_name='下载器',

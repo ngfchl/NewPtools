@@ -2038,7 +2038,8 @@ class PtSpider:
                     else:
                         new_count += 1
                         # logger.debug(torrent_info)
-                    if result[0].state == 0:
+                    # HR 与种子推送状态筛选
+                    if result[0].hr and result[0].state == 0:
                         torrents.append(result[0])
                 if count + new_count <= 0:
                     return CommonResponse.error(msg='抓取失败或无促销种子！')

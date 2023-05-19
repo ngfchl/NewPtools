@@ -477,7 +477,7 @@ def auto_remove_brush_task(self, *site_list: List[int]):
     message_list = []
     websites = WebSite.objects.filter(brush_rss=True, id__in=[my_site.site for my_site in my_site_list]).all()
     for my_site in my_site_list:
-        website = websites.get(my_site.site)
+        website = websites.get(id=my_site.site)
         msg = toolbox.remove_torrent_by_site_rules(my_site)
         logger.info(msg)
         message_list.append(msg)

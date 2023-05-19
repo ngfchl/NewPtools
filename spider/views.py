@@ -97,11 +97,11 @@ class PtSpider:
         if not site:
             return CommonResponse.error(msg='尚未支持此站点：{}'.format(url))
         try:
-            logger.info(f'正在导入站点：{site.name}')
+            logger.debug(f'正在导入站点：{site.name}')
             # 如果有更新cookie，如果没有继续创建
             # userdatas = cookie.get('userdatas')
             time_stamp = cookie.get('info').get('joinTime')
-            logger.info(f'注册时间：{time_stamp}')
+            logger.debug(f'注册时间：{time_stamp}')
             if not time_stamp:
                 time_join = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(int(time_stamp) / 1000))
             else:
@@ -118,13 +118,13 @@ class PtSpider:
                         url=site.url + site.page_index,
                         cookies=cookie.get('cookies'),
                     )
-                    logger.info(response.text)
+                    logger.debug(response.text)
                     uid = ''.join(self.parse(site, response, site.my_uid_rule)).split('=')[-1]
-                    logger.info(f'uid:{uid}')
+                    logger.debug(f'uid:{uid}')
                 except Exception as e:
                     passkey_msg = f'{site.name} Uid获取失败，请手动添加！'
                     msg = f'{site.name} 信息导入失败！ {passkey_msg}：{e}'
-                    logger.info(passkey_msg)
+                    logger.error(passkey_msg)
                     return CommonResponse.error(
                         msg=msg
                     )
@@ -138,7 +138,7 @@ class PtSpider:
             # passkey_msg = ''
             # logger.info('开始导入PTPP历史数据')
             # for key, value in userdatas.items():
-            #     logger.info(key)
+            #     logger.debug(key)
             #     try:
             #         downloaded = value.get('downloaded')
             #         uploaded = value.get('uploaded')
@@ -181,8 +181,8 @@ class PtSpider:
             #             })
             #         res_status[0].created_at = create_time
             #         res_status[0].save()
-            #         logger.info(f'数据导入结果: 日期: {create_time}，True为新建，false为更新')
-            #         logger.info(res_status)
+            #         logger.debug(f'数据导入结果: 日期: {create_time}，True为新建，false为更新')
+            #         logger.debug(res_status)
             #     except Exception as e:
             #         msg = '{}{} 数据导入出错，错误原因：{}'.format(site.name, key, traceback.format_exc(limit=3))
             #         logger.error(msg)
@@ -192,7 +192,7 @@ class PtSpider:
             return CommonResponse.success(msg=message)
         except Exception as e:
             message = f'{site.name}: 站点导入失败！{traceback.format_exc(3)}'
-            logger.info(message)
+            logger.error(message)
             toolbox.send_text(title='PTPP站点导入', message=message)
             return CommonResponse.error(msg=f'{site.name}: 站点导入失败！')
 
@@ -202,7 +202,7 @@ class PtSpider:
         result = self.send_request(my_site=my_site, url=url, )
         # sign_str = self.parse(result, '//font[contains(text(),"签过到")]/text()')
         sign_str = etree.HTML(result.text).xpath('//font[contains(text(),"签过到")]/text()')
-        logger.info(sign_str)
+        logger.debug(sign_str)
         if len(sign_str) >= 1:
             # msg = self.parse(result, '//font[contains(text(),"签过到")]/text()')
             return CommonResponse.success(msg='您已成功签到，请勿重复操作！{}'.format(sign_str))
@@ -211,18 +211,18 @@ class PtSpider:
         questionid = self.parse(site, result, '//input[contains(@name, "questionid")]/@value')
         choices = self.parse(site, result, '//input[contains(@name, "choice[]")]/@value')
         # for choice in choices:
-        #     logger.info(choice)
+        #     logger.debug(choice)
         data = {
             'questionid': questionid,
             'choice[]': choices[random.randint(0, len(choices) - 1)],
             'usercomment': '十步杀一人，千里不流行！',
             'wantskip': '不会'
         }
-        logger.info(data)
+        logger.debug(data)
         sign_res = self.send_request(
             my_site=my_site, url=f'{site.url}{site.page_sign_in}'.lstrip('/'), method='post', data=data
         )
-        logger.info(sign_res.text)
+        logger.debug(sign_res.text)
         # sign_str = etree.HTML(sign_res.text.encode('utf-8-sig')).xpath
         sign_str = self.parse(site, sign_res, '//font[contains(text(),"点魔力值(连续")]/text()')
         if len(sign_str) < 1:
@@ -239,7 +239,7 @@ class PtSpider:
             url=url,
         )
         sign_str = self.parse(site, result, '//span[@id="qiandao"]')
-        logger.info(sign_str)
+        logger.debug(sign_str)
         if len(sign_str) < 1:
             return CommonResponse.success(msg=f'{site.name} 已签到，请勿重复操作！！')
         sign_res = self.send_request(
@@ -247,7 +247,7 @@ class PtSpider:
             url=f'{site.url}{site.page_sign_in}'.lstrip('/'),
             method='post'
         ).text
-        logger.info(f'好多油签到反馈：{sign_res}')
+        logger.debug(f'好多油签到反馈：{sign_res}')
         try:
             sign_res = toolbox.get_decimals(sign_res)
             if int(sign_res) > 0:
@@ -255,7 +255,7 @@ class PtSpider:
                     msg='你还需要继续努力哦！此次签到，你获得了魔力奖励：{}'.format(sign_res)
                 )
         except Exception as e:
-            logger.info(traceback.format_exc(3))
+            logger.error(traceback.format_exc(3))
             return CommonResponse.error(
                 msg=f'签到失败！{sign_res}: {e}'
             )
@@ -268,7 +268,7 @@ class PtSpider:
             url=url,
         )
         sign_str = self.parse(site, result, '//span[@id="checkin"]/a')
-        logger.info(sign_str)
+        logger.debug(sign_str)
         if len(sign_str) < 1:
             return CommonResponse.success(msg=f'{site.name} 已签到，请勿重复操作！！')
         sign_res = self.send_request(
@@ -280,7 +280,7 @@ class PtSpider:
             }
         )
         msg = '你还需要继续努力哦！此次签到，你获得了魔力奖励：{}'.format(sign_res.text.encode('utf8'))
-        logger.info(msg)
+        logger.debug(msg)
         return CommonResponse.success(
             msg=msg
         )
@@ -297,15 +297,15 @@ class PtSpider:
                               headers={
                                   'user-agent': my_site.user_agent
                               })
-        logger.info(f'签到检测页面：{result.text}')
+        logger.debug(f'签到检测页面：{result.text}')
         sign_str = self.parse(site, result, '//a[text()="已签到"]')
-        logger.info('{}签到检测'.format(site.name, sign_str))
-        logger.info(f'{result.cookies.get_dict()}')
+        logger.debug('{}签到检测'.format(site.name, sign_str))
+        logger.debug(f'{result.cookies.get_dict()}')
 
         if len(sign_str) >= 1:
             return CommonResponse.success(msg=f'{site.name} 已签到，请勿重复操作！！')
         csrf = ''.join(self.parse(site, result, '//meta[@name="x-csrf"]/@content'))
-        logger.info(f'CSRF字符串：{csrf}')
+        logger.debug(f'CSRF字符串：{csrf}')
         # sign_res = self.send_request(
         #     my_site=my_site,
         #     url=f'{site.url}{site.page_sign_in}',
@@ -316,21 +316,21 @@ class PtSpider:
         # )
         cookies = toolbox.cookie2dict(my_site.cookie)
         cookies.update(result.cookies.get_dict())
-        logger.info(cookies)
+        logger.debug(cookies)
         sign_res = requests.request(url=f'{site.url}{site.page_sign_in}', verify=False, method='post', cookies=cookies,
                                     headers={'user-agent': my_site.user_agent}, data={'csrf': csrf})
-        logger.info(sign_res.text)
+        logger.debug(sign_res.text)
         res_json = sign_res.json()
-        logger.info(sign_res.cookies)
+        logger.debug(sign_res.cookies)
         logger.info('签到返回结果：{}'.format(res_json))
         if res_json.get('state') == 'success':
             if len(sign_res.cookies) >= 1:
-                logger.info(f'我的COOKIE：{my_site.cookie}')
-                logger.info(f'新的COOKIE字典：{sign_res.cookies.items()}')
+                logger.debug(f'我的COOKIE：{my_site.cookie}')
+                logger.debug(f'新的COOKIE字典：{sign_res.cookies.items()}')
                 cookie = ''
                 for k, v in sign_res.cookies.items():
                     cookie += f'{k}={v};'
-                logger.info(f'新的COOKIE：{sign_res.cookies.items()}')
+                logger.debug(f'新的COOKIE：{sign_res.cookies.items()}')
                 my_site.cookie = cookie
                 my_site.save()
             msg = f"签到成功，您已连续签到{res_json.get('signindays')}天，本次增加魔力:{res_json.get('integral')}。"
@@ -338,7 +338,7 @@ class PtSpider:
             return CommonResponse.success(msg=msg)
         else:
             msg = res_json.get('msg')
-            logger.info(msg)
+            logger.error(msg)
             return CommonResponse.error(msg=msg)
 
     def sign_in_u2(self, my_site: MySite):
@@ -356,8 +356,8 @@ class PtSpider:
         submit_name = self.parse(site, result, '//form//td/input[@type="submit"]/@name')
         submit_value = self.parse(site, result, '//form//td/input[@type="submit"]/@value')
         message = '天空飘来五个字儿,幼儿园里没有事儿'
-        logger.info(submit_name)
-        logger.info(submit_value)
+        logger.debug(submit_name)
+        logger.debug(submit_value)
         param = []
         for name, value in zip(submit_name, submit_value):
             param.append({name: value})
@@ -368,14 +368,14 @@ class PtSpider:
             'message': message,
         }
         data.update(param[random.randint(0, 3)])
-        logger.info(data)
+        logger.debug(data)
         response = self.send_request(
             my_site,
             url=f'{site.url}{site.page_sign_in.lstrip("/")}?action=show',
             method='post',
             data=data,
         )
-        logger.info(response.content.decode('utf8'))
+        logger.debug(response.content.decode('utf8'))
         if "window.location.href = 'showup.php';" in response.content.decode('utf8'):
             result = self.send_request(my_site=my_site, url=url, )
             title = self.parse(site, result, '//h2[contains(text(),"签到区")]/following-sibling::table//h3/text()')
@@ -388,7 +388,7 @@ class PtSpider:
             logger.info(msg)
             return CommonResponse.success(msg=msg)
         else:
-            logger.info('签到失败！')
+            logger.error('签到失败！')
             return CommonResponse.error(msg='签到失败！')
 
     def sign_in_opencd(self, my_site: MySite):
@@ -402,9 +402,9 @@ class PtSpider:
         if len(href_sign_in) >= 1:
             return CommonResponse.success(data={'state': 'false'})
         url = f'{site.url}{site.page_sign_in}'.lstrip('/')
-        logger.info('# 开启验证码！')
+        logger.debug('# 开启验证码！')
         res = self.send_request(my_site=my_site, method='get', url=url)
-        logger.info(res.text.encode('utf-8-sig'))
+        logger.debug(res.text.encode('utf-8-sig'))
         img_src = ''.join(self.parse(site, res, '//form[@id="frmSignin"]//img/@src'))
         img_get_url = site.url + img_src
         times = 0
@@ -414,7 +414,7 @@ class PtSpider:
             ocr_result = toolbox.baidu_ocr_captcha(img_get_url)
             if ocr_result.code == 0:
                 imagestring = ocr_result.data
-                logger.info('验证码长度：{}'.format(len(imagestring)))
+                logger.debug('验证码长度：{}'.format(len(imagestring)))
                 if len(imagestring) == 6:
                     break
             times += 1
@@ -425,12 +425,12 @@ class PtSpider:
             'imagehash': ''.join(self.parse(site, res, '//form[@id="frmSignin"]//input[@name="imagehash"]/@value')),
             'imagestring': imagestring
         }
-        logger.info('请求参数：{}'.format(data))
+        logger.debug('请求参数：{}'.format(data))
         result = self.send_request(
             my_site=my_site,
             method='post',
             url=f'{site.url}plugin_sign-in.php?cmd=signin', data=data)
-        logger.info('皇后签到返回值：{}  \n'.format(result.text.encode('utf-8-sig')))
+        logger.debug('皇后签到返回值：{}  \n'.format(result.text.encode('utf-8-sig')))
         return CommonResponse.success(data=result.json())
 
     def sign_in_hdsky(self, my_site: MySite):
@@ -446,7 +446,7 @@ class PtSpider:
         #     )
         # sky无验证码方案结束
         # 获取img hash
-        logger.info('# 开启验证码！')
+        logger.debug('# 开启验证码！')
         res = self.send_request(
             my_site=my_site,
             method='post',
@@ -456,7 +456,7 @@ class PtSpider:
             }).json()
         # img url
         img_get_url = f'{site.url}image.php?action=regimage&imagehash={res.get("code")}'
-        logger.info(f'验证码图片链接：{img_get_url}')
+        logger.debug(f'验证码图片链接：{img_get_url}')
         # 获取OCR识别结果
         # imagestring = toolbox.baidu_ocr_captcha(img_url=img_get_url)
         times = 0
@@ -467,7 +467,7 @@ class PtSpider:
             ocr_result = toolbox.baidu_ocr_captcha(img_get_url)
             if ocr_result.code == 0:
                 imagestring = ocr_result.data
-                logger.info(f'验证码长度：{len(imagestring)}')
+                logger.debug(f'验证码长度：{len(imagestring)}')
                 if len(imagestring) == 6:
                     break
             times += 1
@@ -480,12 +480,12 @@ class PtSpider:
             'imagehash': res.get('code'),
             'imagestring': imagestring
         }
-        # logger.info('请求参数', data)
+        # logger.debug('请求参数', data)
         result = self.send_request(
             my_site=my_site,
             method='post',
             url=url, data=data)
-        logger.info('天空返回值：{}\n'.format(result.text))
+        logger.debug('天空返回值：{}\n'.format(result.text))
         return CommonResponse.success(data=result.json())
 
     def sign_in_ttg(self, my_site: MySite):
@@ -499,12 +499,12 @@ class PtSpider:
         logger.info(f'{site.name} 个人主页：{url}')
         try:
             res = self.send_request(my_site=my_site, url=url)
-            # logger.info(res.text.encode('utf8'))
+            # logger.debug(res.text.encode('utf8'))
             # html = self.parse(site,res, '//script/text()')
             html = etree.HTML(res.text).xpath('//script/text()')
-            # logger.info(html)
+            # logger.debug(html)
             text = ''.join(html).replace('\n', '').replace(' ', '')
-            logger.info(text)
+            logger.debug(text)
             signed_timestamp = toolbox.get_decimals(re.search("signed_timestamp:\"\d{10}", text).group())
 
             signed_token = re.search('[a-zA-Z0-9]{32}', text).group()
@@ -512,15 +512,15 @@ class PtSpider:
                 'signed_timestamp': signed_timestamp,
                 'signed_token': signed_token
             }
-            logger.info(f'signed_timestamp:{signed_timestamp}')
-            logger.info(f'signed_token:{signed_token}')
+            logger.debug(f'signed_timestamp:{signed_timestamp}')
+            logger.debug(f'signed_token:{signed_token}')
 
             resp = self.send_request(
                 my_site,
                 f'{site.url}{site.page_sign_in}',
                 method='post',
                 data=params)
-            logger.info(f'{my_site.nickname}: {resp.content.decode("utf8")}')
+            logger.debug(f'{my_site.nickname}: {resp.content.decode("utf8")}')
             return CommonResponse.success(msg=resp.content.decode('utf8'))
         except Exception as e:
             # 打印异常详细信息
@@ -533,7 +533,7 @@ class PtSpider:
             csrf_res = self.send_request(my_site=my_site, url=site.url)
             # '<meta name="x-csrf-token" content="4db531b6687b6e7f216b491c06937113">'
             x_csrf_token = self.parse(site, csrf_res, '//meta[@name="x-csrf-token"]/@content')
-            logger.info(f'csrf token: {x_csrf_token}')
+            logger.debug(f'csrf token: {x_csrf_token}')
             header = {
                 'user-agent': my_site.user_agent,
                 'content-type': 'application/json',
@@ -555,7 +555,7 @@ class PtSpider:
                 }
             }
             """
-            logger.info(res.content)
+            logger.debug(res.content)
             return CommonResponse.success(data=res.json())
         except Exception as e:
             # 打印异常详细信息
@@ -567,8 +567,8 @@ class PtSpider:
     @staticmethod
     def get_user_torrent(html, rule):
         res_list = html.xpath(rule)
-        logger.info(f'content: {res_list}')
-        # logger.info('res_list:', len(res_list))
+        logger.debug(f'content: {res_list}')
+        # logger.debug('res_list:', len(res_list))
         return '0' if len(res_list) == 0 else res_list[0]
 
     # @transaction.atomic
@@ -637,7 +637,7 @@ class PtSpider:
             if 'u2.dmhy.org' in site.url:
                 result = self.sign_in_u2(my_site)
                 if result.code == 0:
-                    logger.info(result.data)
+                    logger.debug(result.data)
                     signin_today.sign_in_today = True
                     signin_today.sign_in_info = result.msg
                     signin_today.save()
@@ -717,9 +717,9 @@ class PtSpider:
                     return CommonResponse.error(msg='签到失败！')
             if 'hares.top' in site.url:
                 res = self.send_request(my_site=my_site, method='post', url=url, header={"accept": "application/json"})
-                logger.info(res.text)
+                logger.debug(res.text)
                 code = res.json().get('code')
-                # logger.info('白兔返回码：'+ type(code))
+                # logger.debug('白兔返回码：'+ type(code))
                 if int(code) == 0:
                     """
                     "datas": {
@@ -760,12 +760,12 @@ class PtSpider:
                 res = requests.get(url=url, verify=False, cookies=toolbox.cookie2dict(my_site.cookie), headers={
                     'user-agent': my_site.user_agent
                 })
-                logger.info(res.text)
+                logger.debug(res.text)
             else:
                 res = self.send_request(my_site=my_site, method='post', url=url)
             logger.info(f'{my_site.nickname}: {res}')
             if 'pterclub.com' in site.url:
-                logger.info(f'猫站签到返回值：{res.json()}')
+                logger.debug(f'猫站签到返回值：{res.json()}')
                 status = res.json().get('status')
                 logger.info('{}：{}'.format(site.name, status))
                 '''
@@ -791,12 +791,12 @@ class PtSpider:
 
             if 'btschool' in site.url:
                 # logger.info(res.status_code)
-                logger.info(f'学校签到：{res.text}')
+                logger.debug(f'学校签到：{res.text}')
                 text = self.parse(site, res, '//script/text()')
-                logger.info('解析签到返回信息：{text}')
+                logger.debug('解析签到返回信息：{text}')
                 if len(text) > 0:
                     location = toolbox.parse_school_location(text)
-                    logger.info(f'学校签到链接：{location}')
+                    logger.debug(f'学校签到链接：{location}')
                     if 'addbouns.php' in location:
                         res = self.send_request(my_site=my_site, url=f'{site.url}{location.lstrip("/")}')
                 # sign_in_text = self.parse(site, res, '//a[@href="index.php"]/font//text()')
@@ -846,8 +846,8 @@ class PtSpider:
                 #         '//p[contains(text(),"本次签到获得魅力")]/preceding-sibling::h1[1]/span/text()'
                 #     )
                 #     content_parse = self.parse(site, res, '//p[contains(text(),"本次签到获得魅力")]/text()')
-                logger.info(f'{my_site.nickname}: 签到信息标题：{content_parse}')
-                logger.info(f'{my_site.nickname}: 签到信息：{content_parse}')
+                logger.debug(f'{my_site.nickname}: 签到信息标题：{content_parse}')
+                logger.debug(f'{my_site.nickname}: 签到信息：{content_parse}')
                 title = ''.join(title_parse).strip()
                 content = ''.join(content_parse).strip().replace('\n', '')
                 message = title + '，' + content
@@ -898,8 +898,8 @@ class PtSpider:
                 'returnto': '',
             })
         cookies = ''
-        logger.info(f'res: {login_res.text}')
-        logger.info(f'cookies: {session.cookies.get_dict()}')
+        logger.debug(f'res: {login_res.text}')
+        logger.debug(f'cookies: {session.cookies.get_dict()}')
         # expires = [cookie for cookie in session.cookies if not cookie.expires]
 
         for key, value in session.cookies.get_dict().items():
@@ -916,7 +916,7 @@ class PtSpider:
         csrf_res = self.send_request(my_site=my_site, url=site.url)
         # '<meta name="x-csrf-token" content="4db531b6687b6e7f216b491c06937113">'
         x_csrf_token = self.parse(site, csrf_res, '//meta[@name="x-csrf-token"]/@content')
-        logger.info(f'csrf token: {x_csrf_token}')
+        logger.debug(f'csrf token: {x_csrf_token}')
         return {
             'x-csrf-token': ''.join(x_csrf_token),
             'accept': 'application/json',
@@ -929,7 +929,7 @@ class PtSpider:
         mail_check = len(details_html.xpath(site.my_mailbox_rule))
         if 'zhuque.in' in site.url:
             mail_res = self.send_request(my_site=my_site, url=f'{site.url}api/user/getMainInfo', header=header)
-            logger.info(f'新消息: {mail_res.text}')
+            logger.debug(f'新消息: {mail_res.text}')
             mail_data = mail_res.json().get('data')
             mail = mail_data.get('unreadAdmin') + mail_data.get('unreadInbox') + mail_data.get('unreadSystem')
             if mail > 0:
@@ -972,9 +972,8 @@ class PtSpider:
                 logger.info(f'PM消息页面：{message_res}')
                 mail_list = self.parse(site, message_res, site.my_message_title)
                 mail_list = [f'#### {mail.strip()} ...\n' for mail in mail_list]
-                logger.info(mail_list)
+                logger.debug(mail_list)
                 mail = "".join(mail_list)
-                logger.info(mail)
                 logger.info(f'PM信息列表：{mail}')
                 # 测试发送网站消息原内容
                 message = f'\n# 短消息  \n> 只显示第一页哦\n{mail}'
@@ -999,7 +998,7 @@ class PtSpider:
         else:
             notice = 0
             notice_check = len(details_html.xpath(site.my_notice_rule))
-            logger.info(f'公告：{notice_check} ')
+            logger.debug(f'公告：{notice_check} ')
             if notice_check > 0:
                 notice_str = ''.join(details_html.xpath(site.my_notice_rule))
                 notice_count = re.sub(u"([^\u0030-\u0039])", "", notice_str)
@@ -1022,18 +1021,18 @@ class PtSpider:
                     else:
                         notice_res = self.send_request(my_site, url=f'{site.url}{site.page_index}')
                     # notice_res = self.send_request(my_site, url=site.url)
-                    logger.info(f'公告信息：{notice_res}')
+                    logger.debug(f'公告信息：{notice_res}')
                     notice_list = self.parse(site, notice_res, site.my_notice_title)
                     content_list = self.parse(
                         site,
                         notice_res,
                         site.my_notice_content,
                     )
-                    logger.info(f'公告信息：{notice_list}')
+                    logger.debug(f'公告信息：{notice_list}')
                     notice_list = [notice.xpath("string(.)", encoding="utf-8").strip("\n").strip("\r").strip()
                                    for notice in notice_list]
-                    logger.info(f'公告信息：{notice_list}')
-                    logger.info(content_list)
+                    logger.debug(f'公告信息：{notice_list}')
+                    logger.debug(content_list)
                     if len(content_list) > 0:
                         content_list = [
                             content.xpath("string(.)").replace("\r\n\r\n", "  \n> ").strip()
@@ -1042,7 +1041,7 @@ class PtSpider:
                             f'## {title} \n> {content}\n\n' for
                             title, content in zip(notice_list, content_list)
                         ]
-                    logger.info(f'公告信息列表：{notice_list}')
+                    logger.debug(f'公告信息列表：{notice_list}')
                     # notice = '  \n\n### '.join(notice_list[:notice_count])
                     notice = ''.join(notice_list[:1])
                     message_list += f'# 公告  \n## {notice}'
@@ -1094,22 +1093,22 @@ class PtSpider:
             details_html = etree.HTML(user_detail_res.text)
         if 'btschool' in site.url:
             text = details_html.xpath('//script/text()')
-            logger.info('学校：{}'.format(text))
+            logger.debug('学校：{}'.format(text))
             if len(text) > 0:
                 try:
                     location = toolbox.parse_school_location(text)
-                    logger.info('学校重定向链接：{}'.format(location))
+                    logger.debug('学校重定向链接：{}'.format(location))
                     if '__SAKURA' in location:
                         res = self.send_request(my_site=my_site, url=site.url + location.lstrip('/'), delay=25)
                         details_html = etree.HTML(res.text)
                 except Exception as e:
-                    logger.info(f'BT学校个人主页访问失败！{e}')
+                    logger.debug(f'BT学校个人主页访问失败！{e}')
         if 'hdchina.org' in site.url:
             cookies = ''
-            logger.info(f'res: {user_detail_res.text}')
-            logger.info(f'cookies: {user_detail_res.cookies.get_dict()}')
+            logger.debug(f'res: {user_detail_res.text}')
+            logger.debug(f'cookies: {user_detail_res.cookies.get_dict()}')
             # expires = [cookie for cookie in session.cookies if not cookie.expires]
-            logger.info(f'请求中的cookie: {user_detail_res.cookies}')
+            logger.debug(f'请求中的cookie: {user_detail_res.cookies}')
 
             # for key, value in user_detail_res.cookies.get_dict().items():
             #     cookies += f'{key}={value};'
@@ -1149,7 +1148,7 @@ class PtSpider:
             # print(details_html.content)
             # details_html = etree.HTML(details_html.text)
             csrf = details_html.xpath('//meta[@name="x-csrf"]/@content')
-            logger.info(f'CSRF Token：{csrf}')
+            logger.debug(f'CSRF Token：{csrf}')
 
             seeding_detail_res = requests.post(
                 url=seeding_detail_url, verify=False,
@@ -1162,16 +1161,16 @@ class PtSpider:
                     'type': 'seeding',
                     'csrf': ''.join(csrf)
                 })
-            logger.info(f'cookie: {my_site.cookie}')
-            logger.info(f'做种列表：{seeding_detail_res.text}')
+            logger.debug(f'cookie: {my_site.cookie}')
+            logger.debug(f'做种列表：{seeding_detail_res.text}')
             seeding_html = etree.HTML(seeding_detail_res.text)
         elif 'club.hares.top' in site.url:
             seeding_detail_res = self.send_request(my_site=my_site, url=seeding_detail_url, header={
                 'Accept': 'application/json'
             })
-            logger.info(f'白兔做种信息：{seeding_detail_res.text}')
+            logger.debug(f'白兔做种信息：{seeding_detail_res.text}')
             seeding_html = seeding_detail_res.json()
-            logger.info(f'白兔做种信息：{seeding_html}')
+            logger.debug(f'白兔做种信息：{seeding_html}')
         else:
             if site.url in [
                 # 'https://wintersakura.net/'
@@ -1187,7 +1186,7 @@ class PtSpider:
             else:
                 seeding_detail_res = self.send_request(my_site=my_site, url=seeding_detail_url, header=headers,
                                                        delay=25)
-            logger.info('做种信息：{}'.format(seeding_detail_res))
+            logger.debug('做种信息：{}'.format(seeding_detail_res))
             if seeding_detail_res.status_code != 200:
                 return CommonResponse.error(
                     msg=f'{site.name} 做种信息访问错误，错误码：{seeding_detail_res.status_code}')
@@ -1302,7 +1301,7 @@ class PtSpider:
         with lock:
             try:
                 if 'greatposterwall' in site.url or 'dicmusic' in site.url:
-                    logger.info(details_html)
+                    logger.debug(details_html)
                     details_response = details_html.get('response')
                     stats = details_response.get('stats')
                     my_site.time_join = stats.get('joinedDate')
@@ -1313,7 +1312,7 @@ class PtSpider:
                     my_site.time_join = datetime.fromtimestamp(userdata.get(site.my_time_join_rule))
                     my_site.save()
                 else:
-                    logger.info(f'注册时间：{details_html.xpath(site.my_time_join_rule)}')
+                    logger.debug(f'注册时间：{details_html.xpath(site.my_time_join_rule)}')
                     if site.url in [
                         'https://monikadesign.uk/',
                         'https://pt.hdpost.top/',
@@ -1322,7 +1321,7 @@ class PtSpider:
                         time_str = ''.join(details_html.xpath(site.my_time_join_rule))
                         time_str = re.sub(u"[\u4e00-\u9fa5]", "", time_str).strip()
                         time_join = datetime.strptime(time_str, '%b %d %Y')
-                        logger.info(f'注册时间：{time_join}')
+                        logger.debug(f'注册时间：{time_join}')
                         my_site.time_join = time_join
                     elif 'hd-torrents.org' in site.url:
                         my_site.time_join = datetime.strptime(
@@ -1345,7 +1344,7 @@ class PtSpider:
                     my_site.save()
             except Exception as e:
                 msg = f'🆘 {site.name} 注册时间获取出错啦！'
-                logger.info(traceback.format_exc(3))
+                logger.error(traceback.format_exc(3))
 
     def parse_userinfo_html(self, my_site, details_html):
         """解析个人主页"""
@@ -1353,7 +1352,7 @@ class PtSpider:
         with lock:
             try:
                 if 'greatposterwall' in site.url or 'dicmusic' in site.url:
-                    logger.info(details_html)
+                    logger.debug(details_html)
                     stats = details_html.get('stats')
                     downloaded = stats.get('downloaded')
                     uploaded = stats.get('uploaded')
@@ -1383,7 +1382,7 @@ class PtSpider:
                         toolbox.send_text(title=msg, message=msg)
                     return CommonResponse.success(data=res_gpw)
                 elif 'zhuque.in' in site.url:
-                    logger.info(details_html)
+                    logger.debug(details_html)
                     downloaded = details_html.get('download')
                     uploaded = details_html.get('upload')
                     seeding_size = details_html.get('seedSize')
@@ -1416,12 +1415,12 @@ class PtSpider:
                         })
                     return CommonResponse.success(data=res_zhuque)
                 else:
-                    logger.info(f'下载数目字符串：{details_html.xpath(site.my_leech_rule)}')
-                    logger.info(f'上传数目字符串：{details_html.xpath(site.my_seed_rule)}')
+                    logger.debug(f'下载数目字符串：{details_html.xpath(site.my_leech_rule)}')
+                    logger.debug(f'上传数目字符串：{details_html.xpath(site.my_seed_rule)}')
                     leech = re.sub(r'\D', '', ''.join(details_html.xpath(site.my_leech_rule)).strip())
-                    logger.info(f'当前下载数：{leech}')
+                    logger.debug(f'当前下载数：{leech}')
                     seed = ''.join(details_html.xpath(site.my_seed_rule)).strip()
-                    logger.info(f'当前做种数：{seed}')
+                    logger.debug(f'当前做种数：{seed}')
                     if not leech and not seed:
                         return CommonResponse.error(
                             msg='请检查Cookie是否过期？'
@@ -1442,7 +1441,7 @@ class PtSpider:
                     invitation = ''.join(
                         details_html.xpath(site.my_invitation_rule)
                     ).strip(']:').replace('[', '').strip()
-                    logger.info(f'邀请：{invitation}')
+                    logger.debug(f'邀请：{invitation}')
                     if '没有邀请资格' in invitation or '沒有邀請資格' in invitation:
                         invitation = 0
                     elif '/' in invitation:
@@ -1455,7 +1454,7 @@ class PtSpider:
                         invitation = 0
                     else:
                         invitation = int(re.sub('\D', '', invitation))
-                    logger.info(f'当前获取邀请数："{invitation}"')
+                    logger.debug(f'当前获取邀请数："{invitation}"')
                     # 获取用户等级信息
                     my_level_1 = ''.join(
                         details_html.xpath(site.my_level_rule)
@@ -1465,12 +1464,12 @@ class PtSpider:
                     else:
                         my_level = re.sub(u"([^\u0041-\u005a\u0061-\u007a])", "", my_level_1).strip(" ")
                     my_level = my_level.strip(" ") if my_level != '' else ' '
-                    logger.info('用户等级：{}-{}'.format(my_level_1, my_level))
+                    logger.debug('用户等级：{}-{}'.format(my_level_1, my_level))
                     # 获取字符串中的魔力值
                     my_bonus = ''.join(
                         details_html.xpath(site.my_bonus_rule)
                     ).replace(',', '').strip()
-                    logger.info('魔力：{}'.format(details_html.xpath(site.my_bonus_rule)))
+                    logger.debug('魔力：{}'.format(details_html.xpath(site.my_bonus_rule)))
                     if my_bonus:
                         my_bonus = toolbox.get_decimals(my_bonus)
                     # 获取做种积分
@@ -1485,21 +1484,19 @@ class PtSpider:
                     hr = ''.join(
                         details_html.xpath(site.my_hr_rule)
                     ).replace('H&R:', '').strip()
-                    logger.info(hr)
                     if site.url in [
                         'https://monikadesign.uk/',
                         'https://pt.hdpost.top/',
                         'https://reelflix.xyz/',
                     ]:
-                        logger.info(hr)
                         hr = hr.replace('\n', '').replace('有效', '').replace(':', '').strip('/').strip()
                     my_hr = hr if hr else '0'
-                    logger.info(f'h&r: "{hr}" ,解析后：{my_hr}')
+                    logger.debug(f'h&r: "{hr}" ,解析后：{my_hr}')
                     # 做种与下载信息
                     seed = int(toolbox.get_decimals(seed)) if seed else 0
                     leech = int(toolbox.get_decimals(leech)) if leech else 0
-                    logger.info(f'当前上传种子数：{seed}')
-                    logger.info(f'当前下载种子数：{leech}')
+                    logger.debug(f'当前上传种子数：{seed}')
+                    logger.debug(f'当前下载种子数：{leech}')
                     # 分享率信息
                     if float(downloaded) == 0:
                         ratio = float('inf')
@@ -1509,15 +1506,15 @@ class PtSpider:
                         title = f'{site.name}  站点分享率告警：{ratio}'
                         message = f'{title}  \n'
                         toolbox.send_text(title=title, message=message)
-                    logger.info('站点：{}'.format(site))
-                    logger.info('魔力：{}'.format(my_bonus))
-                    logger.info('积分：{}'.format(my_score if my_score else 0))
-                    logger.info('下载量：{}'.format(toolbox.FileSizeConvert.parse_2_file_size(downloaded)))
-                    logger.info('上传量：{}'.format(toolbox.FileSizeConvert.parse_2_file_size(uploaded)))
-                    logger.info('邀请：{}'.format(invitation))
-                    logger.info('H&R：{}'.format(my_hr))
-                    logger.info('上传数：{}'.format(seed))
-                    logger.info('下载数：{}'.format(leech))
+                    logger.debug('站点：{}'.format(site))
+                    logger.debug('魔力：{}'.format(my_bonus))
+                    logger.debug('积分：{}'.format(my_score if my_score else 0))
+                    logger.debug('下载量：{}'.format(toolbox.FileSizeConvert.parse_2_file_size(downloaded)))
+                    logger.debug('上传量：{}'.format(toolbox.FileSizeConvert.parse_2_file_size(uploaded)))
+                    logger.debug('邀请：{}'.format(invitation))
+                    logger.debug('H&R：{}'.format(my_hr))
+                    logger.debug('上传数：{}'.format(seed))
+                    logger.debug('下载数：{}'.format(leech))
                     defaults = {
                         'ratio': float(ratio) if ratio else 0,
                         'downloaded': int(downloaded),
@@ -1536,23 +1533,23 @@ class PtSpider:
                     if site.url in [
                         'https://nextpt.net/',
                     ]:
-                        # logger.info(site.hour_sp_rule)
+                        # logger.debug(site.hour_sp_rule)
                         res_bonus_hour_list = details_html.xpath(site.my_per_hour_bonus_rule)
-                        # logger.info(details_html)
-                        # logger.info(res_bonus_hour_list)
+                        # logger.debug(details_html)
+                        # logger.debug(res_bonus_hour_list)
                         res_bonus_hour = ''.join(res_bonus_hour_list)
                         bonus_hour = toolbox.get_decimals(res_bonus_hour)
                         # 飞天邀请获取
                         logger.info(f'邀请页面：{site.url}Invites')
                         res_next_pt_invite = self.send_request(my_site, f'{site.url}Invites')
-                        logger.info(res_next_pt_invite.text)
+                        logger.debug(res_next_pt_invite.text)
                         str_next_pt_invite = ''.join(self.parse(
                             site,
                             res_next_pt_invite,
                             site.my_invitation_rule))
-                        logger.info(f'邀请字符串：{str_next_pt_invite}')
+                        logger.debug(f'邀请字符串：{str_next_pt_invite}')
                         list_next_pt_invite = re.findall('\d+', str_next_pt_invite)
-                        logger.info(list_next_pt_invite)
+                        logger.debug(list_next_pt_invite)
                         invitation = int(list_next_pt_invite[0]) - int(list_next_pt_invite[1])
                         defaults.update({
                             'bonus_hour': bonus_hour,
@@ -1577,7 +1574,7 @@ class PtSpider:
         with lock:
             try:
                 if 'greatposterwall' in site.url or 'dicmusic' in site.url:
-                    logger.info(seeding_html)
+                    logger.debug(seeding_html)
                     mail_str = seeding_html.get("notifications").get("messages")
                     notice_str = seeding_html.get("notifications").get("notifications")
                     mail = int(mail_str) + int(notice_str)
@@ -1595,7 +1592,7 @@ class PtSpider:
                         bonus_hour = userdata.get('seedingBonusPointsPerHour')
                         # if userdata.get('seedingBonusPointsPerHour') else 0
                     if 'dicmusic' in site.url:
-                        logger.info('海豚')
+                        logger.debug('海豚')
                         """未取得授权前不开放本段代码，谨防ban号
                         bonus_res = self.send_request(my_site, url=site.url + site.page_seeding, timeout=15)
                         sp_str = self.parse(bonus_res, '//h3[contains(text(),"总积分")]/text()')
@@ -1624,7 +1621,7 @@ class PtSpider:
                 else:
                     try:
                         seed_vol_list = seeding_html.xpath(site.my_seed_vol_rule)
-                        logger.info('做种数量seeding_vol：{}'.format(seed_vol_list))
+                        logger.debug('做种数量seeding_vol：{}'.format(seed_vol_list))
                     except:
                         pass
                     if site.url in [
@@ -1662,14 +1659,14 @@ class PtSpider:
                         'https://dajiao.cyou/',
                     ]:
                         # 获取到的是整段，需要解析
-                        logger.info('做种体积：{}'.format(seed_vol_list))
+                        logger.debug('做种体积：{}'.format(seed_vol_list))
                         if len(seed_vol_list) < 1:
                             seed_vol_all = 0
                         else:
                             seeding_str = ''.join(
                                 seed_vol_list
                             ).replace('\xa0', ':').replace('i', '')
-                            logger.info('做种信息字符串：{}'.format(seeding_str))
+                            logger.debug('做种信息字符串：{}'.format(seeding_str))
                             if ':' in seeding_str:
                                 seed_vol_size = seeding_str.split(':')[-1].strip()
                             if '：' in seeding_str:
@@ -1695,25 +1692,25 @@ class PtSpider:
                             seeding_html.xpath(site.my_seed_vol_rule)
                         ).replace('i', '').replace('&nbsp;', ' ')
                         seed_vol_all = toolbox.FileSizeConvert.parse_2_byte(seed_vol_size)
-                        logger.info(f'做种信息: {seed_vol_all}')
+                        logger.debug(f'做种信息: {seed_vol_all}')
                     elif 'club.hares.top' in site.url:
-                        logger.info(f'白兔做种信息：{seeding_html}')
+                        logger.debug(f'白兔做种信息：{seeding_html}')
                         seed_vol_size = seeding_html.get('size')
-                        logger.info(f'白兔做种信息：{seed_vol_size}')
+                        logger.debug(f'白兔做种信息：{seed_vol_size}')
                         seed_vol_all = toolbox.FileSizeConvert.parse_2_byte(seed_vol_size)
-                        logger.info(f'白兔做种信息：{seed_vol_all}')
+                        logger.debug(f'白兔做种信息：{seed_vol_all}')
                     else:
                         if len(seed_vol_list) > 0 and site.url not in ['https://nextpt.net/']:
                             seed_vol_list.pop(0)
-                        logger.info('做种数量seeding_vol：{}'.format(len(seed_vol_list)))
+                        logger.debug('做种数量seeding_vol：{}'.format(len(seed_vol_list)))
                         # 做种体积
                         seed_vol_all = 0
                         for seed_vol in seed_vol_list:
                             if 'iptorrents.com' in site.url:
                                 vol = ''.join(seed_vol.xpath('.//text()'))
-                                logger.info(vol)
+                                logger.debug(vol)
                                 vol = ''.join(re.findall(r'\((.*?)\)', vol))
-                                logger.info(vol)
+                                logger.debug(vol)
                             elif site.url in [
                                 'https://exoticaz.to/',
                                 'https://cinemaz.to/',
@@ -1724,7 +1721,7 @@ class PtSpider:
                                 vol = ''.join(seed_vol).strip()
                             else:
                                 vol = ''.join(seed_vol.xpath('.//text()'))
-                            # logger.info(vol)
+                            # logger.debug(vol)
                             if not len(vol) <= 0:
                                 # U2返回字符串为mib，gib
                                 size = toolbox.FileSizeConvert.parse_2_byte(vol.replace('i', ''))
@@ -1738,7 +1735,7 @@ class PtSpider:
                             else:
                                 # seed_vol_all = 0
                                 pass
-                    logger.info('做种体积：{}'.format(toolbox.FileSizeConvert.parse_2_file_size(seed_vol_all)))
+                    logger.debug('做种体积：{}'.format(toolbox.FileSizeConvert.parse_2_file_size(seed_vol_all)))
                     res = SiteStatus.objects.update_or_create(
                         site=my_site,
                         created_at__date__gte=datetime.today(),
@@ -1833,7 +1830,7 @@ class PtSpider:
                         'r': ''.join(self.parse(response, '//form[@id="challenge-form"]/input[@name="r"]/@value'))
                     }
                     logger.info(data)
-                    logger.info('学校时魔页面url：', url)
+                    logger.debug('学校时魔页面url：', url)
                     response = self.send_request(
                         my_site=my_site,
                         url=site.url + ''.join(url).lstrip('/'),
@@ -1844,8 +1841,8 @@ class PtSpider:
                     )
                     """
                 # response = converter.convert(response.content)
-                # logger.info('时魔响应：{}'.format(response.content))
-                # logger.info('转为简体的时魔页面：', str(res))
+                # logger.debug('时魔响应：{}'.format(response.content))
+                # logger.debug('转为简体的时魔页面：', str(res))
                 if 'zhuque.in' in site.url:
                     # 获取朱雀时魔
                     bonus_hour = response.json().get('data').get('E')
@@ -1863,7 +1860,7 @@ class PtSpider:
                         if 'u2.dmhy.org' in site.url:
                             res_list = ''.join(res_list).split('，')
                             res_list.reverse()
-                        logger.info('时魔字符串：{}'.format(res_list))
+                        logger.debug('时魔字符串：{}'.format(res_list))
                         if len(res_list) <= 0:
                             message = f'{site.name} 时魔获取失败！'
                             logger.error(message)
@@ -1895,7 +1892,6 @@ class PtSpider:
         logger.info(f'种子页面链接：{url}')
         try:
             response = self.send_request(my_site, url)
-            logger.info(site.name)
             if response.status_code == 200:
                 return CommonResponse.success(data=response)
             elif response.status_code == 503:
@@ -1921,26 +1917,25 @@ class PtSpider:
         try:
             with lock:
                 trs = self.parse(site, response, site.torrents_rule)
-                # logger.info(f'种子页面：{response.text}')
+                # logger.debug(f'种子页面：{response.text}')
                 # logger.info(trs)
                 logger.info(f'{my_site.nickname} 共发现{len(trs)}条种子记录')
                 logger.info('=' * 50)
                 for tr in trs:
-                    logger.info(tr)
-                    # logger.info(etree.tostring(tr))
+                    logger.debug(tr)
+                    # logger.debug(etree.tostring(tr))
                     sale_status = ''.join(tr.xpath(site.torrent_sale_rule))
-                    logger.info('sale_status: {}'.format(sale_status))
+                    logger.debug('sale_status: {}'.format(sale_status))
                     # 打开免费种刷流时，非免费种子跳过
                     if my_site.brush_free and not sale_status:
-                        logger.info('非免费种子跳过')
-                        continue
+                        logger.debug('非免费种子跳过')
                     title_list = tr.xpath(site.torrent_subtitle_rule)
-                    logger.info(title_list)
+                    logger.debug(title_list)
                     subtitle = ''.join(title_list).strip('剩余时间：').strip('剩餘時間：').replace(
                         '&nbsp;', '').strip('()').strip()
                     title = ''.join(tr.xpath(site.torrent_title_rule)).replace('&nbsp;', '').strip()
                     if not title and not subtitle:
-                        logger.info('无名无姓？跳过')
+                        logger.error('无名无姓？跳过')
                         continue
                     # sale_status = ''.join(re.split(r'[^\x00-\xff]', sale_status))
                     sale_status = sale_status.replace('tStatus ', '').upper().replace(
@@ -1948,7 +1943,7 @@ class PtSpider:
                     ).replace('免费', 'Free').replace(' ', '')
                     # # 下载链接，下载链接已存在则跳过
                     href = ''.join(tr.xpath(site.torrent_magnet_url_rule))
-                    logger.info('href: {}'.format(href))
+                    logger.debug('href: {}'.format(href))
                     magnet_url = '{}{}'.format(
                         site.url,
                         href.replace('&type=zip', '').replace(site.url, '').lstrip('/')
@@ -1960,8 +1955,7 @@ class PtSpider:
                     hr = False if tr.xpath(site.torrent_hr_rule) else True
                     # H&R 种子有HR且站点设置不下载HR种子,跳过，
                     if not hr and not my_site.hr_discern:
-                        logger.info('hr种子，未开启HR跳过')
-                        continue
+                        logger.debug('hr种子，未开启HR跳过')
                     # # 促销到期时间
                     sale_expire = ''.join(tr.xpath(site.torrent_sale_expire_rule))
                     if site.url in [
@@ -1992,10 +1986,10 @@ class PtSpider:
                             time.struct_time(tuple([int(x) for x in time_array]))
                         )
                     #     pass
-                    # logger.info(sale_expire)
+                    # logger.debug(sale_expire)
                     # 如果促销结束时间为空，则为无限期
                     sale_expire = '' if not sale_expire else sale_expire
-                    # logger.info(torrent_info.sale_expire)
+                    # logger.debug(torrent_info.sale_expire)
                     # # 发布时间
                     on_release = ''.join(tr.xpath(site.torrent_release_rule))
                     # # 做种人数
@@ -2005,20 +1999,20 @@ class PtSpider:
                     # # # 完成人数
                     completers = ''.join(tr.xpath(site.torrent_completers_rule))
                     # 存在则更新，不存在就创建
-                    # logger.info(type(seeders), type(leechers), type(completers), )
-                    # logger.info(seeders, leechers, completers)
-                    # logger.info(''.join(tr.xpath(site.title_rule)))
+                    # logger.debug(type(seeders), type(leechers), type(completers), )
+                    # logger.debug(seeders, leechers, completers)
+                    # logger.debug(''.join(tr.xpath(site.title_rule)))
                     category = ''.join(tr.xpath(site.torrent_category_rule))
                     file_parse_size = ''.join(tr.xpath(site.torrent_size_rule))
                     # file_parse_size = ''.join(tr.xpath(''))
-                    logger.info(file_parse_size)
+                    logger.debug(file_parse_size)
                     file_size = toolbox.FileSizeConvert.parse_2_byte(file_parse_size)
                     # subtitle = subtitle if subtitle else title
                     # poster_url = ''.join(tr.xpath(site.torrent_poster_rule))  # 海报链接
-                    logger.info(f'title：{site}\n size: {file_size}\n category：{category}\n '
-                                f'magnet_url：{magnet_url}\n subtitle：{subtitle}\n sale_status：{sale_status}\n '
-                                f'sale_expire：{sale_expire}\n seeders：{seeders}\n leechers：{leechers}\n'
-                                f'H&R：{hr}\n completers：{completers}')
+                    logger.debug(f'title：{site}\n size: {file_size}\n category：{category}\n '
+                                 f'magnet_url：{magnet_url}\n subtitle：{subtitle}\n sale_status：{sale_status}\n '
+                                 f'sale_expire：{sale_expire}\n seeders：{seeders}\n leechers：{leechers}\n'
+                                 f'H&R：{hr}\n completers：{completers}')
                     result = TorrentInfo.objects.update_or_create(
                         site=my_site,
                         tid=tid,
@@ -2037,19 +2031,19 @@ class PtSpider:
                             'leechers': int(leechers) if leechers else 0,
                             'completers': int(completers) if completers else 0,
                         })
-                    logger.info('拉取种子：{} {}'.format(site.name, result[0]))
+                    logger.info('拉取种子：{} {}'.format(site.name, result[0].title))
                     # time.sleep(0.5)
                     if not result[1]:
                         count += 1
                     else:
                         new_count += 1
-                        # logger.info(torrent_info)
+                        # logger.debug(torrent_info)
                     if result[0].state == 0:
                         torrents.append(result[0])
                 if count + new_count <= 0:
                     return CommonResponse.error(msg='抓取失败或无促销种子！')
                 return CommonResponse.success(
-                    msg=f'种子抓取成功！新增种子{new_count}条，更新种子{count}条!',
+                    msg=f'种子抓取成功！新增种子{new_count}条!',
                     data=torrents
                 )
         except Exception as e:

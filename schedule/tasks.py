@@ -297,6 +297,7 @@ def auto_get_rss(self, *site_list: List[int]):
             msg = f'{my_site.nickname} 新增种子：{created} 个，更新种子：{updated}个！'
             logger.info(msg)
             message_success.append(msg)
+            """
             logging.info(f'站点RSS刷流：{my_site.brush_rss}，绑定下载器：{my_site.downloader}')
             if my_site.brush_rss and my_site.downloader:
                 downloader = my_site.downloader
@@ -359,6 +360,7 @@ def auto_get_rss(self, *site_list: List[int]):
                         cache_package_files_list.append(package_files)
                     # 更新参数列表
                     cache.set(f'cache_package_files_list', cache_package_files_list, 60 * 60 * 24)
+                """
         except Exception as e:
             logger.error(traceback.format_exc(3))
             msg = f'{my_site.nickname} RSS获取或解析失败'

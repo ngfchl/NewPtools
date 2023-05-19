@@ -1,7 +1,6 @@
 from __future__ import absolute_import, unicode_literals
 
 import gc
-import hashlib
 import logging
 import os
 import subprocess
@@ -188,8 +187,31 @@ def auto_get_torrents(self, *site_list: List[int]):
             # 通知推送
             if res.code == 0:
                 message = f'> ✅ {my_site.nickname}种子抓取成功！ {res.msg}  \n\n'
-                message_success.append(message)
                 logger.info(message)
+                site = websites.get(id=my_site.site)
+                logging.info(f'站点Free刷流：{my_site.brush_free}，绑定下载器：{my_site.downloader}')
+                if my_site.downloader:
+                    torrents = res.data
+                    # 解析刷流推送规则,筛选符合条件的种子并推送到下载器
+                    torrents = toolbox.filter_torrent_by_rules(my_site, torrents)
+                    msg = f'{my_site.nickname} 站点共有{len(res.data)}条种子未推送,有符合条件的种子：{len(torrents)} 个'
+                    logger.info(msg)
+                    client, downloader_category = toolbox.get_downloader_instance(my_site.downloader_id)
+                    for torrent in torrents:
+                        # 限速到站点限速的92%。以防超速
+                        category = f'{site.nickname}-{torrent.tid}' if not torrent.hash_string else site.nickname
+                        toolbox.push_torrents_to_downloader(
+                            client, downloader_category,
+                            urls=torrent.magnet_url,
+                            cookie=my_site.cookie,
+                            category=category,
+                            upload_limit=int(site.limit_speed * 1024 * 0.92)
+                        )
+                        torrent.downloader = my_site.downloader
+                        torrent.state = 1
+                        torrent.save()
+                    message = f'{message} \n {msg} '
+                message_success.append(message)
             else:
                 message = f'> 🆘 {my_site.nickname} 抓取种子信息失败！原因：{res.msg}  \n'
                 message_failed.append(message)
@@ -210,53 +232,78 @@ def auto_get_torrents(self, *site_list: List[int]):
         toolbox.send_text(title='通知：拉取最新种子-成功', message=''.join(message_success))
     # 释放内存
     gc.collect()
+    return consuming
 
 
-@shared_task(bind=True, base=BaseTask)
-def auto_calc_torrent_pieces_hash(self, ):
-    """
-    计算种子块HASH(根据种子信息进行补全)
-    """
-    start = time.time()
-    torrent_info_list = TorrentInfo.objects.filter(downloader__isnull=False).all()
-    website_list = WebSite.objects.all()
-    count = 0
-    for torrent_info in torrent_info_list:
-        logger.info('种子名称：{}'.format(torrent_info.name))
-        try:
-            client, _ = toolbox.get_downloader_instance(torrent_info.downloader_id)
-            if not torrent_info.hash_string:
-                # 种子信息未填写hash的，组装分类信息，到下载器查询种子信息
-                site = website_list.get(id=torrent_info.site.site)
-                category = f'{site.nickname}-{torrent_info.tid}'
-                torrents = client.torrents_info(category=category)
-            else:
-                # 以后hash的直接查询
-                torrents = client.torrents_info(torrent_hashes=torrent_info.hash_string)
-            if len(torrents) == 1:
-                # 保存种子hash
-                hash_string = torrents[0].hash_string
-                torrent_info.hash_string = hash_string
-                # 获取种子块HASH列表，并生成种子块HASH列表字符串的sha1值，保存
-                pieces_hash_list = client.torrents_piece_hashes(torrent_hash=hash_string)
-                pieces_hash_string = str(pieces_hash_list).replace(' ', '')
-                torrent_info.pieces_hash = hashlib.sha1(pieces_hash_string.encode()).hexdigest()
-                # 获取文件列表，并生成文件列表字符串的sha1值，保存
-                file_list = client.torrents_files(torrent_hash=hash_string)
-                file_list_hash_string = str(file_list).replace(' ', '')
-                torrent_info.filelist = hashlib.sha1(file_list_hash_string.encode()).hexdigest()
-                torrent_info.files_count = len(file_list)
-            torrent_info.state = 1
-            torrent_info.save()
-            count += 1
-        except Exception as e:
-            logging.error(traceback.format_exc(3))
-            continue
-    end = time.time()
-    message = f'> 计算种子Pieces的HASH值 任务运行成功！共成功处理种子{count}个，耗时：{end - start}  \n{time.strftime("%Y-%m-%d %H:%M:%S")}'
-    toolbox.send_text(title='通知：计算种子HASH', message=message)
-    # 释放内存
-    gc.collect()
+# @shared_task(bind=True, base=BaseTask)
+# def auto_get_hash_by_category(self, ):
+#     start = time.time()
+#     my_site_list = MySite.objects.all()
+#     results = pool.map(toolbox.get_hash_by_category, my_site_list)
+#     failed_msg = []
+#     succeeded_msg = []
+#     for result in results:
+#         succeeded_msg.append(result.msg) if result.code == 0 else failed_msg.append(result.msg)
+#     end = time.time()
+#     consuming = f'> ♻️ 完善种子信息 任务运行成功！执行成功{len(succeeded_msg)}个，失败{len(failed_msg)}个。' \
+#                 f'本次任务耗时：{end - start} 当前时间：{time.strftime("%Y-%m-%d %H:%M:%S")}  \n'
+#     logger.info(consuming)
+#     message_list = [consuming]
+#     message_list.extend(failed_msg)
+#     toolbox.send_text(title='通知：完善种子信息', message='\n'.join(message_list))
+#     if len(succeeded_msg) > 0:
+#         toolbox.send_text(title='通知：完善种子信息-成功', message='\n'.join(succeeded_msg))
+#     # 释放内存
+#     gc.collect()
+
+
+# @shared_task(bind=True, base=BaseTask)
+# def auto_calc_torrent_pieces_hash(self, ):
+#     """
+#     计算种子块HASH(根据种子信息进行补全)
+#     """
+#     start = time.time()
+#     torrent_info_list = TorrentInfo.objects.filter(
+#         downloader__isnull=False, state=1, pieces_qb__isnull=True
+#     ).all()
+#     website_list = WebSite.objects.all()
+#     count = 0
+#     for torrent_info in torrent_info_list:
+#         logger.info('种子名称：{}'.format(torrent_info.title))
+#         try:
+#             client, _ = toolbox.get_downloader_instance(torrent_info.downloader_id)
+#             if not torrent_info.hash_string:
+#                 # 种子信息未填写hash的，组装分类信息，到下载器查询种子信息
+#                 site = website_list.get(id=torrent_info.site.site)
+#                 category = f'{site.nickname}-{torrent_info.tid}'
+#                 torrents = client.torrents_info(category=category)
+#             else:
+#                 # 以后hash的直接查询
+#                 torrents = client.torrents_info(torrent_hashes=torrent_info.hash_string)
+#             if len(torrents) == 1:
+#                 # 保存种子hash
+#                 hash_string = torrents[0].hash_string
+#                 torrent_info.hash_string = hash_string
+#                 # 获取种子块HASH列表，并生成种子块HASH列表字符串的sha1值，保存
+#                 pieces_hash_list = client.torrents_piece_hashes(torrent_hash=hash_string)
+#                 pieces_hash_string = str(pieces_hash_list).replace(' ', '')
+#                 torrent_info.pieces_hash = hashlib.sha1(pieces_hash_string.encode()).hexdigest()
+#                 # 获取文件列表，并生成文件列表字符串的sha1值，保存
+#                 file_list = client.torrents_files(torrent_hash=hash_string)
+#                 file_list_hash_string = str(file_list).replace(' ', '')
+#                 torrent_info.filelist = hashlib.sha1(file_list_hash_string.encode()).hexdigest()
+#                 torrent_info.files_count = len(file_list)
+#             torrent_info.state = 1
+#             torrent_info.save()
+#             count += 1
+#         except Exception as e:
+#             logging.error(traceback.format_exc(3))
+#             continue
+#     end = time.time()
+#     message = f'> 计算种子Pieces的HASH值 任务运行成功！共成功处理种子{count}个，耗时：{end - start}  \n{time.strftime("%Y-%m-%d %H:%M:%S")}'
+#     toolbox.send_text(title='通知：计算种子HASH', message=message)
+#     # 释放内存
+#     gc.collect()
 
 
 @shared_task(bind=True, base=BaseTask)

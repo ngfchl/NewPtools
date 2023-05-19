@@ -19,6 +19,7 @@ import requests
 import toml as toml
 import transmission_rpc
 from django.conf import settings
+from django.db.models import Q
 from pypushdeer import PushDeer
 from wxpusher import WxPusher
 
@@ -652,29 +653,40 @@ def filter_torrent_by_rules(my_site: MySite, torrents: List[TorrentInfo]):
     return torrent_list
 
 
+def sha1_hash(string: str) -> str:
+    return hashlib.sha1(string.encode()).hexdigest()
+
+
 def get_hash_by_category(my_site: MySite):
-    torrent_infos = my_site.torrentinfo_set.all()
+    torrent_infos = my_site.torrentinfo_set.filter(Q(hash_string=None) | Q(pieces_qb=None), state=1, ).all()
     website = WebSite.objects.get(id=my_site.site)
-    no_hash_torrents = [torrent for torrent in torrent_infos if len(torrent.hash_string) <= 32]
     client, _ = get_downloader_instance(my_site.downloader.id)
     count = 0
-    for torrent in no_hash_torrents:
+    for torrent in torrent_infos:
         category = f'{website.nickname}-{torrent.tid}'
-        t = client.torrents_info(category=category)
-        if len(t) == 1:
-            hash_string = t[0].get('hash')
-            torrent.hash_string = hash_string
+        if torrent.hash_string is None:
+            t = client.torrents_info(category=category)
+            if len(t) == 1:
+                torrent.hash_string = t[0].get('hash')
+                torrent.save()
+        try:
+            hash_string = torrent.hash_string
             # 获取种子块HASH列表，并生成种子块HASH列表字符串的sha1值，保存
             pieces_hash_list = client.torrents_piece_hashes(torrent_hash=hash_string)
-            pieces_hash_string = str(pieces_hash_list).replace(' ', '')
-            torrent.pieces_hash = hashlib.sha1(pieces_hash_string.encode()).hexdigest()
+            pieces_hash_string = ''.join(str(pieces_hash) for pieces_hash in pieces_hash_list)
+            torrent.pieces_qb = sha1_hash(pieces_hash_string)
             # 获取文件列表，并生成文件列表字符串的sha1值，保存
             file_list = client.torrents_files(torrent_hash=hash_string)
-            file_list_hash_string = str(file_list).replace(' ', '')
-            torrent.filelist = hashlib.sha1(file_list_hash_string.encode()).hexdigest()
+            file_list_hash_string = ''.join(str(item) for item in file_list)
+            torrent.filelist = sha1_hash(file_list_hash_string)
             torrent.files_count = len(file_list)
             torrent.save()
             count += 1
+        except Exception as e:
+            msg = f'{my_site.nickname} - {torrent.title}: 完善信息失败！'
+            logger.error(msg)
+            logger.error(traceback.format_exc(3))
+            continue
     return CommonResponse.success(msg=f'{my_site.nickname}: 完善种子信息 {count} 个。')
 
 
@@ -687,6 +699,9 @@ def remove_torrent_by_site_rules(my_site: MySite):
     logger.info(f"当前站点：{my_site}, 删种规则：{my_site.remove_torrent_rules}")
     rules = json.loads(my_site.remove_torrent_rules).get('remove')
     client, _ = get_downloader_instance(my_site.downloader.id)
+    res = get_hash_by_category(my_site)
+    if res.code == 0:
+        logger.info(res.msg)
     torrent_infos = TorrentInfo.objects.filter(site=my_site, state=1).all()
     hash_list = [torrent.hash_string for torrent in torrent_infos if
                  torrent.hash_string and len(torrent.hash_string) > 0]

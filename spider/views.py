@@ -1988,7 +1988,7 @@ class PtSpider:
                     #     pass
                     # logger.debug(sale_expire)
                     # 如果促销结束时间为空，则为无限期
-                    sale_expire = '' if not sale_expire else sale_expire
+                    sale_expire = None if not sale_expire else sale_expire
                     # logger.debug(torrent_info.sale_expire)
                     # # 发布时间
                     on_release = ''.join(tr.xpath(site.torrent_release_rule))

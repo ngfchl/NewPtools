@@ -1124,7 +1124,6 @@ class PtSpider:
         site = get_object_or_404(WebSite, id=my_site.site)
         seeding_detail_url = site.url + site.page_seeding.lstrip('/').format(my_site.user_id)
         logger.info(f'{site.name} 开始抓取站点做种信息，网址：{seeding_detail_url}')
-
         if site.url in [
             'https://greatposterwall.com/', 'https://dicmusic.club/'
         ]:
@@ -1917,6 +1916,7 @@ class PtSpider:
     def get_torrent_info_list(self, my_site: MySite, response: Response):
         count = 0
         new_count = 0
+        torrents = []
         site = get_object_or_404(WebSite, id=my_site.site)
         try:
             with lock:
@@ -2044,9 +2044,14 @@ class PtSpider:
                     else:
                         new_count += 1
                         # logger.info(torrent_info)
+                    if result[0].state == 0:
+                        torrents.append(result[0])
                 if count + new_count <= 0:
                     return CommonResponse.error(msg='抓取失败或无促销种子！')
-                return CommonResponse.success(msg=f'种子抓取成功！新增种子{new_count}条，更新种子{count}条!')
+                return CommonResponse.success(
+                    msg=f'种子抓取成功！新增种子{new_count}条，更新种子{count}条!',
+                    data=torrents
+                )
         except Exception as e:
             # raise
             title = f'{site.name} 解析种子信息：失败！'

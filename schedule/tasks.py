@@ -48,7 +48,7 @@ def auto_sign_in(self, *site_list: List[int]):
            (datetime.now().hour >= 9 or WebSite.objects.get(id=my_site.site).url not in ['https://u2.dmhy.org/'])
     ]
     message = '站点：`U2` 早上九点之前不执行签到任务哦！ \n\n'
-    logger.info(message)
+    logger.debug(message)
     message_list.append(message)
     if len(queryset) <= 0:
         message_list = ['已全部签到或无需签到！ \n\n']
@@ -60,10 +60,10 @@ def auto_sign_in(self, *site_list: List[int]):
     success_message = []
     failed_message = []
     for my_site, result in zip(queryset, results):
-        logger.info(f'自动签到：{my_site}, {result}')
+        logger.debug(f'自动签到：{my_site}, {result}')
         if result.code == 0:
             msg = f'✅ {my_site.nickname} 签到成功！{result.msg} \n\n'
-            logger.info(msg)
+            logger.debug(msg)
             success_message.append(msg)
         else:
             message = f'🆘 {my_site.nickname}签到失败：{result.msg} \n\n'
@@ -79,7 +79,7 @@ def auto_sign_in(self, *site_list: List[int]):
     message_list.append('*' * 20)
     # message_list.extend(success_message)
     logger.info(message)
-    logger.info(len(message_list))
+    logger.debug(len(message_list))
     toolbox.send_text(title='通知：自动签到', message='\n'.join(message_list))
     toolbox.send_text(title='通知：签到成功', message='\n'.join(success_message))
     # 释放内存
@@ -180,14 +180,14 @@ def auto_get_torrents(self, *site_list: List[int]):
                 websites.get(id=my_site.site).brush_free]
     results = pool.map(pt_spider.send_torrent_info_request, queryset)
     for my_site, result in zip(queryset, results):
-        logger.info('获取种子：{}{}'.format(my_site.nickname, result))
+        logger.debug('获取种子：{}{}'.format(my_site.nickname, result))
         # print(result is tuple[int])
         if result.code == 0:
             res = pt_spider.get_torrent_info_list(my_site, result.data)
             # 通知推送
             if res.code == 0:
                 message = f'> ✅ {my_site.nickname}种子抓取成功！ {res.msg}  \n\n'
-                logger.info(message)
+                logger.debug(message)
                 site = websites.get(id=my_site.site)
                 logging.info(f'站点Free刷流：{my_site.brush_free}，绑定下载器：{my_site.downloader}')
                 if my_site.downloader:
@@ -195,7 +195,7 @@ def auto_get_torrents(self, *site_list: List[int]):
                     # 解析刷流推送规则,筛选符合条件的种子并推送到下载器
                     torrents = toolbox.filter_torrent_by_rules(my_site, torrents)
                     msg = f'{my_site.nickname} 站点共有{len(res.data)}条种子未推送,有符合条件的种子：{len(torrents)} 个'
-                    logger.info(msg)
+                    logger.debug(msg)
                     client, downloader_category = toolbox.get_downloader_instance(my_site.downloader_id)
                     for torrent in torrents:
                         # 限速到站点限速的92%。以防超速
@@ -226,10 +226,11 @@ def auto_get_torrents(self, *site_list: List[int]):
                 f'本次任务耗时：{end - start} 当前时间：{time.strftime("%Y-%m-%d %H:%M:%S")}  \n'
     message_list.append(consuming)
     message_list.extend(message_failed)
+    message_list.extend(message_success)
     logger.info(consuming)
     toolbox.send_text(title='通知：拉取最新种子', message=''.join(message_list))
-    if len(message_success) > 0:
-        toolbox.send_text(title='通知：拉取最新种子-成功', message=''.join(message_success))
+    # if len(message_success) > 0:
+    #     toolbox.send_text(title='通知：拉取最新种子-成功', message=''.join(message_success))
     # 释放内存
     gc.collect()
     return consuming
@@ -331,7 +332,7 @@ def auto_get_rss(self, *site_list: List[int]):
                 # 如果无报错，将信息合并到torrent
                 # if res_detail.code == 0:
                 #     torrent.update(res_detail.data)
-                logger.info(t)
+                logger.debug(t)
                 res = TorrentInfo.objects.update_or_create(site=my_site, tid=tid, defaults=t, )
                 if res[1]:
                     res[0].downloader = my_site.downloader
@@ -340,7 +341,7 @@ def auto_get_rss(self, *site_list: List[int]):
                     created += 1
                 else:
                     updated += 1
-                # logger.info(res)
+                # logger.debug(res)
             msg = f'{my_site.nickname} 新增种子：{created} 个，更新种子：{updated}个！'
             logger.info(msg)
             message_success.append(msg)
@@ -495,16 +496,19 @@ def auto_cleanup_not_registered(self):
     for downloader in downloaders:
         hashes = []
         client, _ = toolbox.get_downloader_instance(downloader.id)
-        torrents = client.torrents_info(status_filter='stalled_downloading')
+        torrents = client.torrents_info(status_filter='stalled_downloading|stalledUP')
         for torrent in torrents:
             hash_string = torrent.get('hash')
             trackers = client.torrents_trackers(torrent_hash=hash_string)
             tracker_checked = False
-            for tracker in trackers:
-                delete_msg = [msg for msg in not_registered_msg if tracker.get('msg').lower().startswith(msg)]
+            tracker_msg_list = [tracker.get('msg').lower() for tracker in trackers]
+            for tracker_msg in tracker_msg_list:
+                delete_msg = [msg for msg in not_registered_msg if tracker_msg.startswith(msg)]
+                msg = f'{torrent.get("name")} - {hash_string} - msg：{tracker_msg} -{len(delete_msg)}'
+                logger.debug(msg)
                 if len(delete_msg) > 0:
-                    # hashes.append(hash_string)
-                    hashes.append(f'{torrent.get("name")} - {hash_string}')
+                    hashes.append(hash_string)
+                    # hashes.append(f'{torrent.get("name")} - {hash_string}')
                     tracker_checked = True
                     break
             if tracker_checked:
@@ -513,7 +517,7 @@ def auto_cleanup_not_registered(self):
         if len(hashes) > 0:
             toolbox.send_text(title='已失效种子', message='{}\n{}'.format(downloader.name, '\n'.join(hashes)))
             # todo 未来在这里会将已被删除的种子HASH发送至服务器
-            # client.torrents_delete(torrent_hashes=hashes, delete_files=True)
+            client.torrents_delete(torrent_hashes=hashes, delete_files=True)
 
 
 @shared_task(bind=True, base=BaseTask)
@@ -524,16 +528,19 @@ def auto_remove_brush_task(self, *site_list: List[int]):
     message_list = []
     websites = WebSite.objects.filter(brush_rss=True, id__in=[my_site.site for my_site in my_site_list]).all()
     for my_site in my_site_list:
-        website = websites.get(id=my_site.site)
-        msg = toolbox.remove_torrent_by_site_rules(my_site)
-        logger.info(msg)
-        message_list.append(msg)
-        if len(message_list) > 0:
-            message = ' \n' + '\n > '.join(message_list)
-            logger.info(message)
-            toolbox.send_text(title='刷流删种', message=message)
-            return message
-        return '没有需要删除的种子！'
+        try:
+            website = websites.get(id=my_site.site)
+            msg = toolbox.remove_torrent_by_site_rules(my_site)
+            logger.debug(msg)
+            message_list.append(msg)
+
+        except Exception as e:
+            logger.error(traceback.format_exc(3))
+    message = '\n > '.join(message_list)
+    logger.debug(message)
+    if len(message_list) > 0:
+        toolbox.send_text(title='刷流删种', message=message)
+    return message
 
 
 @shared_task(bind=True, base=BaseTask)

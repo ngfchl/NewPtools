@@ -744,6 +744,7 @@ def remove_torrent_by_site_rules(my_site: MySite):
                     uploaded_eta = (prop.get('total_uploaded') - torrent_info.uploaded)
                     uploaded_avg = uploaded_eta / time_delta
                     if uploaded_avg < upload_speed_avg.get("upload_speed") * 1024:
+                        logger.debug(f'{torrent_info.title} 上传速度删种命中')
                         hashes.append(hash_string)
                         continue
                     else:
@@ -762,12 +763,14 @@ def remove_torrent_by_site_rules(my_site: MySite):
                     tracker_checked = True
                     break
             if tracker_checked:
+                logger.debug(f'{torrent_info.title} 站点删种命中')
                 continue
             # 完成人数超标删除
             torrent_num_complete = rules.get("num_complete")
             if torrent_num_complete and torrent_num_complete > 0:
                 num_complete = prop.get('seeds_total')
                 if num_complete > torrent_num_complete:
+                    logger.debug(f'{torrent_info.title} 完成人数超标')
                     hashes.append(hash_string)
                     continue
             # 正在下载人数 低于设定值删除
@@ -775,12 +778,14 @@ def remove_torrent_by_site_rules(my_site: MySite):
             if torrent_num_incomplete and torrent_num_incomplete > 0:
                 num_incomplete = torrent.get('num_incomplete')
                 if num_incomplete < torrent_num_incomplete:
+                    logger.debug(f'{torrent_info.title} 正在下载人数 低于设定值')
                     hashes.append(hash_string)
                     continue
-            # 无上传五下载超时删种
+            # 无上传无下载超时删种
             if rules.get("timeout") and rules.get("timeout") > 0:
                 last_activity = torrent.get('last_activity')
                 if time.time() - last_activity > rules.get("timeout"):
+                    logger.debug(f'{torrent_info.title} 无活动超时命中')
                     hashes.append(hash_string)
                     continue
             # 进度与平均上传速度达标检测
@@ -792,6 +797,7 @@ def remove_torrent_by_site_rules(my_site: MySite):
                     if progress >= float(key) and prop.get('up_speed_avg') < value * 1024:
                         hashes.append(hash_string)
                         progress_checked = True
+                        logger.debug(f'{torrent_info.title} 指定进度与平均上传速度达标检测 低于设定值')
                         break
                 if progress_checked:
                     continue
@@ -800,6 +806,7 @@ def remove_torrent_by_site_rules(my_site: MySite):
             ratio = prop.get('share_ratio')
             if rules.get("max_ratio") and ratio >= rules.get("max_ratio"):
                 hashes.append(hash_string)
+                logger.debug(f'{torrent_info.title} 已达到指定分享率 命中')
                 continue
             if ratio_check and len(ratio_check) > 0:
                 ratio_checked = False
@@ -810,6 +817,7 @@ def remove_torrent_by_site_rules(my_site: MySite):
                         ratio_checked = True
                         break
                 if ratio_checked:
+                    logger.debug(f'{torrent_info.title} 指定时间段内分享率不达标 低于设定值')
                     continue
 
     if len(hashes) > 0:
@@ -851,18 +859,17 @@ def torrents_filter_by_percent_completed_rule(client, num_complete_percent, down
         ]
         trackers = client.torrents_trackers(torrent_hash=hash_string)
         tracker_checked = False
-        for tracker in trackers:
+        for tracker in [t for t in trackers if t.get('tier') == 0]:
             delete_msg = [msg for msg in not_registered_msg if msg in tracker.get('msg')]
             if len(delete_msg) > 0:
                 hashes.append(hash_string)
                 tracker_checked = True
                 break
-            if tracker.get('num_seeds') > 10:
-                hashes.append(hash_string)
-                tracker_checked = True
-                break
         if tracker_checked:
             continue
+        # if torrent.get('num_complete') > 10:
+        #     hashes.append(hash_string)
+        #     continue
 
         category = torrent.get('category')
         if len(category) <= 0:

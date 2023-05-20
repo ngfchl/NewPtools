@@ -1985,8 +1985,9 @@ class PtSpider:
                             "%Y-%m-%d %H:%M:%S",
                             time.struct_time(tuple([int(x) for x in time_array]))
                         )
-                    #     pass
-                    # logger.debug(sale_expire)
+                    logger.debug(sale_expire)
+                    if sale_expire.endswith(':'):
+                        sale_expire = sale_expire + '00'
                     # 如果促销结束时间为空，则为无限期
                     sale_expire = None if not sale_expire else sale_expire
                     # logger.debug(torrent_info.sale_expire)
@@ -2039,7 +2040,8 @@ class PtSpider:
                         new_count += 1
                         # logger.debug(torrent_info)
                     # HR 与种子推送状态筛选
-                    if result[0].hr and result[0].state == 0:
+                    torrent = result[0]
+                    if torrent.sale_status.find('Free') >= 0 and torrent.hr and torrent.state == 0:
                         torrents.append(result[0])
                 if count + new_count <= 0:
                     return CommonResponse.error(msg='抓取失败或无促销种子！')

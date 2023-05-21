@@ -234,7 +234,7 @@ def auto_get_torrents(self, *site_list: List[int]):
     if len(message_push) > 1:
         message_list.extend(message_push)
     logger.info(consuming)
-    toolbox.send_text(title='通知：拉取最新种子', message='\n'.join(message_list))
+    # toolbox.send_text(title='通知：拉取最新种子', message='\n'.join(message_list))
     # if len(message_success) > 0:
     #     toolbox.send_text(title='通知：拉取最新种子-成功', message=''.join(message_success))
     # 释放内存
@@ -427,7 +427,7 @@ def auto_get_rss(self, *site_list: List[int]):
     message_list.extend(message_failed)
     message_list.extend(message_success)
     msg = '\n - '.join(message_list)
-    toolbox.send_text(title='通知：RSS 任务运行成功！', message=msg)
+    # toolbox.send_text(title='通知：RSS 任务运行成功！', message=msg)
     return msg
 
 

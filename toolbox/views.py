@@ -203,7 +203,9 @@ def send_text(message: str, title: str = '', url: str = None):
                 notify_push = WechatPush(
                     corp_id=notify.corpid,
                     secret=notify.corpsecret,
-                    agent_id=notify.agentid, )
+                    agent_id=notify.agentid,
+                    server=notify.custom_server
+                )
                 res = notify_push.send_text(
                     text=message,
                     to_uid=notify.touser if notify.touser else '@all'
@@ -214,6 +216,7 @@ def send_text(message: str, title: str = '', url: str = None):
             if notify.name == PushConfig.wxpusher_push:
                 """WxPusher通知"""
                 res = WxPusher.send_message(
+                    summary=title,
                     content=message,
                     url=url,
                     uids=notify.touser.split(','),
@@ -234,9 +237,17 @@ def send_text(message: str, title: str = '', url: str = None):
                 logger.info(msg)
 
             if notify.name == PushConfig.bark_push:
-                url = f'{notify.custom_server}{notify.corpsecret}/{title}/{message}'
-                res = requests.get(url=url)
-                msg = 'bark通知{}'.format(res)
+                res = requests.post(
+                    url=f'{notify.custom_server}push',
+                    data={
+                        'title': title,
+                        'body': message,
+                        'device_key': notify.corpsecret,
+                        # 'url': 'http://img.ptools.fun/pay.png',
+                        'icon': 'https://gitee.com/ngfchl/ptools/raw/master/static/logo4.png'
+                    },
+                )
+                msg = 'bark通知 {}'.format(res.json())
                 logger.info(msg)
 
             if notify.name == PushConfig.iyuu_push:
@@ -250,7 +261,7 @@ def send_text(message: str, title: str = '', url: str = None):
                     })
                 logger.info('爱语飞飞通知：{}'.format(res))
         except Exception as e:
-            logger.info('通知发送失败，{} {}'.format(res, traceback.format_exc(limit=3)))
+            logger.error('通知发送失败，{} {}'.format(res, traceback.format_exc(limit=5)))
 
 
 def today_data():

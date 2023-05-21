@@ -696,10 +696,8 @@ def get_hash_by_category(client, torrent, category):
             return CommonResponse.error(msg=f'{torrent.title}: 查看种子列表失败！')
         # 遍历种子列表，寻找匹配的种子文件
         torrent_hash = None
-        for item in t:
-            if item['name'] == torrent.title:
-                torrent_hash = item['hash']
-                break
+        if len(t) == 1:
+            torrent_hash = t[0]['hash']
         # 如果没有找到匹配的种子文件，输出错误信息
         if not torrent_hash:
             return CommonResponse.error(msg=f'{torrent.title}: 查找种子失败！找到 {len(t)} 个种子!')

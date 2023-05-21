@@ -211,7 +211,7 @@ LOGGING = {
 
 # ----Celery redis 配置----- #
 # Broker配置，使用Redis作为消息中间件
-CELERY_BROKER_URL = 'redis://100.64.152.70:6379/15'
+CELERY_BROKER_URL = 'redis://100.107.123.85:6379/10'
 
 # BACKEND配置，使用redis
 CELERY_RESULT_BACKEND = 'django-db'

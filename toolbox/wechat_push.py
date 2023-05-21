@@ -4,13 +4,13 @@ import requests
 
 
 class WechatPush:
-    def __init__(self, corp_id, secret, agent_id, server='https://qyapi.weixin.qq.com/'):
+    def __init__(self, corp_id, secret, agent_id, server):
         self.corp_id = corp_id
         self.agent_id = agent_id
         self.secret = secret
         self.token = ''
         self.expire = 0
-        self.server = server if len(server) > 10 else 'https://qyapi.weixin.qq.com/'
+        self.server = server if server and len(server) > 10 else 'https://qyapi.weixin.qq.com/'
 
     def refresh_token(self):
         r = requests.get(f"{self.server}cgi-bin/gettoken", params={

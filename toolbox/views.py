@@ -676,27 +676,38 @@ def sha1_hash(string: str) -> str:
 
 def get_hash_by_category(client, torrent, category):
     try:
-        if torrent.hash_string is None:
-            t = client.torrents_info(category=category)
-            if len(t) == 1:
-                torrent.hash_string = t[0].get('hash')
-                torrent.save()
-            else:
-                return CommonResponse.error(msg=f'{torrent.title}: 查找种子失败!--找到 {len(t)} 个种子!')
-        if torrent.pieces_qb:
+        # 如果已经获取到了哈希值则直接计算文件列表哈希值和块哈希值并保存
+        if torrent.hash_string and torrent.pieces_qb and torrent.filelist:
             return CommonResponse.error(msg=f'{torrent.title}: 无需完善！')
-        hash_string = torrent.hash_string
-        # 获取种子块HASH列表，并生成种子块HASH列表字符串的sha1值，保存
-        pieces_hash_list = client.torrents_piece_hashes(torrent_hash=hash_string)
-        pieces_hash_string = ''.join(str(pieces_hash) for pieces_hash in pieces_hash_list)
-        torrent.pieces_qb = sha1_hash(pieces_hash_string)
-        # 获取文件列表，并生成文件列表字符串的sha1值，保存
-        file_list = client.torrents_files(torrent_hash=hash_string)
-        file_list_hash_string = ''.join(str(item) for item in file_list)
-        torrent.filelist = sha1_hash(file_list_hash_string)
-        torrent.files_count = len(file_list)
+            # 如果没有哈希值，就通过qbittorrentapi客户端获取种子列表
+        t = client.torrents_info(category=category)
+        if len(t) == 0:
+            return CommonResponse.error(msg=f'{torrent.title}: 查看种子列表失败！')
+        # 遍历种子列表，寻找匹配的种子文件
+        torrent_hash = None
+        for item in t:
+            if item['name'] == torrent.title:
+                torrent_hash = item['hash']
+                break
+        # 如果没有找到匹配的种子文件，输出错误信息
+        if not torrent_hash:
+            return CommonResponse.error(msg=f'{torrent.title}: 查找种子失败！找到 {len(t)} 个种子!')
+        torrent.hash_string = torrent_hash
         torrent.save()
-        return CommonResponse.success(msg=f'{torrent.title}: 完善种子信息成功！', data=hash_string)
+        # 通过qbittorrentapi客户端获取种子的块哈希列表和文件列表，并转换为字符串
+        if not torrent.pieces_qb:
+            # 获取种子块HASH列表，并生成种子块HASH列表字符串的sha1值，保存
+            pieces_hash_list = client.torrents_piece_hashes(torrent_hash=torrent_hash)
+            pieces_hash_string = ''.join(str(pieces_hash) for pieces_hash in pieces_hash_list)
+            torrent.pieces_qb = sha1_hash(pieces_hash_string)
+        if not torrent.filelist:
+            # 获取文件列表，并生成文件列表字符串的sha1值，保存
+            file_list = client.torrents_files(torrent_hash=torrent_hash)
+            file_list_hash_string = ''.join(str(item) for item in file_list)
+            torrent.filelist = sha1_hash(file_list_hash_string)
+            torrent.files_count = len(file_list)
+        torrent.save()
+        return CommonResponse.success(msg=f'{torrent.title}: 完善种子信息成功！', data=torrent_hash)
     except qbittorrentapi.exceptions.NotFound404Error:
         msg = f'{torrent.title}: 完善信息失败!--下载器已删种！'
         torrent.state = 3

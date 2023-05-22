@@ -685,45 +685,46 @@ def sha1_hash(string: str) -> str:
     return hashlib.sha1(string.encode()).hexdigest()
 
 
-def get_hash_by_category(client, torrent, category):
+def get_hash_by_category(client, torrent_info, category):
     try:
         # 如果已经获取到了哈希值则直接计算文件列表哈希值和块哈希值并保存
-        if torrent.hash_string and torrent.pieces_qb and torrent.filelist:
-            return CommonResponse.error(msg=f'{torrent.title}: 无需完善！')
+        if torrent_info.hash_string and torrent_info.pieces_qb and torrent_info.filelist:
+            return CommonResponse.error(msg=f'{torrent_info.title}: 无需完善！')
             # 如果没有哈希值，就通过qbittorrentapi客户端获取种子列表
-        t = client.torrents_info(category=category)
-        if len(t) == 0:
-            return CommonResponse.error(msg=f'{torrent.title}: 查看种子列表失败！')
-        # 遍历种子列表，寻找匹配的种子文件
-        torrent_hash = None
-        if len(t) == 1:
-            torrent_hash = t[0]['hash']
-        # 如果没有找到匹配的种子文件，输出错误信息
-        if not torrent_hash:
-            return CommonResponse.error(msg=f'{torrent.title}: 查找种子失败！找到 {len(t)} 个种子!')
-        torrent.hash_string = torrent_hash
-        torrent.save()
+        if not torrent_info.hash_string:
+            t = client.torrents_info(category=category)
+            if len(t) == 0:
+                return CommonResponse.error(msg=f'{torrent_info.title}: 查看种子列表失败！')
+            # 遍历种子列表，寻找匹配的种子文件
+            torrent_hash = None
+            if len(t) == 1:
+                torrent_hash = t[0]['hash']
+            # 如果没有找到匹配的种子文件，输出错误信息
+            if not torrent_hash:
+                return CommonResponse.error(msg=f'{torrent_info.title}: 查找种子失败！找到 {len(t)} 个种子!')
+            torrent_info.hash_string = torrent_hash
+            torrent_info.save()
         # 通过qbittorrentapi客户端获取种子的块哈希列表和文件列表，并转换为字符串
-        if not torrent.pieces_qb:
+        if not torrent_info.pieces_qb:
             # 获取种子块HASH列表，并生成种子块HASH列表字符串的sha1值，保存
-            pieces_hash_list = client.torrents_piece_hashes(torrent_hash=torrent_hash)
+            pieces_hash_list = client.torrents_piece_hashes(torrent_hash=torrent_info.hash_string)
             pieces_hash_string = ''.join(str(pieces_hash) for pieces_hash in pieces_hash_list)
-            torrent.pieces_qb = sha1_hash(pieces_hash_string)
-        if not torrent.filelist:
+            torrent_info.pieces_qb = sha1_hash(pieces_hash_string)
+        if not torrent_info.filelist:
             # 获取文件列表，并生成文件列表字符串的sha1值，保存
-            file_list = client.torrents_files(torrent_hash=torrent_hash)
+            file_list = client.torrents_files(torrent_hash=torrent_info.hash_string)
             file_list_hash_string = ''.join(str(item) for item in file_list)
-            torrent.filelist = sha1_hash(file_list_hash_string)
-            torrent.files_count = len(file_list)
-        torrent.save()
-        return CommonResponse.success(msg=f'{torrent.title}: 完善种子信息成功！', data=torrent_hash)
+            torrent_info.filelist = sha1_hash(file_list_hash_string)
+            torrent_info.files_count = len(file_list)
+        torrent_info.save()
+        return CommonResponse.success(msg=f'{torrent_info.title}: 完善种子信息成功！')
     except qbittorrentapi.exceptions.NotFound404Error:
-        msg = f'{torrent.title}: 完善信息失败!--下载器已删种！'
-        torrent.state = 3
-        torrent.save()
+        msg = f'{torrent_info.title}: 完善信息失败!--下载器已删种！'
+        torrent_info.state = 3
+        torrent_info.save()
         return CommonResponse.error(msg=msg)
     except Exception as e:
-        msg = f'{torrent.title}: 完善信息失败！'
+        msg = f'{torrent_info.title}: 完善信息失败！'
         logger.error(traceback.format_exc(3))
         return CommonResponse.error(msg=f'{msg}-- {e}')
 
@@ -740,39 +741,56 @@ def remove_torrent_by_site_rules(my_site: MySite):
     website = WebSite.objects.get(id=my_site.site)
     count = 0
     hashes = []
-    for torrent in my_site.torrentinfo_set.filter(state__lt=3):
+    expire_hashes = []
+    for torrent_info in my_site.torrentinfo_set.filter(state__lt=3):
         try:
             # 完善种子信息
-            category = f'{website.nickname}-{torrent.tid}'
-            res = get_hash_by_category(client, torrent, category)
+            category = f'{website.nickname}-{torrent_info.tid}'
+            res = get_hash_by_category(client, torrent_info, category)
             if res.code == -1:
                 logger.error(res.msg)
             logger.debug(res.msg)
             count += 1
             # 删种规则
-            hash_string = torrent.hash_string
-            logger.debug(f'{hash_string} -- {torrent.title}')
+            hash_string = torrent_info.hash_string
+            logger.debug(f'{hash_string} -- {torrent_info.title}')
             if not hash_string:
-                logger.debug(f'{torrent.title} 未抓取到种子HASH')
+                logger.debug(f'{torrent_info.title} 未抓取到种子HASH')
+                continue
+            torrent = client.torrents_info(torrent_hashes=hash_string)
+            if len(torrent) != 1:
+                logger.error(f'{hash_string} - 出错啦，未找到符合条件的种子')
                 continue
             prop = client.torrents_properties(torrent_hash=hash_string)
+            # 免费到期检测
+            logger.info(torrent_info.sale_expire)
+            torrent_sale_expire = torrent_info.sale_expire.timestamp()
+            sale_expire = rules.get('sale_expire', {"expire": 300, "delete_on_completed": True})
+            expire_time = sale_expire.get('expire', 300)
+            delete_flag = sale_expire.get('delete_on_completed')
+            if time.time() - torrent_sale_expire <= expire_time and (prop.get('completion_date') < 0 or (
+                    prop.get('completion_date') > 0 and delete_flag)):
+                expire_hashes.append(hash_string)
+                logger.debug(f'{torrent_info.title} 免费即将到期 命中')
+                continue
             # 指定时间段内平均速度
             upload_speed_avg = rules.get("upload_speed_avg")
             logger.debug(f'指定时间段内平均速度检测: {upload_speed_avg}')
             if upload_speed_avg:
-                time_delta = time.time() - torrent.updated_at.timestamp()
+                time_delta = time.time() - torrent_info.updated_at.timestamp()
                 if time_delta < upload_speed_avg.get("time"):
-                    continue
-                uploaded_eta = (prop.get('total_uploaded') - torrent.uploaded)
-                uploaded_avg = uploaded_eta / time_delta
-                if uploaded_avg < upload_speed_avg.get("upload_speed") * 1024:
-                    logger.debug(f'{torrent.title} 上传速度删种 命中')
-                    hashes.append(hash_string)
-                    continue
+                    pass
                 else:
-                    torrent.uploaded = prop.get('total_uploaded')
-                    torrent.save()
-            logger.debug(f'{hash_string} -- {torrent.title} 上传速度删种 未命中')
+                    uploaded_eta = prop.get('total_uploaded') - torrent_info.uploaded
+                    uploaded_avg = uploaded_eta / time_delta
+                    if uploaded_avg < upload_speed_avg.get("upload_speed") * 1024:
+                        logger.debug(f'{torrent_info.title} 上传速度不达标删种 命中')
+                        hashes.append(hash_string)
+                        continue
+                    else:
+                        torrent_info.uploaded = prop.get('total_uploaded')
+                        torrent_info.save()
+            logger.debug(f'{hash_string} -- {torrent_info.title} 上传速度不达标删种 未命中')
             logger.debug(f'站点删种检测')
             not_registered_msg = [
                 'torrent not registered with this tracker',
@@ -787,45 +805,45 @@ def remove_torrent_by_site_rules(my_site: MySite):
                     tracker_checked = True
                     break
             if tracker_checked:
-                logger.debug(f'{hash_string} -- {torrent.title} 站点删种 命中')
-                torrent.state = 4
-                torrent.save()
+                logger.debug(f'{hash_string} -- {torrent_info.title} 站点删种 命中')
+                torrent_info.state = 4
+                torrent_info.save()
                 continue
             else:
-                logger.debug(f'{hash_string} -- {torrent.title} 站点删种 未命中')
+                logger.debug(f'{hash_string} -- {torrent_info.title} 站点删种 未命中')
             # 完成人数超标删除
             torrent_num_complete = rules.get("num_complete")
             logger.debug(f'完成人数超标删除: {torrent_num_complete}')
             if torrent_num_complete and torrent_num_complete > 0:
                 num_complete = prop.get('seeds_total')
                 if num_complete > torrent_num_complete:
-                    logger.debug(f'{hash_string} -- {torrent.title} 完成人数超标 命中')
+                    logger.debug(f'{hash_string} -- {torrent_info.title} 完成人数超标 命中')
                     hashes.append(hash_string)
                     continue
-                logger.debug(f'{hash_string} -- {torrent.title} 完成人数未超标 未命中')
+                logger.debug(f'{hash_string} -- {torrent_info.title} 完成人数未超标 未命中')
             # 正在下载人数 低于设定值删除
             torrent_num_incomplete = rules.get("num_incomplete")
             logger.debug(f'完成人数超标删除: {torrent_num_incomplete}')
             if torrent_num_incomplete and torrent_num_incomplete > 0:
                 num_incomplete = torrent.get('num_incomplete')
                 if num_incomplete < torrent_num_incomplete:
-                    logger.debug(f'{hash_string} -- {torrent.title} 正在下载人数 低于设定值 命中')
+                    logger.debug(f'{hash_string} -- {torrent_info.title} 正在下载人数 低于设定值 命中')
                     hashes.append(hash_string)
                     continue
-                logger.debug(f'{hash_string} -- {torrent.title} 正在下载人数 高于设定值 未命中')
+                logger.debug(f'{hash_string} -- {torrent_info.title} 正在下载人数 高于设定值 未命中')
             # 无上传无下载超时删种
             logger.debug(f'完成人数超标删除: {rules.get("timeout") and rules.get("timeout") > 0}')
             if rules.get("timeout") and rules.get("timeout") > 0:
                 last_activity = torrent.get('last_activity')
                 if time.time() - last_activity > rules.get("timeout"):
-                    logger.debug(f'{hash_string} -- {torrent.title} 无活动超时 命中')
+                    logger.debug(f'{hash_string} -- {torrent_info.title} 无活动超时 命中')
                     hashes.append(hash_string)
                     continue
-                logger.debug(f'{hash_string} -- {torrent.title} 无活动超时 未命中')
+                logger.debug(f'{hash_string} -- {torrent_info.title} 无活动超时 未命中')
             # 进度与平均上传速度达标检测
-            progress = torrent.get('progress')
+            progress = prop.get('pieces_have') / prop.get('pieces_num')
             progress_check = rules.get("progress_check")
-            logger.debug(f'完成人数超标删除: {progress_check}')
+            logger.debug(f'进度与平均上传速度达标检测: {progress_check}')
             if progress_check and len(progress_check) > 0:
                 progress_checked = False
                 for key, value in progress_check.items():
@@ -833,21 +851,21 @@ def remove_torrent_by_site_rules(my_site: MySite):
                         hashes.append(hash_string)
                         progress_checked = True
                         logger.debug(
-                            f'{hash_string} -- {torrent.title} 指定进度与平均上传速度达标检测 低于设定值 命中')
+                            f'{hash_string} -- {torrent_info.title} 指定进度与平均上传速度达标检测 低于设定值 命中')
                         break
                 if progress_checked:
                     continue
-                logger.debug(f'{hash_string} -- {torrent.title} 指定进度与平均上传速度达标检测 高于设定值 未命中')
+                logger.debug(f'{hash_string} -- {torrent_info.title} 指定进度与平均上传速度达标检测 高于设定值 未命中')
             # 指定时间段内分享率不达标
             ratio_check = rules.get("ratio_check")
             ratio = prop.get('share_ratio')
             logger.debug(f'指定时间段内分享率不达标: {ratio_check}')
             if rules.get("max_ratio") and ratio >= rules.get("max_ratio"):
                 hashes.append(hash_string)
-                logger.debug(f'{hash_string} -- {torrent.title} 未达到指定分享率 命中')
+                logger.debug(f'{hash_string} -- {torrent_info.title} 未达到指定分享率 命中')
                 continue
             else:
-                logger.debug(f'{hash_string} -- {torrent.title} 已达到指定分享率 未命中')
+                logger.debug(f'{hash_string} -- {torrent_info.title} 已达到指定分享率 未命中')
             if ratio_check and len(ratio_check) > 0:
                 ratio_checked = False
                 time_active = prop.get('time_elapsed')
@@ -857,14 +875,14 @@ def remove_torrent_by_site_rules(my_site: MySite):
                         ratio_checked = True
                         break
                 if ratio_checked:
-                    logger.debug(f'{hash_string} -- {torrent.title} 指定时间段内分享率不达标 低于设定值 命中')
+                    logger.debug(f'{hash_string} -- {torrent_info.title} 指定时间段内分享率不达标 低于设定值 命中')
                     continue
-                logger.debug(f'{hash_string} -- {torrent.title} 指定时间段内分享率达标 未命中')
+                logger.debug(f'{hash_string} -- {torrent_info.title} 指定时间段内分享率达标 未命中')
         except qbittorrentapi.exceptions.NotFound404Error:
-            msg = f'{torrent.title}: 完善信息失败!--下载器已删种！'
-            torrent.state = 3
+            msg = f'{torrent_info.title}: 完善信息失败!--下载器已删种！'
+            torrent_info.state = 3
             logger.error(msg)
-            torrent.save()
+            torrent_info.save()
         except Exception as e:
             logger.error(traceback.format_exc(3))
             msg = '完善种子或解析删种规则失败！'
@@ -874,13 +892,15 @@ def remove_torrent_by_site_rules(my_site: MySite):
     try:
         if len(hashes) > 0:
             client.torrents_reannounce(torrent_hashes=hashes)
-            # 单次最多删种数量, 不填写默认5
+            # 单次最多删种数量, 不填写默认5, 免费到期的不算在内
             num_delete = rules.get("num_delete", 5)
             random.shuffle(hashes)
-            client.torrents_delete(torrent_hashes=hashes[:num_delete], delete_files=True)
+            hashes = hashes[:num_delete]
+            hashes.extend(expire_hashes)
+            client.torrents_delete(torrent_hashes=hashes, delete_files=True)
             # 对已删除的种子信息进行归档
             count = TorrentInfo.objects.filter(
-                hash_string__in=hashes[:num_delete]
+                hash_string__in=hashes
             ).update(state=5, downloader=None)
             msg = f'{my_site.nickname}：本次运行删除种子{count}个！'
         else:

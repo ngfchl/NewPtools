@@ -3,19 +3,18 @@ from __future__ import absolute_import, unicode_literals
 import gc
 import logging
 import os
+import requests
 import subprocess
 import time
-import traceback
-from datetime import datetime
-from multiprocessing.dummy import Pool as ThreadPool
-from typing import List
-
-import requests
 import toml
+import traceback
 from celery.app import shared_task
+from datetime import datetime
 from django.core.cache import cache
 from django.db.models import Q
 from lxml import etree
+from multiprocessing.dummy import Pool as ThreadPool
+from typing import List
 
 from auxiliary.base import MessageTemplate, DownloaderCategory
 from auxiliary.celery import BaseTask
@@ -198,7 +197,7 @@ def auto_get_torrents(self, *site_list: List[int]):
                         continue
                     # 解析刷流推送规则,筛选符合条件的种子并推送到下载器
                     torrents = toolbox.filter_torrent_by_rules(my_site, torrents)
-                    msg = f'> {my_site.nickname} 站点共有{len(res.data)}条种子未推送,有符合条件的种子：{len(torrents)} 个！  \n\n'
+                    msg = f'> ✅ {my_site.nickname} 站点共有{len(res.data)}条种子未推送,有符合条件的种子：{len(torrents)} 个！  \n\n'
                     logger.debug(msg)
                     client, downloader_category = toolbox.get_downloader_instance(my_site.downloader_id)
                     for torrent in torrents:
@@ -225,8 +224,8 @@ def auto_get_torrents(self, *site_list: List[int]):
             logger.error(message)
             message_failed.append(message)
     end = time.time()
-    consuming = f'> ♻️ 拉取最新种子 任务运行成功！共有{len(site_list)}个站点需要执行，执行成功{len(message_success)}个，失败{len(message_failed)}个。' \
-                f'本次任务耗时：{end - start} 当前时间：{time.strftime("%Y-%m-%d %H:%M:%S")}  \n\n'
+    consuming = f'> ♻️ 拉取最新种子 任务运行成功！共有{len(site_list)}个站点需要执行，执行成功{len(message_success) - 1}个，' \
+                f'失败{len(message_failed) - 1}个。本次任务耗时：{end - start} 当前时间：{time.strftime("%Y-%m-%d %H:%M:%S")}  \n\n'
     message_list.append(consuming)
     if len(message_failed) > 1:
         message_list.extend(message_failed)
@@ -350,10 +349,10 @@ def auto_get_rss(self, *site_list: List[int]):
                 else:
                     updated += 1
                 # logger.debug(res)
-            msg = f'{my_site.nickname} 新增种子：{created} 个，更新种子：{updated}个！'
+            msg = f'✅ {my_site.nickname} 新增种子：{created} 个，更新种子：{updated}个！'
             logger.info(msg)
             message_success.append(msg)
-            logging.info(f'站点RSS刷流：{my_site.brush_rss}，绑定下载器：{my_site.downloader}')
+            logging.info(f'✅ 站点RSS刷流：{my_site.brush_rss}，绑定下载器：{my_site.downloader}')
             if my_site.brush_rss and my_site.downloader:
                 downloader = my_site.downloader
                 client, downloader_category = toolbox.get_downloader_instance(downloader.id)
@@ -374,9 +373,9 @@ def auto_get_rss(self, *site_list: List[int]):
                     msg = f'{torrent.title} 推送状态：{res.msg}'
                     logging.info(msg)
                     push_message.append(msg)
-                message = f'> RSS 任务运行成功！耗时：{time.time() - start}  \n' \
+                message = f'> ♻️ RSS 任务运行成功！耗时：{time.time() - start}  \n' \
                           f'当前时间：{time.strftime("%Y-%m-%d %H:%M:%S")} \n 种子推送记录' + '\n'.join(push_message)
-                logging.info(f'站点拆包状态：{my_site.package_file}，下载器拆包状态：{downloader.package_files}')
+                logging.info(f'ℹ️ 站点拆包状态：{my_site.package_file}，下载器拆包状态：{downloader.package_files}')
                 # 拆包
                 if my_site.package_file and downloader.package_files:
                     package_start = time.time()
@@ -396,7 +395,7 @@ def auto_get_rss(self, *site_list: List[int]):
                             # 拆包失败的写入hash_list
                             hash_list.append(hash_string)
                             continue
-                    message = f'拆包任务执行结束！耗时：{time.time() - package_start} \n ' \
+                    message = f'♻️ 拆包任务执行结束！耗时：{time.time() - package_start} \n ' \
                               f'当前时间：{time.strftime("%Y-%m-%d %H:%M:%S")} \n' \
                               f'成功拆包{len(torrent_list) - len(hash_list)}个，失败{len(hash_list)}个！'
                     toolbox.send_text(title='拆包', message=message)
@@ -422,7 +421,7 @@ def auto_get_rss(self, *site_list: List[int]):
             message_failed.append(msg)
             continue
     end = time.time()
-    message = f'> RSS 任务运行成功！耗时：{end - start}  \n{time.strftime("%Y-%m-%d %H:%M:%S")} \n'
+    message = f'> ♻️ RSS 任务运行成功！耗时：{end - start}  \n{time.strftime("%Y-%m-%d %H:%M:%S")} \n'
     message_list.append(message)
     message_list.extend(message_failed)
     message_list.extend(message_success)
@@ -440,7 +439,7 @@ def auto_torrents_package_files(self):
     """
     cache_package_files_list = cache.get(f'cache_package_files_list')
     if not cache_package_files_list or len(cache_package_files_list) <= 0:
-        logger.info('没有任务，我去玩耍了，一会儿再来！')
+        logger.info('❎ 没有任务，我去玩耍了，一会儿再来！')
         pass
     else:
         message_list = []
@@ -483,14 +482,14 @@ def auto_torrents_package_files(self):
                 #             logger.error(e)
                 #             continue
                 client.torrents_resume(torrent_hashes=packaged_hashes)
-                msg = f"\n {package.get('site')} {package.get('time')}推送的种子拆包完成，" \
+                msg = f"\n ✅ {package.get('site')} {package.get('time')}推送的种子拆包完成，" \
                       f"成功拆包{succeed}个，失败{len(hash_list) - succeed}个，开始下载"
                 logger.info(msg)
                 message_list.append(msg)
             except Exception as e:
                 logger.error(traceback.format_exc(3))
                 continue
-        message = f'拆包任务执行结束！{time.strftime("%Y-%m-%d %H:%M:%S")} \n {"".join(message_list)}'
+        message = f'♻️ 拆包任务执行结束！{time.strftime("%Y-%m-%d %H:%M:%S")} \n {"".join(message_list)}'
         toolbox.send_text(title='拆包', message=message)
 
 
@@ -521,9 +520,9 @@ def auto_cleanup_not_registered(self):
                     break
             if tracker_checked:
                 continue
-        logger.info(f'{downloader.name} 本次任务共检查出 {len(hashes)} 个已删除种子！')
+        logger.info(f'✅ {downloader.name} 本次任务共检查出 {len(hashes)} 个已删除种子！')
         if len(hashes) > 0:
-            toolbox.send_text(title='已失效种子', message='{}\n{}'.format(downloader.name, '\n'.join(hashes)))
+            toolbox.send_text(title='已失效种子', message='♻️ {}\n{}'.format(downloader.name, '\n'.join(hashes)))
             # todo 未来在这里会将已被删除的种子HASH发送至服务器
             client.torrents_delete(torrent_hashes=hashes, delete_files=True)
 
@@ -555,7 +554,7 @@ def auto_get_rss_torrent_detail(self, my_site_id: int = None):
     else:
         my_site_list = MySite.objects.filter(id=my_site_id, brush_free=True, rss__contains='http').all()
     if len(my_site_list) <= 0:
-        return '没有站点需要RSS，请检查RSS链接与抓种开关！'
+        return '❎ 没有站点需要RSS，请检查RSS链接与抓种开关！'
     website_list = WebSite.objects.all()
     results = pool.map(toolbox.parse_rss, [my_site.rss for my_site in my_site_list])
     for my_site, result in zip(my_site_list, results):
@@ -600,13 +599,13 @@ def auto_get_rss_torrent_detail(self, my_site_id: int = None):
                             hash_string=hash_string
                         )
                 logging.info(res.msg)
-            msg = f'{my_site.nickname} 新增种子{created} 个，更新{updated}个'
+            msg = f'✅ {my_site.nickname} 新增种子{created} 个，更新{updated}个'
             logger.info(msg)
             toolbox.send_text(title='RSS', message=msg)
             if len(my_site_list) == 1:
                 return {'hash_list': hash_list, 'msg': msg}
         except Exception as e:
-            msg = f'{my_site.nickname} RSS获取或解析失败'
+            msg = f'❌ {my_site.nickname} RSS获取或解析失败'
             logger.error(msg)
             logger.error(traceback.format_exc(3))
             if len(my_site_list) == 1:
@@ -630,7 +629,7 @@ def auto_get_update_torrent(self, torrent_id):
         except Exception as e:
             logger.error(traceback.format_exc(3))
             continue
-    msg = f'共有{len(torrent_list)}种子需要更新，本次更新成功{count}个，失败{len(torrent_list) - count}个'
+    msg = f'♻️ 共有{len(torrent_list)}种子需要更新，本次更新成功{count}个，失败{len(torrent_list) - count}个'
     logger.info(msg)
 
 
@@ -638,19 +637,19 @@ def auto_get_update_torrent(self, torrent_id):
 def auto_push_to_downloader(self, *site_list: List[int]):
     """推送到下载器"""
     start = time.time()
-    logging.info('推送种子到下载器任务开始')
+    logging.info('ℹ️ 推送种子到下载器任务开始')
     my_site_list = MySite.objects.filter(brush_free=True, id__in=site_list).all()
     website_list = WebSite.objects.all()
     message_list = []
     for my_site in my_site_list:
         site = website_list.get(id=my_site.site)
-        logging.info(f'站点Free刷流：{my_site.brush_free}，绑定下载器：{my_site.downloader}')
+        logging.info(f'ℹ️ 站点Free刷流：{my_site.brush_free}，绑定下载器：{my_site.downloader}')
         torrents = TorrentInfo.objects.filter(site=my_site, state=0, sale_status__contains='Free')
-        logger.info(f'站点有{len(torrents)}条种子未推送')
+        logger.info(f'ℹ️ 站点有{len(torrents)}条种子未推送')
         if my_site.downloader:
             # 解析刷流推送规则,筛选符合条件的种子并推送到下载器
             torrents = toolbox.filter_torrent_by_rules(my_site, torrents)
-            logger.info(f'共有符合条件的种子：{len(torrents)} 个')
+            logger.info(f'ℹ️ 共有符合条件的种子：{len(torrents)} 个')
             client, downloader_category = toolbox.get_downloader_instance(my_site.downloader_id)
             for torrent in torrents:
                 # 限速到站点限速的92%。以防超速
@@ -664,11 +663,11 @@ def auto_push_to_downloader(self, *site_list: List[int]):
                 torrent.downloader = my_site.downloader
                 torrent.state = 1
                 torrent.save()
-            msg = f'{my_site.nickname} 站点共有{len(torrents)}条种子未推送,有符合条件的种子：{len(torrents)} 个'
+            msg = f'✅ {my_site.nickname} 站点共有{len(torrents)}条种子未推送,有符合条件的种子：{len(torrents)} 个'
             message_list.append('\n')
             message_list.append(msg)
     end = time.time()
-    message = f'> 签到 任务运行成功！耗时：{end - start}  \n{time.strftime("%Y-%m-%d %H:%M:%S")} \n{"".join(message_list)}'
+    message = f'> ♻️ 签到 任务运行成功！耗时：{end - start}  \n{time.strftime("%Y-%m-%d %H:%M:%S")} \n{"".join(message_list)}'
     toolbox.send_text(title='通知：推送种子任务', message=message)
     # 释放内存
     gc.collect()
@@ -681,7 +680,7 @@ def auto_update_torrent_info(self, ):
     print('自动获取种子HASH')
     time.sleep(5)
     end = time.time()
-    message = f'> 获取种子HASH 任务运行成功！耗时：{end - start}  \n{time.strftime("%Y-%m-%d %H:%M:%S")}'
+    message = f'> ♻️获取种子HASH 任务运行成功！耗时：{end - start}  \n{time.strftime("%Y-%m-%d %H:%M:%S")}'
     toolbox.send_text(title='通知：自动获取种子HASH', message=message)
     # 释放内存
     gc.collect()

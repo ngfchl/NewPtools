@@ -3,18 +3,19 @@ from __future__ import absolute_import, unicode_literals
 import gc
 import logging
 import os
-import requests
 import subprocess
 import time
-import toml
 import traceback
-from celery.app import shared_task
 from datetime import datetime
+from multiprocessing.dummy import Pool as ThreadPool
+from typing import List
+
+import requests
+import toml
+from celery.app import shared_task
 from django.core.cache import cache
 from django.db.models import Q
 from lxml import etree
-from multiprocessing.dummy import Pool as ThreadPool
-from typing import List
 
 from auxiliary.base import MessageTemplate, DownloaderCategory
 from auxiliary.celery import BaseTask
@@ -836,3 +837,10 @@ def import_from_ptpp(self, data_list: List):
     # send_text(title='PTPP站点导入通知', message='Cookies解析失败，请确认导入了正确的cookies备份文件！')
     toolbox.send_text(title='PTPP站点导入通知', message='\n\n'.join(message_list))
     return message_list
+
+
+@shared_task(bind=True, base=BaseTask)
+def test_task(self, *args):
+    logger.info(args)
+    toolbox.send_text(title='测试', message=str(args))
+    return args

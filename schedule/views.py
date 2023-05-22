@@ -1,5 +1,6 @@
 import logging
 import traceback
+from json import loads
 from typing import List
 
 import pytz
@@ -7,6 +8,7 @@ from django.core.exceptions import ValidationError
 from django_celery_beat.models import PeriodicTask, CrontabSchedule
 from ninja import Router
 
+from auxiliary.celery import app as celery_app
 from schedule.models import Task
 from schedule.schema import TaskSchemaOut, CrontabTaskSchemaIn, PeriodicTaskSchemaOut, CrontabSchemaOut
 from toolbox.schema import CommonResponse
@@ -20,6 +22,21 @@ router = Router(tags=['schedule'])
 def get_schedule_list(request):
     data = [{'task': task, 'desc': desc} for (task, desc) in Task.choices]
     return CommonResponse.success(data=data)
+
+
+@router.get('/exec', response=CommonResponse, description='任务列表')
+def exec_task(request, task_id: int):
+    celery_app.loader.import_default_modules()
+    task = PeriodicTask.objects.get(id=task_id)
+    schedule, args, kwargs, queue, periodic_task_name = (celery_app.tasks.get(task.task),
+                                                         loads(task.args),
+                                                         loads(task.kwargs),
+                                                         task.queue,
+                                                         task.name)
+    res = schedule.apply_async(args=args, kwargs=kwargs, periodic_task_name=periodic_task_name)
+    # command_exec = getattr(auto_pt, command)
+    # res = command_exec(args=task.args)
+    return CommonResponse.success(msg=res.id)
 
 
 @router.get('/schedules', response=CommonResponse[List[PeriodicTaskSchemaOut]], description='自动任务列表')

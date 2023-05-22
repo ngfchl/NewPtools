@@ -98,10 +98,18 @@ DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.sqlite3",
         "NAME": BASE_DIR / "db/data.sqlite3",
+        'OPTIONS': {
+            'timeout': 120,
+            'check_same_thread': False
+        }
     },
     "website": {
         "ENGINE": "django.db.backends.sqlite3",
         "NAME": BASE_DIR / "website.sqlite3",
+        'OPTIONS': {
+            'timeout': 120,
+            'check_same_thread': False
+        }
     },
 
 }
@@ -211,7 +219,7 @@ LOGGING = {
 
 # ----Celery redis 配置----- #
 # Broker配置，使用Redis作为消息中间件
-CELERY_BROKER_URL = 'redis://100.107.123.85:6379/10'
+CELERY_BROKER_URL = 'redis://100.107.123.85:6379/1'
 
 # BACKEND配置，使用redis
 CELERY_RESULT_BACKEND = 'django-db'
@@ -225,7 +233,7 @@ CELERY_TASK_SERIALIZER = 'json'
 
 CELERY_TASK_TRACK_STARTED = True
 
-CELERY_TASK_TIME_LIMIT = 30 * 60
+CELERY_TASK_TIME_LIMIT = 60 * 60
 
 # 结果序列化方案
 CELERY_RESULT_SERIALIZER = 'json'
@@ -236,13 +244,13 @@ CELERY_TIMEZONE = "Asia/Shanghai"
 # 定时任务数据库配置
 CELERY_BEAT_SCHEDULER = 'django_celery_beat.schedulers.DatabaseScheduler'
 # 事实上并不是 worker 数量越多越好，保证任务不堆积，加上一些新增任务的预留就可以了
-CELERYD_CONCURRENCY = 20
+CELERYD_CONCURRENCY = 10
 
 # celery worker 每次去 redis 取任务的数量，默认值就是 4
 CELERYD_PREFETCH_MULTIPLIER = 4
 
 # 每个 worker 执行了多少次任务后就会死掉，建议数量大一些
-CELERYD_MAX_TASKS_PER_CHILD = 200
+CELERYD_MAX_TASKS_PER_CHILD = 100
 
 #  cors
 CORS_ALLOWED_ORIGINS = [

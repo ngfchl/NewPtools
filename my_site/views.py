@@ -217,7 +217,7 @@ def get_update_torrent(request, torrent_id: Union[int, str] = None):
 
 @router.get('/signin', response=CommonResponse[CommonPaginateSchema[SignInSchemaOut]],
             description='每日签到-列表')
-def get_signin_list(request, filters: SignInQueryParamsSchemaIn = Query(...)):
+def get_signin_list(request, filters: PaginateQueryParamsSchemaIn = Query(...)):
     try:
         logger.info(filters.site_id)
         logger.info(filters.page * filters.limit)
@@ -517,9 +517,31 @@ def today_data(request):
     })
 
 
-@router.get('/torrents', response=CommonResponse[List[TorrentInfoSchemaOut]], description='获取种子')
-def torrents(request):
-    return CommonResponse.success(data=list(TorrentInfo.objects.all()))
+@router.get('/torrents', response=CommonResponse[CommonPaginateSchema[TorrentInfoSchemaOut]],
+            description='种子-列表')
+def get_torrent_list(request, filters: PaginateQueryParamsSchemaIn = Query(...)):
+    try:
+        logger.info(filters.site_id)
+        logger.info(filters.page * filters.limit)
+        if filters.site_id:
+            site = MySite.objects.get(id=filters.site_id)
+            torrent_list = TorrentInfo.objects.filter(site=site).order_by('-updated_at')
+        else:
+            torrent_list = TorrentInfo.objects.all().order_by('-updated_at')
+        page_list = Paginator(torrent_list, filters.limit)
+        print(page_list.get_page(filters.page))
+        data = {
+            'items': list(page_list.get_page(filters.page).object_list),
+            'per_page': filters.page,
+            'total': page_list.count
+        }
+        logger.info(data)
+        return CommonResponse.success(data=data)
+    except Exception as e:
+        msg = f'获取签到历史失败：{e}'
+        logger.error(msg)
+        logger.error(traceback.format_exc(3))
+        return CommonResponse.error(msg=msg)
 
 
 @router.post('/torrents/get', response=CommonResponse, description='获取种子')

@@ -125,8 +125,8 @@ class TorrentInfoSchemaOut(ModelSchema):
         model_exclude = ['created_at', 'updated_at']
 
 
-class SignInQueryParamsSchemaIn(Schema):
-    site_id: int
+class PaginateQueryParamsSchemaIn(Schema):
+    site_id: Optional[int]
     page: int
     limit: int
 

@@ -542,21 +542,32 @@ def auto_cleanup_not_registered(self):
 
 @shared_task(bind=True, base=BaseTask)
 def auto_remove_brush_task(self, *site_list: List[int]):
+    start = time.time()
     my_site_list = MySite.objects.filter(
         Q(brush_rss=True) | Q(brush_free=True), downloader__isnull=False, id__in=site_list,
         remove_torrent_rules__startswith='{', ).all()
     message_list = []
+    failed_message = []
+    succeed_message = []
     websites = WebSite.objects.filter(brush_rss=True, id__in=[my_site.site for my_site in my_site_list]).all()
     results = pool.map(toolbox.remove_torrent_by_site_rules, my_site_list)
+    count = 0
     for res in results:
         if res.code == 0:
-            message_list.append(res.msg)
+            count += res.data
+            succeed_message.append(res.msg)
         else:
-            message_list.insert(0, res.msg)
+            failed_message.append(res.msg)
+    msg = f"\n ✅ 删种任务完成，成功删除种子{count}个，{len(failed_message)}个站点删种出错,耗时：{int(time.time() - start)}秒！\n\n> "
+    message_list.append(msg)
+    if len(failed_message) > 0:
+        message_list.extend(failed_message)
+    if len(succeed_message) > 0:
+        message_list.extend(succeed_message)
     message = '\n\n> '.join(message_list)
     logger.debug(message)
-    if len(message_list) > 0:
-        toolbox.send_text(title='刷流删种', message=message)
+    if len(failed_message) > 0 or count > 0:
+        toolbox.send_text(title=f'删种-成功删除{count}条', message=message)
     return message
 
 

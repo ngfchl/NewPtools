@@ -415,6 +415,17 @@ def get_downloader_speed(downloader: Downloader):
     """获取单个下载器速度信息"""
     try:
         client, _ = get_downloader_instance(downloader.id)
+        if not client:
+            return {
+                'category': downloader.category,
+                'name': f'{downloader.name} 链接失败',
+                'free_space_on_disk': 0,
+                'connection_status': False,
+                'dl_info_data': 0,
+                'dl_info_speed': 0,
+                'up_info_data': 0,
+                'up_info_speed': 0,
+            }
         if downloader.category == DownloaderCategory.qBittorrent:
             # x = {'connection_status': 'connected', 'dht_nodes': 0, 'dl_info_data': 2577571007646,
             #      'dl_info_speed': 3447895, 'dl_rate_limit': 41943040, 'up_info_data': 307134686158,
@@ -743,6 +754,8 @@ def remove_torrent_by_site_rules(my_site: MySite):
     logger.info(f"当前站点：{my_site}, 删种规则：{my_site.remove_torrent_rules}")
     rules = json.loads(my_site.remove_torrent_rules).get('remove')
     client, _ = get_downloader_instance(my_site.downloader.id)
+    if not client:
+        return CommonResponse.error(msg=f'{my_site.nickname} - {my_site.downloader.name} 链接失败!')
     website = WebSite.objects.get(id=my_site.site)
     count = 0
     hashes = []
@@ -981,6 +994,8 @@ def get_hashes(downloader_id):
     """返回下载器中所有种子的HASH列表"""
     client, downloader_category = get_downloader_instance(downloader_id)
     hashes = []
+    if not client:
+        return hashes
     if downloader_category == DownloaderCategory.qBittorrent:
         torrents = client.torrents_info()
         hashes = [torrent.get('hash') for torrent in torrents]

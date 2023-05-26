@@ -531,7 +531,7 @@ def auto_cleanup_not_registered(self):
 @shared_task(bind=True, base=BaseTask)
 def auto_remove_brush_task(self, *site_list: List[int]):
     my_site_list = MySite.objects.filter(
-        Q(brush_rss=True) | Q(brush_free=True), downloader__isnull=False,
+        Q(brush_rss=True) | Q(brush_free=True), downloader__isnull=False, id__in=site_list,
         remove_torrent_rules__startswith='{', ).all()
     message_list = []
     websites = WebSite.objects.filter(brush_rss=True, id__in=[my_site.site for my_site in my_site_list]).all()

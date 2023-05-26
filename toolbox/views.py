@@ -779,6 +779,8 @@ def remove_torrent_by_site_rules(my_site: MySite):
             if len(torrent) != 1:
                 logger.error(f'{hash_string} - 出错啦，未找到符合条件的种子')
                 continue
+            else:
+                torrent = torrent[0]
             prop = client.torrents_properties(torrent_hash=hash_string)
             # 免费到期检测
             logger.info(torrent_info.sale_expire)
@@ -908,6 +910,7 @@ def remove_torrent_by_site_rules(my_site: MySite):
             continue
     logger.info(f'{my_site.nickname}-本次运行完善{count}个种子信息！删种规则命中任务:{len(hashes)}个')
     try:
+        count = 0
         if len(hashes) > 0:
             client.torrents_reannounce(torrent_hashes=hashes)
             # 单次最多删种数量, 不填写默认5, 免费到期的不算在内
@@ -924,7 +927,7 @@ def remove_torrent_by_site_rules(my_site: MySite):
         else:
             msg = f'{my_site.nickname}：本次运行没有种子要删除！'
         logger.info(msg)
-        return CommonResponse.success(msg=msg)
+        return CommonResponse.success(msg=msg,data=count)
     except Exception as e:
         logger.error(traceback.format_exc(3))
         return CommonResponse.error(msg=f'{my_site.nickname} - 删种出错啦！')

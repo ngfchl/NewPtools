@@ -84,6 +84,8 @@ def auto_sign_in(self, *site_list: List[int]):
     toolbox.send_text(title='通知：签到成功', message='\n'.join(success_message))
     # 释放内存
     gc.collect()
+    # 发送任务确认信号
+    auto_sign_in.acknowledge()
     return message_list
 
 
@@ -163,6 +165,8 @@ def auto_get_status(self, *site_list: List[int]):
     # toolbox.send_text(title='通知：更新个人数据-成功', message='\n'.join(success_message))
     # 释放内存
     gc.collect()
+    # 发送任务确认信号
+    auto_get_status.acknowledge()
     return message_list
 
 
@@ -242,6 +246,8 @@ def auto_get_torrents(self, *site_list: List[int]):
     #     toolbox.send_text(title='通知：拉取最新种子-成功', message=''.join(message_success))
     # 释放内存
     gc.collect()
+    # 发送任务确认信号
+    auto_get_torrents.acknowledge()
     return consuming
 
 
@@ -434,6 +440,8 @@ def auto_get_rss(self, *site_list: List[int]):
     message_list.extend(message_success)
     msg = '\n - '.join(message_list)
     # toolbox.send_text(title='通知：RSS 任务运行成功！', message=msg)
+    # 发送任务确认信号
+    auto_get_rss.acknowledge()
     return msg
 
 
@@ -514,7 +522,7 @@ def auto_cleanup_not_registered(self):
         hashes = []
         client, _ = toolbox.get_downloader_instance(downloader.id)
         if not client:
-            logger.warning(f'{my_site.downloader.name} 链接出错了')
+            logger.warning(f'{downloader.name} 链接出错了')
             continue
         torrents = client.torrents_info(status_filter='stalled_downloading|stalledUP')
         for torrent in torrents:
@@ -538,6 +546,8 @@ def auto_cleanup_not_registered(self):
             toolbox.send_text(title='已失效种子', message='♻️ {}\n{}'.format(downloader.name, '\n'.join(hashes)))
             # todo 未来在这里会将已被删除的种子HASH发送至服务器
             client.torrents_delete(torrent_hashes=hashes, delete_files=True)
+    # 发送任务确认信号
+    auto_cleanup_not_registered.acknowledge()
 
 
 @shared_task(bind=True, base=BaseTask)
@@ -568,6 +578,8 @@ def auto_remove_brush_task(self, *site_list: List[int]):
     logger.debug(message)
     if len(failed_message) > 0 or count > 0:
         toolbox.send_text(title=f'删种-成功删除{count}条', message=message)
+    # 发送任务确认信号
+    auto_remove_brush_task.acknowledge()
     return message
 
 

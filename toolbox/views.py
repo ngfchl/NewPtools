@@ -385,25 +385,30 @@ def get_torrents_hash_from_iyuu(iyuu_token: str, hash_list: List[str]):
 
 def get_downloader_instance(downloader_id):
     """根据id获取下载实例"""
-    downloader = Downloader.objects.filter(id=downloader_id).first()
-    if downloader.category == DownloaderCategory.qBittorrent:
-        client = qbittorrentapi.Client(
-            host=downloader.host,
-            port=downloader.port,
-            username=downloader.username,
-            password=downloader.password,
-            SIMPLE_RESPONSES=True,
-            REQUESTS_ARGS={
-                'timeout': (3.1, 30)
-            }
-        )
-        client.auth_log_in()
-    else:
-        client = transmission_rpc.Client(
-            host=downloader.host, port=downloader.port,
-            username=downloader.username, password=downloader.password
-        )
-    return client, downloader.category
+    try:
+        downloader = Downloader.objects.filter(id=downloader_id).first()
+        if downloader.category == DownloaderCategory.qBittorrent:
+            client = qbittorrentapi.Client(
+                host=downloader.host,
+                port=downloader.port,
+                username=downloader.username,
+                password=downloader.password,
+                SIMPLE_RESPONSES=True,
+                REQUESTS_ARGS={
+                    'timeout': (3.1, 30)
+                }
+            )
+            client.auth_log_in()
+        else:
+            client = transmission_rpc.Client(
+                host=downloader.host, port=downloader.port,
+                username=downloader.username, password=downloader.password
+            )
+        return client, downloader.category
+    except Exception as e:
+        logger.error(traceback.format_exc(3))
+        logger.exception(f'下载器连接失败：{e}')
+        return None, None
 
 
 def get_downloader_speed(downloader: Downloader):

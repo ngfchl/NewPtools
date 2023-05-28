@@ -1,3 +1,4 @@
+altgraph==0.17.3
 amqp==5.1.1
 asgiref==3.6.0
 async-timeout==4.0.2
@@ -13,6 +14,7 @@ click-plugins==1.1.1
 click-repl==0.2.0
 cloudscraper==1.2.71
 cron-descriptor==1.3.0
+dj-database-url==2.0.0
 Django==4.2.1
 django-celery-beat==2.5.0
 django-celery-results==2.5.0
@@ -32,6 +34,8 @@ humanize==4.6.0
 idna==3.4
 kombu==5.2.4
 lxml==4.9.2
+macholib==1.16.2
+mysqlclient==2.1.1
 packaging==23.1
 prometheus-client==0.16.0
 prompt-toolkit==3.0.38

@@ -783,16 +783,18 @@ def remove_torrent_by_site_rules(my_site: MySite):
                 torrent = torrent[0]
             prop = client.torrents_properties(torrent_hash=hash_string)
             # 免费到期检测
-            logger.info(torrent_info.sale_expire)
-            torrent_sale_expire = torrent_info.sale_expire.timestamp()
-            sale_expire = rules.get('sale_expire', {"expire": 300, "delete_on_completed": True})
-            expire_time = sale_expire.get('expire', 300)
-            delete_flag = sale_expire.get('delete_on_completed')
-            if time.time() - torrent_sale_expire <= expire_time and (prop.get('completion_date') < 0 or (
-                    prop.get('completion_date') > 0 and delete_flag)):
-                expire_hashes.append(hash_string)
-                logger.debug(f'{torrent_info.title} 免费即将到期 命中')
-                continue
+            if not torrent_info.sale_expire:
+                logger.info(f'{torrent_info.title} 免费过期时间：{torrent_info.sale_expire}')
+            else:
+                torrent_sale_expire = torrent_info.sale_expire.timestamp()
+                sale_expire = rules.get('sale_expire', {"expire": 300, "delete_on_completed": True})
+                expire_time = sale_expire.get('expire', 300)
+                delete_flag = sale_expire.get('delete_on_completed')
+                if time.time() - torrent_sale_expire <= expire_time and (prop.get('completion_date') < 0 or (
+                        prop.get('completion_date') > 0 and delete_flag)):
+                    expire_hashes.append(hash_string)
+                    logger.debug(f'{torrent_info.title} 免费即将到期 命中')
+                    continue
             # 指定时间段内平均速度
             upload_speed_avg = rules.get("upload_speed_avg")
             logger.debug(f'指定时间段内平均速度检测: {upload_speed_avg}')

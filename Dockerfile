@@ -18,7 +18,7 @@ COPY pip.conf /root/.pip/pip.conf
 # 更新pip版本，更换USTC源，并安装git
 RUN /usr/local/bin/python -m pip install --upgrade pip; \
     sed -i 's/deb.debian.org/mirrors.ustc.edu.cn/g' /etc/apt/sources.list; \
-    apt update && apt install python3-dev jq && apt-get autoclean && rm -rf /var/lib/apt/lists/*
+    apt update && apt install python3-dev jq -y && apt-get autoclean && rm -rf /var/lib/apt/lists/*
 # 创建 ptools 文件夹
 RUN mkdir -p /ptools
 # 将 ptools 文件夹为工作目录
@@ -31,5 +31,7 @@ RUN chmod +x /ptools/start.sh && rm -rf /ptools/db/* && pip install -r requireme
 VOLUME ["/ptools/db", "/ptools/logs"]
 # 暴露访问端口
 EXPOSE  $DJANGO_WEB_PORT
+EXPOSE  5566
+EXPOSE  9001
 # 执行启动文件
 ENTRYPOINT ["/bin/bash", "/ptools/start.sh"]

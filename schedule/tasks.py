@@ -32,7 +32,15 @@ pool = ThreadPool(8)
 pt_spider = PtSpider()
 
 
-# @boost('do_sign_in', broker_kind=BrokerEnum.REDIS_STREAM)
+@shared_task
+def auto_reload_supervisor():
+    """
+    重启所有进程
+    :return:
+    """
+    subprocess.run(["supervisorctl", "reload"])
+
+
 @shared_task(bind=True, base=BaseTask)
 def auto_sign_in(self, *site_list: List[int]):
     """执行签到"""
@@ -320,7 +328,7 @@ def auto_get_torrents(self, *site_list: List[int]):
 #     gc.collect()
 
 
-@shared_task(bind=True, base=BaseTask,time_limit=200)
+@shared_task(bind=True, base=BaseTask, time_limit=200)
 def auto_get_rss(self, *site_list: List[int]):
     start = time.time()
     # site_list = site_list.split('|')
@@ -439,7 +447,7 @@ def auto_get_rss(self, *site_list: List[int]):
     return msg
 
 
-@shared_task(bind=True, base=BaseTask,time_limit=200)
+@shared_task(bind=True, base=BaseTask, time_limit=200)
 def auto_torrents_package_files(self):
     """
     拆包并下载

@@ -84,12 +84,10 @@ def auto_sign_in(self, *site_list: List[int]):
     toolbox.send_text(title='通知：签到成功', message='\n'.join(success_message))
     # 释放内存
     gc.collect()
-    # 发送任务确认信号
-    auto_sign_in.acknowledge()
     return message_list
 
 
-@shared_task(bind=True, base=BaseTask)
+@shared_task(bind=True, base=BaseTask, time_limit=1200)
 def auto_get_status(self, *site_list: List[int]):
     """
     更新个人数据
@@ -170,7 +168,7 @@ def auto_get_status(self, *site_list: List[int]):
     return message_list
 
 
-@shared_task(bind=True, base=BaseTask, autoretry_for=(Exception,), )
+@shared_task(bind=True, base=BaseTask, autoretry_for=(Exception,), time_limit=200)
 def auto_get_torrents(self, *site_list: List[int]):
     """
     拉取最新种子
@@ -246,8 +244,6 @@ def auto_get_torrents(self, *site_list: List[int]):
     #     toolbox.send_text(title='通知：拉取最新种子-成功', message=''.join(message_success))
     # 释放内存
     gc.collect()
-    # 发送任务确认信号
-    auto_get_torrents.acknowledge()
     return consuming
 
 
@@ -324,7 +320,7 @@ def auto_get_torrents(self, *site_list: List[int]):
 #     gc.collect()
 
 
-@shared_task(bind=True, base=BaseTask)
+@shared_task(bind=True, base=BaseTask,time_limit=200)
 def auto_get_rss(self, *site_list: List[int]):
     start = time.time()
     # site_list = site_list.split('|')
@@ -440,12 +436,10 @@ def auto_get_rss(self, *site_list: List[int]):
     message_list.extend(message_success)
     msg = '\n - '.join(message_list)
     # toolbox.send_text(title='通知：RSS 任务运行成功！', message=msg)
-    # 发送任务确认信号
-    auto_get_rss.acknowledge()
     return msg
 
 
-@shared_task(bind=True, base=BaseTask)
+@shared_task(bind=True, base=BaseTask,time_limit=200)
 def auto_torrents_package_files(self):
     """
     拆包并下载
@@ -461,11 +455,11 @@ def auto_torrents_package_files(self):
         for index, package in enumerate(cache_package_files_list):
             try:
                 downloader_id = package.get("downloader_id")
+                downloader = Downloader.objects.get(id=downloader_id)
                 client, _ = toolbox.get_downloader_instance(downloader_id)
                 if not client:
-                    logger.warning(f'{my_site.downloader.name} 链接出错了')
+                    logger.warning(f'{downloader.name} 链接出错了')
                     continue
-                downloader = Downloader.objects.get(id=downloader_id)
                 # 拆包
                 hash_list = package.get("hash_list")
                 packaged_hashes = []
@@ -511,7 +505,7 @@ def auto_torrents_package_files(self):
         toolbox.send_text(title='拆包', message=message)
 
 
-@shared_task(bind=True, base=BaseTask)
+@shared_task(bind=True, base=BaseTask, time_limit=200)
 def auto_cleanup_not_registered(self):
     downloaders = Downloader.objects.filter(category=DownloaderCategory.qBittorrent, brush=True)
     not_registered_msg = [
@@ -546,11 +540,9 @@ def auto_cleanup_not_registered(self):
             toolbox.send_text(title='已失效种子', message='♻️ {}\n{}'.format(downloader.name, '\n'.join(hashes)))
             # todo 未来在这里会将已被删除的种子HASH发送至服务器
             client.torrents_delete(torrent_hashes=hashes, delete_files=True)
-    # 发送任务确认信号
-    auto_cleanup_not_registered.acknowledge()
 
 
-@shared_task(bind=True, base=BaseTask)
+@shared_task(bind=True, base=BaseTask, time_limit=200)
 def auto_remove_brush_task(self, *site_list: List[int]):
     start = time.time()
     my_site_list = MySite.objects.filter(
@@ -578,12 +570,10 @@ def auto_remove_brush_task(self, *site_list: List[int]):
     logger.debug(message)
     if len(failed_message) > 0 or count > 0:
         toolbox.send_text(title=f'删种-成功删除{count}条', message=message)
-    # 发送任务确认信号
-    auto_remove_brush_task.acknowledge()
     return message
 
 
-@shared_task(bind=True, base=BaseTask)
+@shared_task(bind=True, base=BaseTask, time_limit=200)
 def auto_get_rss_torrent_detail(self, my_site_id: int = None):
     if not my_site_id:
         my_site_list = MySite.objects.filter(brush_free=True, rss__contains='http').all()
@@ -655,7 +645,7 @@ def auto_get_rss_torrent_detail(self, my_site_id: int = None):
             continue
 
 
-@shared_task(bind=True, base=BaseTask)
+@shared_task(bind=True, base=BaseTask, time_limit=200)
 def auto_get_update_torrent(self, torrent_id):
     if isinstance(torrent_id, str):
         torrent_ids = torrent_id.split('|')

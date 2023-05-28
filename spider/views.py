@@ -1220,21 +1220,21 @@ class PtSpider:
         seeding_detail_url = site.url + site.page_seeding.lstrip('/').format(my_site.user_id)
         # completed_detail_url = site.url + site.page_completed.lstrip('/').format(my_site.user_id)
         # leeching_detail_url = site.url + site.page_leeching.lstrip('/').format(my_site.user_id)
-        status_today = my_site.sitestatus_set.filter(created_at__date__gte=datetime.today()).first()
-        if not status_today:
-            status_today = SiteStatus(site=my_site)
-            status_latest = my_site.sitestatus_set.latest('created_at')
-            if status_latest:
-                status_today.uploaded = status_latest.uploaded
-                status_today.downloaded = status_latest.downloaded
-                status_today.ratio = status_latest.ratio
-                status_today.my_bonus = status_latest.my_bonus
-                status_today.my_score = status_latest.my_score
-                status_today.seed_volume = status_latest.seed_volume
-                status_today.my_level = status_latest.my_level
-            status_today.save()
         err_msg = []
         try:
+            status_today = my_site.sitestatus_set.filter(created_at__date__gte=datetime.today()).first()
+            if not status_today:
+                status_today = SiteStatus(site=my_site)
+                status_latest = my_site.sitestatus_set.latest('created_at')
+                if status_latest:
+                    status_today.uploaded = status_latest.uploaded
+                    status_today.downloaded = status_latest.downloaded
+                    status_today.ratio = status_latest.ratio
+                    status_today.my_bonus = status_latest.my_bonus
+                    status_today.my_score = status_latest.my_score
+                    status_today.seed_volume = status_latest.seed_volume
+                    status_today.my_level = status_latest.my_level
+                status_today.save()
             headers = {}
             if site.url in [
                 'https://hdchina.org/',
@@ -1991,14 +1991,14 @@ class PtSpider:
                     # 如果促销结束时间为空，则为无限期
                     sale_expire = None if not sale_expire else sale_expire
                     # logger.debug(torrent_info.sale_expire)
-                    # # 发布时间
+                    # 发布时间
                     on_release = ''.join(tr.xpath(site.torrent_release_rule))
-                    # # 做种人数
-                    seeders = ''.join(tr.xpath(site.torrent_seeders_rule))
-                    # # # 下载人数
-                    leechers = ''.join(tr.xpath(site.torrent_leechers_rule))
-                    # # # 完成人数
-                    completers = ''.join(tr.xpath(site.torrent_completers_rule))
+                    # 做种人数
+                    seeders = ''.join(tr.xpath(site.torrent_seeders_rule)).replace(',', '')
+                    # 下载人数
+                    leechers = ''.join(tr.xpath(site.torrent_leechers_rule)).replace(',', '')
+                    # 完成人数
+                    completers = ''.join(tr.xpath(site.torrent_completers_rule)).replace(',', '')
                     # 存在则更新，不存在就创建
                     # logger.debug(type(seeders), type(leechers), type(completers), )
                     # logger.debug(seeders, leechers, completers)

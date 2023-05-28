@@ -12,6 +12,8 @@ https://docs.djangoproject.com/en/4.1/ref/settings/
 import os
 from pathlib import Path
 
+import dj_database_url
+
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -101,7 +103,7 @@ DATABASES = {
         'OPTIONS': {
             'timeout': 120,
             'check_same_thread': False
-        }
+        } if not os.getenv('MYSQL_CONNECTION') else dj_database_url.parse(os.getenv('MYSQL_CONNECTION'))
     },
     "website": {
         "ENGINE": "django.db.backends.sqlite3",
@@ -219,7 +221,7 @@ LOGGING = {
 
 # ----Celery redis 配置----- #
 # Broker配置，使用Redis作为消息中间件
-CELERY_BROKER_URL = 'redis://100.107.123.85:6379/1'
+CELERY_BROKER_URL = os.getenv("REDIS_CONNECTION", 'redis://100.107.123.85:6379/1')
 
 # BACKEND配置，使用redis
 CELERY_RESULT_BACKEND = 'django-db'

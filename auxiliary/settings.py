@@ -103,8 +103,8 @@ DATABASES = {
         'OPTIONS': {
             'timeout': 120,
             'check_same_thread': False
-        } if not os.getenv('MYSQL_CONNECTION') else dj_database_url.parse(os.getenv('MYSQL_CONNECTION'))
-    },
+        },
+    } if not os.getenv('MYSQL_CONNECTION') else dj_database_url.parse(os.getenv('MYSQL_CONNECTION')),
     "website": {
         "ENGINE": "django.db.backends.sqlite3",
         "NAME": BASE_DIR / "website.sqlite3",

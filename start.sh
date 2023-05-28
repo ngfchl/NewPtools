@@ -1,12 +1,21 @@
 #!/bin/bash
+
+if [ -z "$TOKEN" ]; then
+  echo "Authorization failed: No TOKEN received. Exiting..."
+  exit 1
+fi
+
 CONTAINER_ALREADY_STARTED="CONTAINER_ALREADY_STARTED_PLACEHOLDER"
 # Get authorization response
-AUTH_RESPONSE=$(curl -s -G -d "token=$TOKEN" https://api.ptools.fun/ad)
+AUTH_RESPONSE=$(curl -s -G -d "token=$TOKEN" http://api.ptools.fun/ad)
 
 # Extract 'code' from the response
 AUTH_CODE=$(echo $AUTH_RESPONSE | jq -r '.code')
-
-if [ $AUTH_CODE -ne 0 ]; then
+echo $AUTH_CODE
+if [ -z "$AUTH_CODE" ]; then
+  echo "Authorization failed: No auth code received. Exiting..."
+  exit 1
+elif [ $AUTH_CODE -ne 0 ]; then
   echo "Authorization failed. Exiting..."
   exit 1
 fi
@@ -28,5 +37,8 @@ else
 fi
 
 echo "启动服务"
-supervisord -c supervisor/dev.conf
-uvicorn auxiliary.asgi:application --reload
+python manage.py migrate
+supervisord -c supervisor/prod.conf
+#uvicorn auxiliary.asgi:application --reload --host 0.0.0.0 --port $DJANGO_WEB_PORT
+# 后台内容完全转移到前端之前，先使用runserver
+python manage.py runserver 0.0.0.0:$DJANGO_WEB_PORT

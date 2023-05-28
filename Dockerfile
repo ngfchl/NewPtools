@@ -1,22 +1,24 @@
 # myproject/Dockerfile
 
 # 建立 python3.9 环境
-FROM python:3.9.14
+FROM python:3.9.16
 
 # 设置 python 环境变量
 ENV PYTHONUNBUFFERED 1
+ENV TOKEN=
 ENV DJANGO_SUPERUSER_USERNAME=admin
 ENV DJANGO_SUPERUSER_EMAIL=admin@eamil.com
 ENV DJANGO_SUPERUSER_PASSWORD=adminadmin
 ENV DJANGO_WEB_PORT=8000
-
+ENV REDIS_CONNECTION="redis://127.0.0.1:6379/11"
+ENV MYSQL_CONNECTION=
 
 # 写入pip国内源
 COPY pip.conf /root/.pip/pip.conf
 # 更新pip版本，更换USTC源，并安装git
 RUN /usr/local/bin/python -m pip install --upgrade pip; \
     sed -i 's/deb.debian.org/mirrors.ustc.edu.cn/g' /etc/apt/sources.list; \
-    apt update && apt-get autoclean && rm -rf /var/lib/apt/lists/*
+    apt update && apt install python3-dev jq && apt-get autoclean && rm -rf /var/lib/apt/lists/*
 # 创建 ptools 文件夹
 RUN mkdir -p /ptools
 # 将 ptools 文件夹为工作目录

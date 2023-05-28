@@ -1,5 +1,15 @@
 #!/bin/bash
 CONTAINER_ALREADY_STARTED="CONTAINER_ALREADY_STARTED_PLACEHOLDER"
+# Get authorization response
+AUTH_RESPONSE=$(curl -s -G -d "token=$TOKEN" https://api.ptools.fun/ad)
+
+# Extract 'code' from the response
+AUTH_CODE=$(echo $AUTH_RESPONSE | jq -r '.code')
+
+if [ $AUTH_CODE -ne 0 ]; then
+  echo "Authorization failed. Exiting..."
+  exit 1
+fi
 
 if [ ! -e $CONTAINER_ALREADY_STARTED ]; then
   echo "-- First container startup --"
@@ -18,4 +28,5 @@ else
 fi
 
 echo "启动服务"
+supervisord -c supervisor/dev.conf
 uvicorn auxiliary.asgi:application --reload

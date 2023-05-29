@@ -1226,7 +1226,9 @@ class PtSpider:
             if not status_today:
                 status_today = SiteStatus(site=my_site)
                 status_latest = my_site.sitestatus_set.latest('created_at')
+                logger.info(f'status_latest: {status_latest}')
                 if status_latest:
+                    logger.info(f'status_latest: {status_latest.my_level}')
                     status_today.uploaded = status_latest.uploaded
                     status_today.downloaded = status_latest.downloaded
                     status_today.ratio = status_latest.ratio

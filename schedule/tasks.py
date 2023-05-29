@@ -176,7 +176,7 @@ def auto_get_status(self, *site_list: List[int]):
     # 释放内存
     gc.collect()
     # 发送任务确认信号
-    auto_get_status.acknowledge()
+    # auto_get_status.acknowledge()
     return message_list
 
 

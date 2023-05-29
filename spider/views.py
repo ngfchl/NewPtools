@@ -1281,12 +1281,12 @@ class PtSpider:
                     # 请求公告信息，直接推送通知到手机
                     self.get_notice_info(my_site, details_html.data)
             # return self.parse_status_html(my_site, data)
-            # status = SiteStatus.objects.filter(site=my_site, created_at__date=datetime.today()).first()
+            status = my_site.sitestatus_set.latest('created_at')
             if len(err_msg) <= 3:
                 return CommonResponse.success(
-                    msg=f'{my_site.nickname} 数据更新完毕! {("🆘 " + " ".join(err_msg)) if len(err_msg) > 0 else ""}')
-            return CommonResponse.error(
-                msg=f'{my_site.nickname} 数据更新失败! 🆘 {" ".join(err_msg)}')
+                    msg=f'{my_site.nickname} 数据更新完毕! {("🆘 " + " ".join(err_msg)) if len(err_msg) > 0 else ""}',
+                    data=status)
+            return CommonResponse.error(msg=f'{my_site.nickname} 数据更新失败! 🆘 {" ".join(err_msg)}')
         except RequestException as nce:
             msg = f'🆘 与网站 {my_site.nickname} 建立连接失败，请检查网络？？'
             logger.error(msg)

@@ -28,7 +28,11 @@ from website.models import WebSite
 # 引入日志
 logger = logging.getLogger('ptools')
 # 引入线程池
-pool = ThreadPool(8)
+if os.getenv('MYSQL_CONNECTION'):
+    cpu_count = os.cpu_count()
+else:
+    cpu_count = os.cpu_count() if os.cpu_count() <= 8 else 8
+pool = ThreadPool(cpu_count)
 pt_spider = PtSpider()
 
 

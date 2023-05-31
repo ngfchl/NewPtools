@@ -7,7 +7,7 @@ fi
 
 CONTAINER_ALREADY_STARTED="CONTAINER_ALREADY_STARTED_PLACEHOLDER"
 # Get authorization response
-AUTH_RESPONSE=$(curl -s -G -d "token=$TOKEN" http://api.ptools.fun/neice/check)
+AUTH_RESPONSE=$(curl -s -G -d "token=$TOKEN&email=$DJANGO_SUPERUSER_EMAIL" http://api.ptools.fun/neice/check)
 
 # Extract 'code' from the response
 AUTH_CODE=$(echo $AUTH_RESPONSE | jq -r '.code')

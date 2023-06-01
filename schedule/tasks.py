@@ -29,7 +29,7 @@ from website.models import WebSite
 logger = logging.getLogger('ptools')
 # 引入线程池
 if os.getenv('MYSQL_CONNECTION'):
-    cpu_count = os.cpu_count()
+    cpu_count = os.cpu_count() if os.cpu_count() <= 16 else 16
 else:
     cpu_count = os.cpu_count() if os.cpu_count() <= 8 else 8
 pool = ThreadPool(cpu_count)
@@ -214,6 +214,7 @@ def auto_get_torrents(self, *site_list: List[int]):
                     torrents = toolbox.filter_torrent_by_rules(my_site, torrents)
                     msg = f'> ✅ {my_site.nickname} 站点共有{len(res.data)}条种子未推送,有符合条件的种子：{len(torrents)} 个！  \n\n'
                     logger.debug(msg)
+                    downloader = my_site.downloader
                     client, downloader_category = toolbox.get_downloader_instance(my_site.downloader_id)
                     if not client:
                         logger.warning(f'{my_site.downloader.name} 链接出错了')
@@ -226,11 +227,35 @@ def auto_get_torrents(self, *site_list: List[int]):
                             urls=torrent.magnet_url,
                             cookie=my_site.cookie,
                             category=category,
+                            is_paused=my_site.package_file and downloader.package_files,
                             upload_limit=int(site.limit_speed * 1024 * 0.92)
                         )
-                        torrent.downloader = my_site.downloader
+                        torrent.downloader = downloader
                         torrent.state = 1
                         torrent.save()
+                    logging.info(f'ℹ️ 站点拆包状态：{my_site.package_file}，下载器拆包状态：{downloader.package_files}')
+                    if my_site.package_file and downloader.package_files:
+                        package_start = time.time()
+                        # 30秒等待种子下载到下载器
+                        time.sleep(30)
+                        hash_list = []
+                        for hash_string in [torrent.hash for torrent in torrents]:
+                            try:
+                                toolbox.package_files(
+                                    client=client, hash_string=hash_string,
+                                    package_size=downloader.package_size,
+                                    package_percent=downloader.package_percent,
+                                    delete_one_file=downloader.delete_one_file,
+                                )
+                            except Exception as e:
+                                logger.error(traceback.format_exc(3))
+                                # 拆包失败的写入hash_list
+                                hash_list.append(hash_string)
+                                continue
+                        message = f'♻️ 拆包任务执行结束！耗时：{time.time() - package_start} \n ' \
+                                  f'当前时间：{time.strftime("%Y-%m-%d %H:%M:%S")} \n' \
+                                  f'成功拆包{len(torrents) - len(hash_list)}个，失败{len(hash_list)}个！'
+                        toolbox.send_text(title='拆包', message=message)
                     message_push.append(msg)
             else:
                 message = f'> 🆘 {my_site.nickname} 抓取种子信息失败！原因：{res.msg}  \n'
@@ -251,9 +276,9 @@ def auto_get_torrents(self, *site_list: List[int]):
     if len(message_push) > 1:
         message_list.extend(message_push)
     logger.info(consuming)
-    # toolbox.send_text(title='通知：拉取最新种子', message='\n'.join(message_list))
-    # if len(message_success) > 0:
-    #     toolbox.send_text(title='通知：拉取最新种子-成功', message=''.join(message_success))
+    toolbox.send_text(title='通知：拉取最新种子', message='\n'.join(message_list))
+    if len(message_success) > 0:
+        toolbox.send_text(title='通知：拉取最新种子-成功', message=''.join(message_success))
     # 释放内存
     gc.collect()
     return consuming

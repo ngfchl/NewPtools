@@ -107,7 +107,7 @@ class TorrentInfo(BaseEntity):
     category = models.CharField(max_length=128, verbose_name='分类', default='')
     area = models.CharField(max_length=128, verbose_name='地区', default='')
     magnet_url = models.URLField(verbose_name='下载链接', default='')
-    size = models.IntegerField(verbose_name='文件大小', default=0)
+    size = models.BigIntegerField(verbose_name='文件大小', default=0)
     hr = models.BooleanField(verbose_name='H&R考核', default=True, help_text='绿色为通过或无需HR考核')
     sale_status = models.CharField(verbose_name='优惠状态', default='', max_length=16)
     sale_expire = models.DateTimeField(verbose_name='到期时间', blank=True, null=True, )

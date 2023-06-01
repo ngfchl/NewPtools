@@ -46,7 +46,7 @@ def auto_reload_supervisor():
 
 
 @shared_task(bind=True, base=BaseTask)
-def auto_sign_in(self, *site_list: List[int]):
+def auto_sign_in(self):
     """执行签到"""
     start = time.time()
     logger.info('开始执行签到任务')
@@ -54,10 +54,10 @@ def auto_sign_in(self, *site_list: List[int]):
     logger.info('筛选需要签到的站点')
     message_list = []
     queryset = [
-        my_site for my_site in MySite.objects.filter(sign_in=True, id__in=site_list)
-        if my_site.cookie and WebSite.objects.get(id=my_site.site).sign_in and
-           my_site.signin_set.filter(created_at__date__gte=datetime.today(), sign_in_today=True).count() == 0 and
-           (datetime.now().hour >= 9 or WebSite.objects.get(id=my_site.site).url not in ['https://u2.dmhy.org/'])
+        my_site for my_site in MySite.objects.filter(sign_in=True) if
+        WebSite.objects.get(id=my_site.site).sign_in and
+        my_site.signin_set.filter(created_at__date__gte=datetime.today(), sign_in_today=True).count() == 0 and
+        (datetime.now().hour >= 9 or WebSite.objects.get(id=my_site.site).url not in ['https://u2.dmhy.org/'])
     ]
     message = '站点：`U2` 早上九点之前不执行签到任务哦！ \n\n'
     logger.debug(message)
@@ -100,7 +100,7 @@ def auto_sign_in(self, *site_list: List[int]):
 
 
 @shared_task(bind=True, base=BaseTask, time_limit=1200)
-def auto_get_status(self, *site_list: List[int]):
+def auto_get_status(self):
     """
     更新个人数据
     """
@@ -112,7 +112,7 @@ def auto_get_status(self, *site_list: List[int]):
     # queryset = MySite.objects.filter(
     #     get_info=True
     # ) if len(site_list) == 0 else MySite.objects.filter(get_info=True, id__in=site_list)
-    queryset = [my_site for my_site in MySite.objects.filter(get_info=True, id__in=site_list) if
+    queryset = [my_site for my_site in MySite.objects.filter(get_info=True) if
                 websites.get(id=my_site.site).get_info]
     results = pool.map(pt_spider.send_status_request, queryset)
     message_template = MessageTemplate.status_message_template

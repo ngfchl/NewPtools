@@ -1225,7 +1225,7 @@ class PtSpider:
             status_today = my_site.sitestatus_set.filter(created_at__date__gte=datetime.today()).first()
             if not status_today:
                 status_today = SiteStatus(site=my_site)
-                status_latest = my_site.sitestatus_set.latest('created_at')
+                status_latest = my_site.sitestatus_set.order_by('created_at').last()
                 logger.info(f'status_latest: {status_latest}')
                 if status_latest:
                     logger.info(f'status_latest: {status_latest.my_level}')

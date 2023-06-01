@@ -19,6 +19,12 @@ elif [ $AUTH_CODE -ne 0 ]; then
   echo "Authorization failed. Exiting..."
   exit 1
 fi
+# 设置日志级别
+LOGGER_LEVEL=${LOGGER_LEVEL:-debug}
+
+for file in /ptools/supervisor/product/*.conf; do
+    sed -i "s/-l INFO/-l $LOGGER_LEVEL/g" $file
+done
 
 if [ ! -e $CONTAINER_ALREADY_STARTED ]; then
   echo "-- First container startup --"

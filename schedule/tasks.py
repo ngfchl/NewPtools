@@ -251,7 +251,8 @@ def auto_get_torrents(self, *site_list: List[int]):
                                 logger.error(traceback.format_exc(3))
                                 # 拆包失败的写入hash_list
                                 hash_list.append(hash_string)
-                                continue
+                            finally:
+                                client.torrents_resume(torrent_hashes=hash_string)
                         message = f'♻️ 拆包任务执行结束！耗时：{time.time() - package_start} \n ' \
                                   f'当前时间：{time.strftime("%Y-%m-%d %H:%M:%S")} \n' \
                                   f'成功拆包{len(torrents) - len(hash_list)}个，失败{len(hash_list)}个！'
@@ -276,9 +277,9 @@ def auto_get_torrents(self, *site_list: List[int]):
     if len(message_push) > 1:
         message_list.extend(message_push)
     logger.info(consuming)
-    toolbox.send_text(title='通知：拉取最新种子', message='\n'.join(message_list))
-    if len(message_success) > 0:
-        toolbox.send_text(title='通知：拉取最新种子-成功', message=''.join(message_success))
+    # toolbox.send_text(title='通知：拉取最新种子', message='\n'.join(message_list))
+    # if len(message_success) > 0:
+    #     toolbox.send_text(title='通知：拉取最新种子-成功', message=''.join(message_success))
     # 释放内存
     gc.collect()
     return consuming

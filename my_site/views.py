@@ -36,7 +36,7 @@ def get_mysite(request, mysite_id: int):
 
 
 @router.post('/mysite', response=CommonResponse, description='我的站点-添加')
-def add_mysite(request, my_site_params: MySiteSchemaEdit):
+def add_mysite(request, my_site_params: MySiteSchemaIn):
     try:
         if not my_site_params.site or not my_site_params.nickname:
             return CommonResponse.error(msg=f'{my_site_params.nickname} 保存失败，请先完成必填项')
@@ -44,10 +44,9 @@ def add_mysite(request, my_site_params: MySiteSchemaEdit):
         logger.info(my_site_params)
         my_site_params.id = None
         params = my_site_params.dict()
-        params.update({
-            'downloader_id': my_site_params.downloader
-        })
-        my_site = MySite.objects.create(params)
+        del params['joined']
+        print(params)
+        my_site = MySite.objects.create(**params)
         if my_site:
             msg = f'处理完毕：{my_site.nickname}，保存成功！'
             logger.info(msg)

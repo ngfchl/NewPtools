@@ -230,7 +230,11 @@ def save_config_api(request):
 
 @router.get('/system', response=CommonResponse, )
 def parse_toml(request):
-    return CommonResponse.success(data=toml.load('db/ptools.toml'))
+    file_path = os.path.join(BASE_DIR, 'db/ptools.toml')
+    if not os.path.exists(file_path):
+        subprocess.getoutput('touch db/ptools.toml')
+        logger.info(f'配置文件生成成功!')
+    return CommonResponse.success(data=toml.load(file_path))
 
 
 @router.get('/config', response=CommonResponse, )

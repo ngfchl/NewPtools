@@ -59,8 +59,8 @@ class SiteStatus(BaseEntity):
     # 获取日期，只保留当天最新数据
     site = models.ForeignKey(verbose_name='站点名称', to=MySite, on_delete=models.CASCADE)
     # 签到，有签到功能的访问签到页面，无签到的访问个人主页
-    uploaded = models.IntegerField(verbose_name='上传量', default=0)
-    downloaded = models.IntegerField(verbose_name='下载量', default=0)
+    uploaded = models.BigIntegerField(verbose_name='上传量', default=0)
+    downloaded = models.BigIntegerField(verbose_name='下载量', default=0)
     ratio = models.FloatField(verbose_name='分享率', default=0)
     my_bonus = models.FloatField(verbose_name='魔力值', default=0)
     my_score = models.FloatField(verbose_name='做种积分', default=0)

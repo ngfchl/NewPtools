@@ -19,7 +19,7 @@ COPY pip.conf /root/.pip/pip.conf
 # 更新pip版本，更换USTC源，并安装git
 RUN /usr/local/bin/python -m pip install --upgrade pip; \
     sed -i 's/deb.debian.org/mirrors.ustc.edu.cn/g' /etc/apt/sources.list; \
-    apt update && apt install gcc curl python3-dev jq mysql-common mariadb-common libmariadb-dev-compat libmariadb-dev libmariadb3 default-libmysqlclient-dev -y && apt-get autoclean && rm -rf /var/lib/apt/lists/*
+    apt update && apt install gcc git curl python3-dev jq mysql-common mariadb-common libmariadb-dev-compat libmariadb-dev libmariadb3 default-libmysqlclient-dev -y && apt-get autoclean && rm -rf /var/lib/apt/lists/*
 # 创建 ptools 文件夹
 RUN mkdir -p /ptools
 # 将 ptools 文件夹为工作目录

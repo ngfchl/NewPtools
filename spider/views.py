@@ -1381,7 +1381,7 @@ class PtSpider:
                             'seed': seed,
                             'leech': leech,
                         })
-                    if float(ratio) < 1:
+                    if 0 < float(ratio) < 1:
                         msg = f'{site.name} 分享率 {ratio} 过低，请注意'
                         # 消息发送
                         toolbox.send_text(title=msg, message=msg)
@@ -1401,7 +1401,7 @@ class PtSpider:
                     my_level = details_html.get('class').get('name').strip(" ")
                     seed = details_html.get('seeding')
                     leech = details_html.get('leeching')
-                    if float(ratio) < 1:
+                    if 0 < float(ratio) < 1:
                         msg = f'{site.name} 分享率 {ratio} 过低，请注意'
                         toolbox.send_text(title=msg, message=msg)
                     res_zhuque = SiteStatus.objects.update_or_create(
@@ -1511,7 +1511,7 @@ class PtSpider:
                             ratio = 0
                     else:
                         ratio = round(int(uploaded) / int(downloaded), 3)
-                    if ratio <= 1:
+                    if 0 < ratio <= 1:
                         title = f'{site.name}  站点分享率告警：{ratio}'
                         message = f'{title}  \n'
                         toolbox.send_text(title=title, message=message)

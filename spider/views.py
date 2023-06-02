@@ -1,4 +1,5 @@
 import logging
+import os
 import random
 import re
 import ssl
@@ -1360,6 +1361,8 @@ class PtSpider:
                     uploaded = stats.get('uploaded')
                     ratio_str = stats.get('ratio').replace(',', '')
                     ratio = 'inf' if ratio_str == '∞' else ratio_str
+                    if os.getenv("MYSQL_CONNECTION") and ratio == 'inf':
+                        ratio = 0
                     my_level = details_html.get('personal').get('class').strip(" ")
                     community = details_html.get('community')
                     seed = community.get('seeding')
@@ -1392,6 +1395,8 @@ class PtSpider:
                     my_score = details_html.get('seedBonus')
                     seed_days = int(details_html.get('seedTime') / 3600 / 24)
                     ratio = uploaded / downloaded if downloaded > 0 else 'inf'
+                    if os.getenv("MYSQL_CONNECTION") and ratio == 'inf':
+                        ratio = 0
                     invitation = details_html.get(site.my_invitation_rule)
                     my_level = details_html.get('class').get('name').strip(" ")
                     seed = details_html.get('seeding')
@@ -1502,6 +1507,8 @@ class PtSpider:
                     # 分享率信息
                     if float(downloaded) == 0:
                         ratio = float('inf')
+                        if os.getenv("MYSQL_CONNECTION"):
+                            ratio = 0
                     else:
                         ratio = round(int(uploaded) / int(downloaded), 3)
                     if ratio <= 1:

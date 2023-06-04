@@ -96,6 +96,12 @@ DATABASE_APPS_MAPPING = {
     'website': 'website',
 }
 
+mysql_connect = ''
+if os.getenv('MYSQL_CONNECTION'):
+    mysql_connect = dj_database_url.parse(os.getenv('MYSQL_CONNECTION'))
+    mysql_connect.update({
+        "CONN_MAX_AGE": 600
+    })
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.sqlite3",
@@ -104,7 +110,7 @@ DATABASES = {
             'timeout': 120,
             'check_same_thread': False
         },
-    } if not os.getenv('MYSQL_CONNECTION') else dj_database_url.parse(os.getenv('MYSQL_CONNECTION')),
+    } if not os.getenv('MYSQL_CONNECTION') else mysql_connect,
     "website": {
         "ENGINE": "django.db.backends.sqlite3",
         "NAME": BASE_DIR / "website.sqlite3",

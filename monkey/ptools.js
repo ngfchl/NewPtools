@@ -72,7 +72,7 @@
 // @match        https://srvfi.top/*
 // @match        https://www.icc2022.com/*
 // @match        http://leaves.red/*
-// @match        https://xinglin.one/*
+// @match        https://xingtan.one/*
 // @match        http://uploads.ltd/*
 // @match        https://cyanbug.net/*
 // @match        https://ptsbao.club/*
@@ -94,7 +94,21 @@
 // @match        https://cinemaz.to/*
 // @match        https://avistaz.to/*
 // @match        https://iptorrents.com/*
+// @match        https://pt.hdupt.com/*
+// @match        https://www.oshen.win/*
+// @match        https://hdcity.city/*
+// @match        https://hdvideo.one/*
+// @match        https://chdbits.co/*
+// @match        https://kamept.com/*
+// @match        https://ultrahd.net/*
+// @match        http://pt.tu88.men/*
+// @match        https://pt.hd4fans.org/*
 
+// @match        https://hd-torrents.org/*
+// @match        https://fsm.name/*
+// @match        https://dajiao.cyou/*
+// @match        https://zhuque.in/*
+// @match        https://hudbt.hust.edu.cn/*
 
 // @version      0.0.5
 // @grant        GM_xmlhttpRequest
@@ -128,7 +142,7 @@ this.$ = this.jQuery = jQuery.noConflict(true);
  * token：ptools.toml中设置的token，获取安全密钥token，可以在ptools.toml中自定义，格式 [token] token="ptools"
  * @type {string}
  */
-var ptools = "http://127.0.0.1:8000/";
+var ptools = "http://192.168.123.5:8001/";
 var token = "ptools";
 /**
  * 以下内容无需修改
@@ -320,7 +334,7 @@ async function showDownloaders(downloaders, flag) {
     })
 
     let downloader_list = `<div class="btn-group">
-                    <button type="button" class="btn btn-outline-warning btn-sm btn-block text-nowrap" 
+                    <button type="button" class="btn btn-outline-warning btn-sm btn-block text-nowrap"
                     style="font-size: 12px;" data-toggle="dropdown" aria-expanded="false">
                         ${flag ? '下载到...' : '下载所有'}
                     </button>
@@ -330,7 +344,7 @@ async function showDownloaders(downloaders, flag) {
                     </div>`
     if (!flag) {
         downloader_list += `<div class="btn-group">
-                    <button type="button" class="btn btn-outline-warning btn-sm btn-block text-nowrap" 
+                    <button type="button" class="btn btn-outline-warning btn-sm btn-block text-nowrap"
                     style="font-size: 12px;" data-toggle="dropdown" aria-expanded="false">
                         下载免费
                     </button>

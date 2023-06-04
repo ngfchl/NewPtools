@@ -1,0 +1,1 @@
+import{b as t}from"./index-6c720e4c.js";import{G as r,H as e}from"./vue-080993b5.js";import"./lodash-5fc50ca6.js";import"./naiveUI-1e53cf3e.js";import"./ionicons5-b765452e.js";const o={},c={src:"http://127.0.0.1:9001",class:"w-100% h-80vh"};function s(n,a){return r(),e("iframe",c)}const d=t(o,[["render",s]]);export{d as default};

@@ -1,3 +1,5 @@
+from typing import Optional
+
 from ninja import Schema
 
 
@@ -20,3 +22,14 @@ class UserIn(Schema):
 class SettingsIn(Schema):
     name: str
     content: str
+
+
+class NotifySchema(Schema):
+    id: Optional[int]
+    name: str
+    enable: bool = True
+    corpid: Optional[str]
+    corpsecret: str
+    agentid: Optional[str]
+    touser: Optional[str]
+    custom_server: Optional[str]

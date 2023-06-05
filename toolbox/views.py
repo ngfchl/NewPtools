@@ -22,12 +22,12 @@ from django.conf import settings
 from pypushdeer import PushDeer
 from wxpusher import WxPusher
 
-from auxiliary.base import PushConfig, DownloaderCategory
+from auxiliary.base import DownloaderCategory
 from auxiliary.settings import BASE_DIR
+from configuration.models import PushConfig, Notify
 from download.models import Downloader
 from my_site.models import SiteStatus, TorrentInfo, MySite
-from toolbox.models import BaiduOCR, Notify
-from toolbox.schema import CommonResponse
+from toolbox.schema import CommonResponse, DotDict
 from website.models import WebSite
 from .wechat_push import WechatPush
 
@@ -96,11 +96,13 @@ class FileSizeConvert:
 def baidu_ocr_captcha(img_url):
     """百度OCR高精度识别，传入图片URL"""
     # 获取百度识别结果
-    ocr = BaiduOCR.objects.filter(enable=True).first()
+    ocr = parse_toml("ocr")
+    # ocr = BaiduOCR.objects.filter(enable=True).first()
     if not ocr:
         logger.error('未设置百度OCR文本识别API，无法使用本功能！')
         return CommonResponse.error(msg='未设置百度OCR文本识别API，无法使用本功能！')
     try:
+        ocr = DotDict(ocr)
         ocr_client = aip.AipOcr(appId=ocr.app_id, secretKey=ocr.secret_key, apiKey=ocr.api_key)
         res1 = ocr_client.basicGeneralUrl(img_url)
         logger.info(res1)

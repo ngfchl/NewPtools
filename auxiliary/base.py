@@ -76,15 +76,6 @@ class Trigger(models.TextChoices):
     cron = 'cron', 'cron任务'
 
 
-class PushConfig(models.TextChoices):
-    # date = 'date', '单次任务'
-    wechat_work_push = 'wechat_work_push', '企业微信通知'
-    wxpusher_push = 'wxpusher_push', 'WxPusher通知'
-    pushdeer_push = 'pushdeer_push', 'PushDeer通知'
-    bark_push = 'bark_push', 'Bark通知'
-    iyuu_push = 'iyuu_push', '爱语飞飞'
-
-
 class MessageTemplate:
     """消息模板"""
     status_message_template = "{} 等级：{} 魔力：{} 时魔：{} 积分：{} 分享率：{} " \

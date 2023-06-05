@@ -10,7 +10,7 @@ from ninja import Router
 
 from auxiliary.celery import app as celery_app
 from schedule.models import Task
-from schedule.schema import TaskSchemaOut, CrontabTaskSchemaIn, PeriodicTaskSchemaOut, CrontabSchemaOut
+from schedule.schema import TaskSchemaOut, CrontabTaskSchemaIn, PeriodicTaskSchemaOut, CrontabSchemaOut, CrontabSchemaIn
 from toolbox.schema import CommonResponse
 
 # Create your views here.
@@ -55,12 +55,13 @@ def get_crontab_list(request):
 def add_crontab_schedule(request, task: CrontabTaskSchemaIn):
     time_zone = pytz.timezone('Asia/Shanghai')
     try:
-        cron_schedule, _ = CrontabSchedule.objects.get_or_create(
-            defaults=task.crontab.dict(),
+        crontab = task.crontab
+        logger.info(crontab)
+        cron_schedule = CrontabSchedule.objects.create(
             timezone=time_zone,
-            hour=task.crontab.hour,
-            minute=task.crontab.minute,
+            **crontab.dict()
         )
+        logger.info(cron_schedule)
         periodic_task = PeriodicTask.objects.create(
             crontab=cron_schedule,
             name=task.name,
@@ -101,15 +102,22 @@ def delete_crontab_schedule(request, schedule_id: int):
 @router.put('/schedule', response=CommonResponse, description='修改计划任务')
 def edit_crontab_schedule(request, task: CrontabTaskSchemaIn):
     time_zone = pytz.timezone('Asia/Shanghai')
+    logger.info(task)
     periodic_task = PeriodicTask.objects.get(id=task.id)
-    if isinstance(task.crontab, dict):
-        cron_schedule, _ = CrontabSchedule.objects.get_or_create(
-            defaults=task.crontab.dict(),
+    logger.info(periodic_task)
+
+    if isinstance(task.crontab, CrontabSchemaIn):
+        crontab = task.crontab
+        cron_schedule = periodic_task.crontab
+        # cron_schedule.timezone = time_zone
+        # cron_schedule.hour = crontab.hour
+        # cron_schedule.minute = crontab.minute
+        # cron_schedule.save()
+        cron_schedule = CrontabSchedule.objects.filter(id=cron_schedule.id).update(
             timezone=time_zone,
-            hour=task.crontab.hour,
-            minute=task.crontab.minute,
+            **crontab.dict()
         )
-        periodic_task.crontab = cron_schedule
+        logger.info(cron_schedule)
     periodic_task.name = task.name
     periodic_task.task = task.task
     periodic_task.enabled = task.enabled

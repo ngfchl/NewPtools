@@ -934,7 +934,7 @@ class PtSpider:
             mail_data = mail_res.json().get('data')
             mail = mail_data.get('unreadAdmin') + mail_data.get('unreadInbox') + mail_data.get('unreadSystem')
             if mail > 0:
-                title = f'{site.name} 有{mail}条新消息，请注意及时查收！'
+                title = f'{site.name}有{mail}条新消息！'
                 toolbox.send_text(title=title, message=title)
         logger.info(f' 短消息：{mail_check}')
         res = SiteStatus.objects.update_or_create(
@@ -981,7 +981,7 @@ class PtSpider:
                 message_list += message
             status.mail = len(mail_list)
             status.save()
-            title = f'{site.name} 有{len(mail_list)}条新消息！'
+            title = f'{site.name}有{len(mail_list)}条新消息！'
             toolbox.send_text(title=title, message=message_list)
         else:
             status.mail = 0
@@ -1022,7 +1022,7 @@ class PtSpider:
                     else:
                         notice_res = self.send_request(my_site, url=f'{site.url}{site.page_index}')
                     # notice_res = self.send_request(my_site, url=site.url)
-                    logger.debug(f'公告信息：{notice_res}')
+                    logger.debug(f'公告信息 {notice_res}')
                     notice_list = self.parse(site, notice_res, site.my_notice_title)
                     content_list = self.parse(
                         site,
@@ -1046,7 +1046,7 @@ class PtSpider:
                     # notice = '  \n\n### '.join(notice_list[:notice_count])
                     notice = ''.join(notice_list[:1])
                     message_list += f'# 公告  \n## {notice}'
-                    title = f'{site.name} 有{notice_count}条新公告！'
+                    title = f'{site.name}有{notice_count}条新公告！'
                     toolbox.send_text(title=title, message=message_list)
 
     def get_userinfo_html(self, my_site: MySite, headers: dict):

@@ -1,0 +1,1 @@
+import{b as r}from"./index-78dd3789.js";import{G as e,H as o}from"./vue-080993b5.js";import"./lodash-5fc50ca6.js";import"./naiveUI-1e53cf3e.js";import"./ionicons5-b765452e.js";const t={},c={src:"/flower",class:"w-100% h-80vh"};function s(n,a){return e(),o("iframe",c)}const l=r(t,[["render",s]]);export{l as default};

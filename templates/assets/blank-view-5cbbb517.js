@@ -1,1 +1,0 @@
-import{b as e}from"./index-6c720e4c.js";import{G as r,H as o}from"./vue-080993b5.js";import"./lodash-5fc50ca6.js";import"./naiveUI-1e53cf3e.js";import"./ionicons5-b765452e.js";const t={};function n(c,a){return r(),o("div",null," blank page ")}const _=e(t,[["render",n]]);export{_ as default};

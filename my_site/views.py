@@ -256,9 +256,9 @@ def do_signin(request, sign_in: MySiteDoSchemaIn):
 
 
 @router.post('/sign/do', response=CommonResponse, description='每日签到')
-def sign_in_api(request, site_list: List[int] = []):
+def sign_in_api(request):
     try:
-        res = autopt.auto_sign_in.delay(site_list)
+        res = autopt.auto_sign_in.delay()
         return CommonResponse.success(msg=f'签到指令已发送，请注意查收推送消息！任务id：{res.id}')
     except Exception as e:
         logger.error(f'签到失败：{e}')
@@ -460,9 +460,9 @@ def parse_site_data_to_chart(my_site: MySite, days: int = -7):
 
 
 @router.post('/status/do', response=CommonResponse, description='刷新站点数据')
-def update_site_api(request, site_list: List[int] = []):
+def update_site_api(request):
     try:
-        res = autopt.auto_get_status.delay(site_list)
+        res = autopt.auto_get_status.delay()
         return CommonResponse.success(msg=f'数据更新指令已发送，请注意查收推送消息！任务id：{res}')
     except Exception as e:
         logger.error(f'数据更新失败：{e}')
@@ -544,9 +544,9 @@ def get_torrent_list(request, filters: PaginateQueryParamsSchemaIn = Query(...))
 
 
 @router.post('/torrents/get', response=CommonResponse, description='获取种子')
-def update_torrents(request, site_list: List[int] = []):
+def update_torrents(request):
     try:
-        res = autopt.auto_get_torrents.delay(site_list)
+        res = autopt.auto_get_torrents.delay()
         return CommonResponse.success(msg=f'抓取种子指令已发送，请注意查收推送消息！任务id：{res}')
     except Exception as e:
         logger.error(f'抓取种子失败：{e}')

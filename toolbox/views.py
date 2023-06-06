@@ -24,7 +24,7 @@ from wxpusher import WxPusher
 
 from auxiliary.base import DownloaderCategory
 from auxiliary.settings import BASE_DIR
-from configuration.models import PushConfig, Notify
+from configuration.models import PushConfig
 from download.models import Downloader
 from my_site.models import SiteStatus, TorrentInfo, MySite
 from toolbox.schema import CommonResponse, DotDict
@@ -194,57 +194,58 @@ def exec_command(commands):
 
 def send_text(message: str, title: str = '', url: str = None):
     """通知分流"""
-    notifies = Notify.objects.filter(enable=True).all()
+    notifies = parse_toml("notify")
     res = '你还没有配置通知参数哦！'
     if len(notifies) <= 0:
         return res
-    for notify in notifies:
+    for key, notify in notifies.items():
         try:
-            if notify.name == PushConfig.wechat_work_push:
+            if key == PushConfig.wechat_work_push:
                 """企业微信通知"""
                 notify_push = WechatPush(
-                    corp_id=notify.corpid,
-                    secret=notify.corpsecret,
-                    agent_id=notify.agentid,
-                    server=notify.custom_server
+                    corp_id=notify.get('corp_id'),
+                    secret=notify.get('corpsecret'),
+                    agent_id=notify.get('agent_id'),
+                    server=notify.get('server', 'https://qyapi.weixin.qq.com/')
                 )
                 res = notify_push.send_text(
                     text=message,
-                    to_uid=notify.touser if notify.touser else '@all'
+                    to_uid=notify.get('touser') if notify.get('touser') else '@all'
                 )
                 msg = '企业微信通知：{}'.format(res)
                 logger.info(msg)
 
-            if notify.name == PushConfig.wxpusher_push:
+            if key == PushConfig.wxpusher_push:
                 """WxPusher通知"""
                 res = WxPusher.send_message(
                     summary=title,
                     content=message,
                     url=url,
-                    uids=notify.touser.split(','),
-                    token=notify.corpsecret,
+                    uids=notify.get('uids').split(','),
+                    token=notify.get('token'),
                     content_type=3,  # 1：文本，2：html，3：markdown
                 )
                 msg = 'WxPusher通知{}'.format(res)
                 logger.info(msg)
 
-            if notify.name == PushConfig.pushdeer_push:
+            if key == PushConfig.pushdeer_push:
                 pushdeer = PushDeer(
-                    server=notify.custom_server,
-                    pushkey=notify.corpsecret)
+                    server=notify.get('custom_server', 'https://api2.pushdeer.com'),
+                    pushkey=notify.get('pushkey')
+                )
                 # res = pushdeer.send_text(text, desp="optional description")
                 res = pushdeer.send_markdown(text=message,
                                              desp=title)
                 msg = 'pushdeer通知{}'.format(res)
                 logger.info(msg)
 
-            if notify.name == PushConfig.bark_push:
+            if key == PushConfig.bark_push:
                 res = requests.post(
-                    url=f'{notify.custom_server}push',
+                    url=f'{notify.get("custom_server", "https://api.day.app/")}push',
                     data={
                         'title': title,
                         'body': message,
-                        'device_key': notify.corpsecret,
+                        'device_key': notify.get("device_key"),
                         # 'url': 'http://img.ptools.fun/pay.png',
                         'icon': 'https://gitee.com/ngfchl/ptools/raw/master/static/logo4.png'
                     },
@@ -252,8 +253,8 @@ def send_text(message: str, title: str = '', url: str = None):
                 msg = 'bark通知 {}'.format(res.json())
                 logger.info(msg)
 
-            if notify.name == PushConfig.iyuu_push:
-                url = notify.custom_server + '{}.send'.format(notify.corpsecret)
+            if key == PushConfig.iyuu_push:
+                url = notify.get("custom_server", 'http://iyuu.cn/') + '{}.send'.format(notify.get("token"))
                 # text = '# '
                 res = requests.post(
                     url=url,

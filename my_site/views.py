@@ -161,7 +161,7 @@ def get_newest_status_list(request):
     id_list = [SiteStatus.objects.filter(site=my_site.id).order_by('-created_at').first().id for my_site in
                my_site_list if SiteStatus.objects.filter(site=my_site.id).order_by('created_at').first()]
     status_list = SiteStatus.objects.filter(id__in=id_list)
-    my_site_id_list = [my_site.id for my_site in my_site_list]
+    # my_site_id_list = [my_site.id for my_site in my_site_list]
     site_id_list = [my_site.site for my_site in my_site_list]
     site_list = WebSite.objects.all()
     sign_list = SignIn.objects.all()
@@ -189,7 +189,7 @@ def get_newest_status_list(request):
             'level': level,
             'next_level': next_level
         }
-        # print(info)
+        logger.debug(info)
         info_list.append(info)
     return CommonResponse.success(data=info_list)
 

@@ -3,7 +3,6 @@ import os
 import subprocess
 import traceback
 from datetime import datetime
-from typing import List, Optional
 
 import docker
 import jwt
@@ -15,8 +14,7 @@ from ninja import Router
 from ninja.responses import codes_4xx
 
 from auxiliary.settings import BASE_DIR
-from configuration.models import Notify
-from configuration.schema import UpdateSchemaOut, UserIn, SettingsIn, NotifySchema
+from configuration.schema import UpdateSchemaOut, UserIn, SettingsIn
 from monkey.schema import CommonMessage
 from toolbox import views as toolbox
 from toolbox.schema import CommonResponse
@@ -273,62 +271,61 @@ def save_config_api(request, setting: SettingsIn):
         # raise
         return CommonResponse.error(msg=f'获取配置文件信息失败！{e}')
 
-
-@router.get("/notifies", response=CommonResponse[List[NotifySchema]])
-def get_all_notify(request):
-    notifies = Notify.objects.all()
-    return CommonResponse.success(data=list(notifies))
-
-
-@router.get("/notify", response=CommonResponse[Optional[NotifySchema]])
-def get_notify(request, id: int):
-    try:
-        notify = Notify.objects.get(id=id)
-        return CommonResponse.success(data=notify)
-    except Exception as e:
-        logger.error(traceback.format_exc(3))
-        msg = f'通知获取失败:{e}'
-        logger.error(msg)
-        return CommonResponse.error(msg=msg)
-
-
-@router.post("/notify", response=CommonResponse[NotifySchema])
-def create_notify(request, notify: NotifySchema):
-    try:
-        notify_obj = Notify.objects.create(**notify.dict())
-        return CommonResponse.success(data=notify_obj)
-    except Exception as e:
-        logger.error(traceback.format_exc(3))
-        msg = f'通知修改失败:{e}'
-        logger.error(msg)
-        return CommonResponse.error(msg=msg)
-
-
-@router.put("/notify", response=CommonResponse[NotifySchema])
-def update_notify(request, notify: NotifySchema):
-    try:
-        notify_obj = Notify.objects.get(id=notify.id)
-        for attr, value in notify.dict().items():
-            setattr(notify_obj, attr, value)
-        notify_obj.save()
-        return CommonResponse.success(data=notify_obj)
-    except Exception as e:
-        logger.error(traceback.format_exc(3))
-        msg = f'通知修改失败:{e}'
-        logger.error(msg)
-        return CommonResponse.error(msg=msg)
-
-
-@router.delete("/notify", response=CommonResponse)
-def delete_notify(request, id: int):
-    try:
-        notify = Notify.objects.get(id=id)
-        notify.delete()
-        msg = f'{notify.name} 删除成功！'
-        logger.info(msg)
-        return CommonResponse.success(msg=msg)
-    except Exception as e:
-        logger.error(traceback.format_exc(3))
-        msg = f'通知删除失败:{e}'
-        logger.error(msg)
-        return CommonResponse.error(msg=msg)
+# @router.get("/notifies", response=CommonResponse[List[NotifySchema]])
+# def get_all_notify(request):
+#     notifies = Notify.objects.all()
+#     return CommonResponse.success(data=list(notifies))
+#
+#
+# @router.get("/notify", response=CommonResponse[Optional[NotifySchema]])
+# def get_notify(request, id: int):
+#     try:
+#         notify = Notify.objects.get(id=id)
+#         return CommonResponse.success(data=notify)
+#     except Exception as e:
+#         logger.error(traceback.format_exc(3))
+#         msg = f'通知获取失败:{e}'
+#         logger.error(msg)
+#         return CommonResponse.error(msg=msg)
+#
+#
+# @router.post("/notify", response=CommonResponse[NotifySchema])
+# def create_notify(request, notify: NotifySchema):
+#     try:
+#         notify_obj = Notify.objects.create(**notify.dict())
+#         return CommonResponse.success(data=notify_obj)
+#     except Exception as e:
+#         logger.error(traceback.format_exc(3))
+#         msg = f'通知修改失败:{e}'
+#         logger.error(msg)
+#         return CommonResponse.error(msg=msg)
+#
+#
+# @router.put("/notify", response=CommonResponse[NotifySchema])
+# def update_notify(request, notify: NotifySchema):
+#     try:
+#         notify_obj = Notify.objects.get(id=notify.id)
+#         for attr, value in notify.dict().items():
+#             setattr(notify_obj, attr, value)
+#         notify_obj.save()
+#         return CommonResponse.success(data=notify_obj)
+#     except Exception as e:
+#         logger.error(traceback.format_exc(3))
+#         msg = f'通知修改失败:{e}'
+#         logger.error(msg)
+#         return CommonResponse.error(msg=msg)
+#
+#
+# @router.delete("/notify", response=CommonResponse)
+# def delete_notify(request, id: int):
+#     try:
+#         notify = Notify.objects.get(id=id)
+#         notify.delete()
+#         msg = f'{notify.name} 删除成功！'
+#         logger.info(msg)
+#         return CommonResponse.success(msg=msg)
+#     except Exception as e:
+#         logger.error(traceback.format_exc(3))
+#         msg = f'通知删除失败:{e}'
+#         logger.error(msg)
+#         return CommonResponse.error(msg=msg)

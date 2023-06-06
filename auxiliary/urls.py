@@ -17,12 +17,14 @@ Including another URLconf
 from django.contrib import admin
 from django.contrib.staticfiles.urls import staticfiles_urlpatterns
 from django.urls import path
+from django.views.generic import RedirectView
 
 from auxiliary.api import api_v1
 
 urlpatterns = [
     path("admin/", admin.site.urls),
     path("api/", api_v1.urls),
+    path('', RedirectView.as_view(url='/admin/')),
 ]
 
 urlpatterns += staticfiles_urlpatterns()

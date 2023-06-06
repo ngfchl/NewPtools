@@ -271,6 +271,18 @@ def save_config_api(request, setting: SettingsIn):
         # raise
         return CommonResponse.error(msg=f'获取配置文件信息失败！{e}')
 
+
+@router.get("/notify/test", response=CommonResponse)
+def get_notify(request, title: str, message: str):
+    try:
+        res = toolbox.send_text(title=title, message=message)
+        return CommonResponse.success(data=res)
+    except Exception as e:
+        logger.error(traceback.format_exc(3))
+        msg = f'通知获取失败:{e}'
+        logger.error(msg)
+        return CommonResponse.error(msg=msg)
+
 # @router.get("/notifies", response=CommonResponse[List[NotifySchema]])
 # def get_all_notify(request):
 #     notifies = Notify.objects.all()

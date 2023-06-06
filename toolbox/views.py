@@ -192,10 +192,24 @@ def exec_command(commands):
     return result
 
 
+def verify_token():
+    token = os.getenv("TOKEN", None)
+    if not token:
+        result = subprocess.run(['supervisorctl', 'shutdown'], check=True, text=True, capture_output=True)
+        logger.debug(f'Successfully executed command: {result.stdout}')
+        return '您的软件未经授权，如果您喜欢本软件，欢迎付费购买授权或申请临时授权。'
+    res = requests.get('http://api.ptools.fun/ad', params=token)
+    if res.status_code == 200 and res.json().get('code') == 0:
+        return res.json().get('data')
+    else:
+        return '您的软件使用授权到期了！如果您喜欢本软件，欢迎付费购买授权或申请临时授权。'
+
+
 def send_text(message: str, title: str = '', url: str = None):
     """通知分流"""
     notifies = parse_toml("notify")
     res = '你还没有配置通知参数哦！'
+    message = f'{verify_token()}\n{"*" * 30}\n{message}'
     if len(notifies) <= 0:
         return res
     for key, notify in notifies.items():
@@ -262,9 +276,13 @@ def send_text(message: str, title: str = '', url: str = None):
                         'text': title,
                         'desp': message
                     })
-                logger.info('爱语飞飞通知：{}'.format(res))
+                msg = f'爱语飞飞通知：{res}'
+                logger.info(msg)
+            return msg
         except Exception as e:
-            logger.error('通知发送失败，{} {}'.format(res, traceback.format_exc(limit=5)))
+            msg = f'通知发送失败，{res} {traceback.format_exc(limit=5)}'
+            logger.error(msg)
+            return msg
 
 
 def today_data():

@@ -1,0 +1,1 @@
+import{h as f,g as l}from"./index-556d8581.js";const g=async(r,s)=>{const{message:e}=l();let t=await f(r,s);if(typeof t=="string"){const a=/Infinity/g,c=t.replace(a,'"∞"');t=JSON.parse(c)}const{code:o,msg:n,data:i}=t;return o!==0?(e==null||e.warning(n,{keepAliveOnHover:!0}),!1):(n.length>0&&(e==null||e.success(n,{keepAliveOnHover:!0})),i)};export{g};

@@ -24,7 +24,8 @@ class MySite(BaseEntity):
                                   default='Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 '
                                           '(KHTML, like Gecko) Chrome/106.0.0.0 Safari/537.36 Edg/106.0.1370.42')
     rss = models.URLField(verbose_name='RSS地址', null=True, blank=True, help_text='RSS链接')
-    torrents = models.URLField(verbose_name='种子地址', null=True, blank=True, help_text='免费种子链接')
+    torrents = models.CharField(verbose_name='种子地址', null=True, blank=True, help_text='免费种子链接',
+                                max_length=512)
     # 用户设置
     sign_in = models.BooleanField(verbose_name='开启签到', default=True, help_text='是否开启签到')
     get_info = models.BooleanField(verbose_name='抓取信息', default=True, help_text='是否抓取站点数据')

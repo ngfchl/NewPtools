@@ -124,7 +124,7 @@ DATABASES = {
 CACHES = {
     'default': {
         'BACKEND': 'django_redis.cache.RedisCache',
-        'LOCATION': os.getenv('CACHE_REDIS_CONNECTION', 'redis://127.0.0.1:6379/15'),
+        'LOCATION': os.getenv('CACHE_REDIS_CONNECTION', f'redis://127.0.0.1:{os.getenv("REDIS_SERVER_PORT")}/15'),
         'OPTIONS': {
             'CLIENT_CLASS': 'django_redis.client.DefaultClient',
             'CONNECTION_POOL_KWARGS': {'max_connections': 100},
@@ -228,7 +228,7 @@ LOGGING = {
 
 # ----Celery redis 配置----- #
 # Broker配置，使用Redis作为消息中间件
-CELERY_BROKER_URL = os.getenv("CELERY_REDIS_CONNECTION", 'redis://127.0.0.1:6379/10')
+CELERY_BROKER_URL = os.getenv("CELERY_REDIS_CONNECTION", f'redis://127.0.0.1:{os.getenv("REDIS_SERVER_PORT")}/10')
 
 # BACKEND配置，使用redis
 CELERY_RESULT_BACKEND = 'django-db'

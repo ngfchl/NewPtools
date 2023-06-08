@@ -30,18 +30,18 @@ if [ ! -f db/hosts ]; then
 else
   echo '存在自定义HOSTS文件，apply'
   ./cfst_hosts.sh
-  cp -f /ptools/db/hosts /etc/hosts
 fi
 
 cd /ptools
 # 替换nginx配置文件
-envsubst "\$DJANGO_WEB_PORT" </etc/nginx/conf.d/default.conf.template >/etc/nginx/conf.d/default.conf
-
+envsubst "\$DJANGO_WEB_PORT,\$WEBUI_PORT" </etc/nginx/conf.d/default.conf.template >/etc/nginx/conf.d/default.conf
+sed -i "s/port 6379/port $FLOWER_UI_PORT/g" /etc/redis/redis.conf
 # 设置日志级别
 LOGGER_LEVEL=${LOGGER_LEVEL:-debug}
 
 for file in /ptools/supervisor/product/*.ini; do
   sed -i "s/-l INFO/-l $LOGGER_LEVEL/g" "$file"
+  sed -i "s/--port=5566/--port=$REDIS_SERVER_PORT/g" "$file"
 done
 
 if [ ! -e $CONTAINER_ALREADY_STARTED ]; then

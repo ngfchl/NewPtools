@@ -13,41 +13,29 @@ ENV LOGGER_LEVEL="INFO"
 ENV MYSQL_CONNECTION=
 
 # 写入pip国内源
-COPY pip.conf /root/.pip/pip.conf
+# COPY ./pip.conf /root/.pip/pip.conf
 
-RUN mkdir -p /ptools
+RUN mkdir -p /ptools/db
 WORKDIR /ptools
 ADD . /ptools
-# 更新pip版本，更换USTC源，并安装git
-RUN sed -i 's/deb.debian.org/mirrors.ustc.edu.cn/g' /etc/apt/sources.list
-RUN apt update && apt install gcc gettext-base nginx redis git curl python3 python3-dev python3-pip jq mysql-common mariadb-common libmariadb-dev-compat libmariadb-dev libmariadb3 default-libmysqlclient-dev -y \
-   && python3 -m pip install --upgrade pip && pip install -r requirements.txt --no-cache-dir && apt autoremove gcc -y && apt-get autoclean && rm -rf /var/lib/apt/lists/* && rm -rf /root/.cache/pip
-
-#RUN sed -i 's/dl-cdn.alpinelinux.org/mirrors.aliyun.com/g' /etc/apk/repositories
-#RUN apk add --no-cache \
-#    python3 \
-#    python3-dev \
-#    curl \
-#    git \
-#    mariadb-dev \
-#    mariadb-connector-c \
-#    py3-pip \
-#    bash \
-#    jq \
-#    gettext \
-#    mysql-dev \
-#    mysql-client \
-#    mariadb-connector-c-dev  \
-#    gcc musl-dev \
-#    && python3 -m pip install --upgrade pip \
-#    && pip install --ignore-installed -r requirements.txt --no-cache-dir \
-#    && apk del gcc musl-dev
-
-
 # 给start.sh可执行权限，并安装依赖
-RUN chmod +x /ptools/start.sh && rm -rf /ptools/db/* && rm -rf /etc/nginx/conf.d/*
+RUN chmod +x /ptools/start.sh /ptools/cfst_hosts.sh \
+    && chmod +x ./CloudflareST_linux_amd64/CloudflareST  \
+    && chmod +x ./CloudflareST_linux_arm64/CloudflareST  \
+    && rm -rf /ptools/db/* && rm -rf /etc/nginx/conf.d/*
 
 COPY ./nginx/nginx.conf /etc/nginx/conf.d/default.conf.template
+# 更新pip版本，更换USTC源，并安装git
+RUN sed -i 's/deb.debian.org/mirrors.ustc.edu.cn/g' /etc/apt/sources.list \
+    && apt update \
+    && apt install gcc gettext-base nginx redis git curl \
+    python3 python3-dev python3-pip jq mysql-common \
+    mariadb-common libmariadb-dev-compat libmariadb-dev \
+    libmariadb3 default-libmysqlclient-dev -y \
+    && pip config set global.index-url https://pypi.douban.com/simple/ \
+    && pip install --upgrade pip &&  pip install -r requirements.txt --no-cache-dir \
+    && apt autoremove gcc python3-dev -y && apt-get autoclean && rm -rf /var/lib/apt/lists/* \
+    && rm -rf /root/.cache/pip
 
 # 暴露数据库文件夹
 VOLUME ["/ptools/db", "/ptools/logs"]

@@ -1,7 +1,9 @@
 /db/*
 /logs/*
+/deploy/
 celerybeat-schedule
 supervisor/supervisord.pid
 supervisor/supervisord.sock
 .idea/*
 */tests.py
+/deploy/

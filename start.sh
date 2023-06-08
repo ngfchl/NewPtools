@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 
 if [ -z "$TOKEN" ]; then
   echo "Authorization failed: No TOKEN received. Exiting..."
@@ -8,25 +8,40 @@ fi
 CONTAINER_ALREADY_STARTED="CONTAINER_ALREADY_STARTED_PLACEHOLDER"
 # Get authorization response
 AUTH_RESPONSE=$(curl -s -G -d "token=$TOKEN&email=$DJANGO_SUPERUSER_EMAIL" http://api.ptools.fun/neice/check)
-echo $AUTH_RESPONSE
+echo "$AUTH_RESPONSE"
 # Extract 'code' from the response
-AUTH_CODE=$(echo $AUTH_RESPONSE | jq -r '.code')
-echo $AUTH_CODE
+AUTH_CODE=$(echo "$AUTH_RESPONSE" | jq -r '.code')
+echo "$AUTH_CODE"
 if [ -z "$AUTH_CODE" ]; then
   echo "Authorization failed: No AUTH_CODE received.  Exiting..."
   exit 1
-elif [ $AUTH_CODE -ne 0 ]; then
+elif [ "$AUTH_CODE" -ne 0 ]; then
   echo "Authorization failed. Exiting..."
   exit 1
 fi
+
+if [ ! -f db/hosts ]; then
+  echo "未自定义HOSTS，默认写入"
+  echo 172.64.153.252 u2.dmhy.org >>/etc/hosts
+  echo 104.25.26.31 u2.dmhy.org >>/etc/hosts
+  echo 104.25.61.106 u2.dmhy.org >>/etc/hosts
+  echo 104.25.62.106 u2.dmhy.org >>/etc/hosts
+  echo 172.67.98.15 u2.dmhy.org >>/etc/hosts
+else
+  echo '存在自定义HOSTS文件，apply'
+  ./cfst_hosts.sh
+  cp -f /ptools/db/hosts /etc/hosts
+fi
+
+cd /ptools
 # 替换nginx配置文件
-envsubst '\$DJANGO_WEB_PORT' < /etc/nginx/conf.d/default.conf.template > /etc/nginx/conf.d/default.conf
+envsubst "\$DJANGO_WEB_PORT" </etc/nginx/conf.d/default.conf.template >/etc/nginx/conf.d/default.conf
 
 # 设置日志级别
 LOGGER_LEVEL=${LOGGER_LEVEL:-debug}
 
-for file in /ptools/supervisor/product/*.conf; do
-    sed -i "s/-l INFO/-l $LOGGER_LEVEL/g" $file
+for file in /ptools/supervisor/product/*.ini; do
+  sed -i "s/-l INFO/-l $LOGGER_LEVEL/g" "$file"
 done
 
 if [ ! -e $CONTAINER_ALREADY_STARTED ]; then
@@ -48,6 +63,6 @@ fi
 echo "启动服务"
 python3 manage.py migrate
 supervisord -c supervisor/prod.conf
-#uvicorn auxiliary.asgi:application --reload --host 0.0.0.0 --port $DJANGO_WEB_PORT
+uvicorn auxiliary.asgi:application --reload --host 0.0.0.0 --port "$DJANGO_WEB_PORT"
 # 后台内容完全转移到前端之前，先使用runserver
-python3 manage.py runserver 0.0.0.0:$DJANGO_WEB_PORT
+#python3 manage.py runserver 0.0.0.0:"$DJANGO_WEB_PORT"

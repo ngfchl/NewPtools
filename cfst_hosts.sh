@@ -10,12 +10,12 @@ export PATH
 
 _CHECK() {
   while true; do
-    if [[ ! -e "nowip_hosts.txt" ]]; then
+    if [[ ! -e "/ptools/db/nowip_hosts.txt" ]]; then
       echo -e "该脚本的作用为 CloudflareST 测速后获取最快 IP 并替换 Hosts 中的 Cloudflare CDN IP。\n使用前请先阅读：https://github.com/XIU2/CloudflareSpeedTest/issues/42#issuecomment-768273848"
       echo -e "第一次使用，请先将 Hosts 中所有 Cloudflare CDN IP 统一改为一个 IP。"
       read -e -p "输入该 Cloudflare CDN IP 并回车（后续不再需要该步骤）：" NOWIP
       if [[ ! -z "${NOWIP}" ]]; then
-        echo ${NOWIP} >nowip_hosts.txt
+        echo ${NOWIP} >/ptools/db/nowip_hosts.txt
         break
       else
         echo "该 IP 不能是空！"
@@ -28,7 +28,7 @@ _CHECK() {
 
 _UPDATE() {
   echo -e "开始测速..."
-  NOWIP=$(head -1 nowip_hosts.txt)
+  NOWIP=$(head -1 /ptools/db/nowip_hosts.txt)
   # 检测CPU
   ARCH=$(uname -m)
   echo $ARCH
@@ -60,6 +60,7 @@ _UPDATE() {
 
   echo -e "开始替换..."
   sed -i 's/'${NOWIP}'/'${BESTIP}'/g' /ptools/db/hosts
+  cp -f /ptools/db/hosts /etc/hosts
   echo -e "完成..."
 }
 

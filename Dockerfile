@@ -7,6 +7,8 @@ ENV DJANGO_SUPERUSER_USERNAME=admin
 ENV DJANGO_SUPERUSER_EMAIL=admin@eamil.com
 ENV DJANGO_SUPERUSER_PASSWORD=adminadmin
 ENV DJANGO_WEB_PORT=8000
+ENV FLOWER_UI_PORT=5566
+ENV SUPERVISOR_UI_PORT=9001
 ENV CELERY_REDIS_CONNECTION="redis://127.0.0.1:6379/10"
 ENV CACHE_REDIS_CONNECTION="redis://127.0.0.1:6379/11"
 ENV LOGGER_LEVEL="INFO"
@@ -26,13 +28,22 @@ RUN chmod +x /ptools/start.sh /ptools/cfst_hosts.sh \
 
 COPY ./nginx/nginx.conf /etc/nginx/conf.d/default.conf.template
 # 更新pip版本，更换USTC源，并安装git
-RUN sed -i 's/deb.debian.org/mirrors.ustc.edu.cn/g' /etc/apt/sources.list \
-    && apt update \
+#RUN sed -i 's/deb.debian.org/mirrors.ustc.edu.cn/g' /etc/apt/sources.list \
+#    && apt update \
+#    && apt install gcc gettext-base nginx redis git curl \
+#    python3 python3-dev python3-pip jq mysql-common \
+#    mariadb-common libmariadb-dev-compat libmariadb-dev \
+#    libmariadb3 default-libmysqlclient-dev -y \
+#    && pip config set global.index-url https://pypi.douban.com/simple/ \
+#    && pip install --upgrade pip &&  pip install -r requirements.txt --no-cache-dir \
+#    && apt autoremove gcc python3-dev -y && apt-get autoclean && rm -rf /var/lib/apt/lists/* \
+#    && rm -rf /root/.cache/pip \
+
+RUN apt update \
     && apt install gcc gettext-base nginx redis git curl \
     python3 python3-dev python3-pip jq mysql-common \
     mariadb-common libmariadb-dev-compat libmariadb-dev \
     libmariadb3 default-libmysqlclient-dev -y \
-    && pip config set global.index-url https://pypi.douban.com/simple/ \
     && pip install --upgrade pip &&  pip install -r requirements.txt --no-cache-dir \
     && apt autoremove gcc python3-dev -y && apt-get autoclean && rm -rf /var/lib/apt/lists/* \
     && rm -rf /root/.cache/pip

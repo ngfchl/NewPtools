@@ -804,6 +804,17 @@ def remove_torrent_by_site_rules(my_site: MySite):
             else:
                 torrent = torrent[0]
             prop = client.torrents_properties(torrent_hash=hash_string)
+            # 排除关键字命中，
+            delete_flag = False
+            if rules.get('exclude'):
+                for rule in rules.get('exclude'):
+                    if torrent.title.find(rule) > 0:
+                        delete_flag = True
+                        break
+                logger.info(f"{my_site.nickname} {torrent.tid} 排除关键字命中：{delete_flag}")
+            if delete_flag:
+                # 遇到要排除的关键字的种子，直接跳过，不再继续执行删种
+                continue
             # 免费到期检测
             if not torrent_info.sale_expire:
                 logger.info(f'{torrent_info.title} 免费过期时间：{torrent_info.sale_expire}')

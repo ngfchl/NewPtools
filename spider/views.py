@@ -754,7 +754,7 @@ class PtSpider:
                 else:
                     return CommonResponse.error(msg='签到失败！')
             if site.url in [
-                # 'https://wintersakura.net/'
+                'https://wintersakura.net/',
                 'https://hudbt.hust.edu.cn/',
             ]:
                 # 单独发送请求，解决冬樱签到问题
@@ -851,8 +851,8 @@ class PtSpider:
                 logger.debug(f'{my_site.nickname}: 签到信息：{content_parse}')
                 title = ''.join(title_parse).strip()
                 content = ''.join(content_parse).strip().replace('\n', '')
-                message = title + '，' + content
-                logger.info(f'{my_site} 签到返回信息：{message}')
+                message = f'{my_site} 签到返回信息：{title} {content}'
+                logger.info(message)
                 if len(message) <= 1:
                     message = f'{datetime.today().strftime("%Y-%m-%d %H:%M:%S")}打卡成功！'
                 # message = ''.join(title).strip()
@@ -960,7 +960,7 @@ class PtSpider:
                 if site.url in [
                     'https://hdchina.org/',
                     'https://hudbt.hust.edu.cn/',
-                    # 'https://wintersakura.net/',
+                    'https://wintersakura.net/',
                 ]:
                     # 单独发送请求，解决冬樱签到问题
                     message_res = requests.get(url=f'{site.url}{site.page_message}', verify=False,
@@ -1011,7 +1011,7 @@ class PtSpider:
                     if site.url in [
                         'https://hdchina.org/',
                         'https://hudbt.hust.edu.cn/',
-                        # 'https://wintersakura.net/',
+                        'https://wintersakura.net/',
                     ]:
                         # 单独发送请求，解决冬樱签到问题
                         notice_res = requests.get(url=f'{site.url}{site.page_index}', verify=False,
@@ -1057,7 +1057,7 @@ class PtSpider:
         if site.url in [
             'https://hdchina.org/',
             'https://hudbt.hust.edu.cn/',
-            # 'https://wintersakura.net/',
+            'https://wintersakura.net/',
         ]:
             # 单独发送请求，解决冬樱签到问题
             user_detail_res = requests.get(url=user_detail_url, verify=False,
@@ -1174,9 +1174,10 @@ class PtSpider:
             logger.debug(f'白兔做种信息：{seeding_html}')
         else:
             if site.url in [
-                # 'https://wintersakura.net/'
+                'https://wintersakura.net/',
                 'https://hudbt.hust.edu.cn/',
             ]:
+                print(f"{site.name} 开始签到")
                 # 单独发送请求，解决冬樱签到问题
                 seeding_detail_res = requests.get(url=seeding_detail_url, verify=False,
                                                   cookies=toolbox.cookie2dict(my_site.cookie),
@@ -1242,7 +1243,7 @@ class PtSpider:
             if site.url in [
                 'https://hdchina.org/',
                 'https://hudbt.hust.edu.cn/',
-                # 'https://wintersakura.net/',
+                'https://wintersakura.net/',
             ]:
                 headers = {
                     'user-agent': my_site.user_agent
@@ -1265,18 +1266,18 @@ class PtSpider:
                 bonus_msg = f'时魔获取失败!'
                 err_msg.append(bonus_msg)
                 logger.warning(f'{my_site.nickname} {bonus_msg}')
+            # 发送请求，请求做种信息页面
+            seeding_html = self.get_seeding_html(my_site, headers=headers, details_html=details_html.data)
+            if seeding_html.code != 0:
+                seeding_msg = f'做种页面访问失败!'
+                err_msg.append(seeding_msg)
+                logger.warning(f'{my_site.nickname} {seeding_msg}')
             # 请求邮件页面，直接推送通知到手机
             if site.url not in [
                 'https://dicmusic.club/',
                 'https://greatposterwall.com/',
                 'https://zhuque.in/',
             ]:
-                # 发送请求，请求做种信息页面
-                seeding_html = self.get_seeding_html(my_site, headers=headers, details_html=details_html.data)
-                if seeding_html.code != 0:
-                    seeding_msg = f'做种页面访问失败!'
-                    err_msg.append(seeding_msg)
-                    logger.warning(f'{my_site.nickname} {seeding_msg}')
                 if details_html.code == 0:
                     self.get_mail_info(my_site, details_html.data, header=headers)
                     # 请求公告信息，直接推送通知到手机
@@ -1820,7 +1821,7 @@ class PtSpider:
                 if site.url in [
                     'https://hdchina.org/',
                     'https://hudbt.hust.edu.cn/',
-                    # 'https://wintersakura.net/',
+                    'https://wintersakura.net/',
                 ]:
                     # 单独发送请求，解决冬樱签到问题
                     response = requests.get(url=url, verify=False,

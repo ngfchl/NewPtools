@@ -27,6 +27,8 @@ if [ ! -f db/hosts ]; then
   echo 104.25.61.106 u2.dmhy.org >>/etc/hosts
   echo 104.25.62.106 u2.dmhy.org >>/etc/hosts
   echo 172.67.98.15 u2.dmhy.org >>/etc/hosts
+  # 写入冬樱HOSTS信息
+  echo 69.197.140.137 wintersakura.net >>/etc/hosts
 else
   echo '存在自定义HOSTS文件，apply'
   ./cfst_hosts.sh

@@ -77,7 +77,6 @@
 // @match        https://cyanbug.net/*
 // @match        https://ptsbao.club/*
 // @match        https://greatposterwall.com/*
-// @match        https://dicmusic.club/*
 // @match        https://gainbound.net/*
 // @match        http://hdzone.me/*
 // @match        https://www.pttime.org/*
@@ -107,8 +106,9 @@
 // @match        https://hd-torrents.org/*
 // @match        https://fsm.name/*
 // @match        https://dajiao.cyou/*
-// @match        https://zhuque.in/*
 // @match        https://hudbt.hust.edu.cn/*
+//// @match        https://zhuque.in/*
+//// @match        https://dicmusic.club/*
 
 // @version      0.0.5
 // @grant        GM_xmlhttpRequest
@@ -395,29 +395,18 @@ async function showDownloaders(downloaders, flag) {
  */
 async function main() {
     var wrap = document.createElement("div");
-    var img_url = `${ptools}static/logo.png`;
+
     var drag = {active: false, offset: {x: 0, y: 0}};
 
     var first = document.body.firstChild;
-    GM_xmlhttpRequest({
-        method: "GET",
-        url: img_url,
-        responseType: "blob",
-        onload: function (response) {
-            var reader = new FileReader();
-            reader.onloadend = function () {
-                wrap.innerHTML = `<img src="${reader.result}" style="width: 100%;"><br>
-                <div class="btn-group-vertical btn-block action">
+
+    wrap.innerHTML = `<img src="https://api.r10086.com/%E6%A8%B1%E9%81%93%E9%9A%8F%E6%9C%BA%E5%9B%BE%E7%89%87api%E6%8E%A5%E5%8F%A3.php?%E5%9B%BE%E7%89%87%E7%B3%BB%E5%88%97=%E7%8C%AB%E5%A8%981" style="width: 100%;"><br>
+    <div class="btn-group-vertical btn-block action">
                 <button type="button" class="btn btn-outline-warning btn-sm btn-block text-nowrap" style="font-size: 12px;" id="sync_cookie">同步Cookie</button>
                 <button type="button" class="btn btn-outline-warning btn-sm btn-block text-nowrap" style="font-size: 12px;" id="copy_link">复制链接</button>
                 </div>`;
-            }
-            reader.readAsDataURL(response.response);
-        }
-    });
-
     wrap.className = 'wrap'
-    var wraphtml = document.body.insertBefore(wrap, first);
+    document.body.insertBefore(wrap, first);
 
     wrap.addEventListener('mousedown', function (event) {
         drag.active = true;

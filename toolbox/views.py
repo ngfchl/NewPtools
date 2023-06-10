@@ -198,7 +198,7 @@ def verify_token():
         result = subprocess.run(['supervisorctl', 'shutdown'], check=True, text=True, capture_output=True)
         logger.debug(f'Successfully executed command: {result.stdout}')
         return '您的软件未经授权，如果您喜欢本软件，欢迎付费购买授权或申请临时授权。'
-    res = requests.get('http://api.ptools.fun/ad', params=token)
+    res = requests.get('http://api.ptools.fun/neice/check', params=token)
     if res.status_code == 200 and res.json().get('code') == 0:
         return res.json().get('msg')
     else:

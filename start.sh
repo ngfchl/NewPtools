@@ -20,7 +20,7 @@ elif [ "$AUTH_CODE" -ne 0 ]; then
   exit 1
 fi
 
-if [ ! -f db/hosts ] && [ ! -f db/nowip_hosts.txt ]; then
+if [ ! -f db/hosts ] || [ ! -f db/nowip_hosts.txt ]; then
   echo "HOSTS文件不存在，写入默认"
   #  echo 172.64.153.252 u2.dmhy.org >>/etc/hosts
   #  echo 104.25.26.31 u2.dmhy.org >>/etc/hosts

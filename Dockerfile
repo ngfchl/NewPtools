@@ -45,7 +45,7 @@ RUN sed -i 's/deb.debian.org/mirrors.ustc.edu.cn/g' /etc/apt/sources.list \
 #    libmariadb3 default-libmysqlclient-dev -y \
 #    && pip install --upgrade pip &&  pip install -r requirements.txt --no-cache-dir \
 #    && apt autoremove gcc python3-dev -y && apt-get autoclean && rm -rf /var/lib/apt/lists/* \
-#    && rm -rf /root/.cache/pip && sed -i 's/deb.debian.org/mirrors.ustc.edu.cn/g' /etc/apt/sources.list
+#    && rm -rf /root/.cache/pip && pip config set global.index-url https://pypi.douban.com/simple/ && sed -i 's/deb.debian.org/mirrors.ustc.edu.cn/g' /etc/apt/sources.list
 
 # 暴露数据库文件夹
 VOLUME ["/ptools/db", "/ptools/logs"]

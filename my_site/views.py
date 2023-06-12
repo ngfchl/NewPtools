@@ -1,6 +1,6 @@
 import logging
 import traceback
-from typing import List, Union
+from typing import Union
 
 from django.core.paginator import Paginator
 from django.db import IntegrityError
@@ -552,6 +552,46 @@ def update_torrents(request):
         logger.error(f'抓取种子失败：{e}')
         logger.error(traceback.format_exc(limit=3))
         return CommonResponse.error(msg=f'抓取种子失败：{e}')
+
+
+@router.post('/search', response=CommonResponse[Optional[SearchResultSchema]], description='聚合搜索')
+def search(request, key: str, site_list: List[int] = []):
+    try:
+        from schedule.tasks import pool
+        my_site_list = MySite.objects.filter(id__in=site_list, search_torrents=True) if len(
+            site_list) > 0 else MySite.objects.filter(search_torrents=True)
+        print(my_site_list)
+        params = [(my_site, key) for my_site in my_site_list]
+        results = pool.starmap(pt_spider.search_torrents, params)
+        search_result = {
+            "results": [],
+            "warning": [],
+            "error": []
+        }
+        for result, my_site in zip(results, my_site_list):
+            if result.code == 0:
+                res = pt_spider.parse_search_result(my_site, result.data)
+                if res.code == 0:
+                    if len(res.data) > 0:
+                        search_result['results'].extend(res.data)
+                    else:
+                        msg = f'{my_site.nickname} 无结果！'
+                        logger.error(msg)
+                        search_result['warning'].append(msg)
+                else:
+                    msg = f'{my_site.nickname} 搜索出错啦！{result.msg}'
+                    logger.error(msg)
+                    search_result['error'].append(msg)
+            else:
+                msg = f'{my_site.nickname} 搜索出错啦！{result.msg}'
+                logger.error(msg)
+                search_result['error'].append(msg)
+            print(search_result)
+        return CommonResponse.success(data=search_result)
+    except Exception as e:
+        msg = f'搜索功能出错了？{traceback.format_exc(3)}'
+        logger.error(msg)
+        return CommonResponse.error(msg=msg)
 
 
 @router.get('/test/send_sms/{mobile}', response=CommonResponse, description='站点排序')

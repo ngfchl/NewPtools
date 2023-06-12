@@ -29,7 +29,7 @@ COPY ./nginx/nginx.conf /etc/nginx/conf.d/default.conf.template
 # 更新pip版本，更换USTC源，并安装git
 RUN sed -i 's/deb.debian.org/mirrors.ustc.edu.cn/g' /etc/apt/sources.list \
     && apt update \
-    && apt install gcc gettext-base nginx redis git curl \
+    && apt install gcc gettext-base redis git curl \
     python3 python3-dev python3-pip jq mysql-common \
     mariadb-common libmariadb-dev-compat libmariadb-dev \
     libmariadb3 default-libmysqlclient-dev -y \

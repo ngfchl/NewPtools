@@ -45,7 +45,7 @@ LOGGER_LEVEL=${LOGGER_LEVEL:-debug}
 
 for file in /ptools/supervisor/product/*.ini; do
   sed -i "s/-l INFO/-l $LOGGER_LEVEL/g" "$file"
-  sed -i "s/--port=5566/--port=$REDIS_SERVER_PORT/g" "$file"
+  sed -i "s/--port=5566/--port=$FLOWER_UI_PORT/g" "$file"
 done
 
 if [ ! -e $CONTAINER_ALREADY_STARTED ]; then

@@ -555,9 +555,11 @@ def update_torrents(request):
 
 
 @router.post('/search', response=CommonResponse[Optional[SearchResultSchema]], description='聚合搜索')
-def search(request, key: str, site_list: List[int] = []):
+def search(request, params: SearchParamsSchema):
     try:
         from schedule.tasks import pool
+        key = params.key
+        site_list = params.site_list
         my_site_list = MySite.objects.filter(id__in=site_list, search_torrents=True) if len(
             site_list) > 0 else MySite.objects.filter(search_torrents=True)
         print(my_site_list)

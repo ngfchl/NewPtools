@@ -207,3 +207,8 @@ class SearchResultSchema(Schema):
     results: List[SearchTorrentSchema]
     warning: List[str]
     error: List[str]
+
+
+class SearchParamsSchema(Schema):
+    key: str
+    site_list: List[int] = []

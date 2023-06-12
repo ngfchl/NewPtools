@@ -191,6 +191,7 @@ class SearchTorrentSchema(Schema):
     category: str
     magnet_url: str
     detail_url: str
+    poster_url: str
     title: str
     subtitle: Optional[str]
     sale_status: Optional[str]

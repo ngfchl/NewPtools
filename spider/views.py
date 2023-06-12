@@ -2043,14 +2043,15 @@ class PtSpider:
                     logger.debug(file_parse_size)
                     file_size = toolbox.FileSizeConvert.parse_2_byte(file_parse_size)
                     # subtitle = subtitle if subtitle else title
-                    # poster_url = ''.join(tr.xpath(site.torrent_poster_rule))  # 海报链接
+                    poster_url = ''.join(tr.xpath(site.torrent_poster_rule))  # 海报链接
                     logger.debug(f'title：{title}\n size: {file_size}\n category：{category}\n '
                                  f'magnet_url：{magnet_url}\n subtitle：{subtitle}\n sale_status：{sale_status}\n '
                                  f'sale_expire：{sale_expire}\n seeders：{seeders}\n leechers：{leechers}\n'
                                  f'H&R：{hr}\n completers：{completers}')
                     torrent = {
-                        'site': my_site.id,
+                        'site': my_site.site,
                         'tid': tid,
+                        'poster_url': poster_url,
                         'category': category,
                         'magnet_url': magnet_url,
                         'detail_url': f'{site.url}{site.page_detail.format(tid)}',

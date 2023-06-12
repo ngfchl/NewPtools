@@ -38,7 +38,7 @@ def get_mysite(request, mysite_id: int):
 @router.post('/mysite', response=CommonResponse, description='我的站点-添加')
 def add_mysite(request, my_site_params: MySiteSchemaIn):
     try:
-        if not my_site_params.site or not my_site_params.nickname:
+        if not my_site_params.site:
             return CommonResponse.error(msg=f'{my_site_params.nickname} 保存失败，请先完成必填项')
         logger.info(f'开始处理：{my_site_params.nickname}')
         logger.info(my_site_params)

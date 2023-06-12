@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Optional, List
 
 from ninja import ModelSchema, Schema
 
@@ -183,3 +183,27 @@ class ImportSchema(Schema):
     info: str
     cookies: str
     # userdata: str
+
+
+class SearchTorrentSchema(Schema):
+    site: int
+    tid: int
+    category: str
+    magnet_url: str
+    detail_url: str
+    title: str
+    subtitle: Optional[str]
+    sale_status: Optional[str]
+    sale_expire: Optional[str]
+    hr: bool
+    published: str
+    size: int
+    seeders: int
+    leechers: int
+    completers: int
+
+
+class SearchResultSchema(Schema):
+    results: List[SearchTorrentSchema]
+    warning: List[str]
+    error: List[str]

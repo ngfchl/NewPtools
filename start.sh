@@ -34,7 +34,13 @@ if [ ! -f db/hosts ] || [ ! -f db/nowip_hosts.txt ]; then
 else
   echo '存在自定义HOSTS文件，apply'
 fi
-./cfst_hosts.sh
+if [ "$CloudFlareSpeedTest" = "true" ]; then
+  echo "启动测速..."
+  # 在这里添加您启动测速的命令
+  ./cfst_hosts.sh
+else
+  echo "跳过测速."
+fi
 
 cd /ptools
 # 替换nginx配置文件

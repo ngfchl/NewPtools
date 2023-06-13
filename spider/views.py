@@ -1960,9 +1960,7 @@ class PtSpider:
                     # logger.debug(etree.tostring(tr))
                     sale_status = ''.join(tr.xpath(site.torrent_sale_rule))
                     logger.debug('sale_status: {}'.format(sale_status))
-                    # 打开免费种刷流时，非免费种子跳过
-                    if my_site.brush_free and not sale_status:
-                        logger.debug('非免费种子跳过')
+
                     title_list = tr.xpath(site.torrent_subtitle_rule)
                     logger.debug(title_list)
                     subtitle = ''.join(title_list).strip('剩余时间：').strip('剩餘時間：').replace(

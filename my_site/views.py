@@ -557,22 +557,24 @@ def update_torrents(request):
 @router.post('/search', response=CommonResponse[Optional[SearchResultSchema]], description='聚合搜索')
 def search(request, params: SearchParamsSchema):
     try:
+        print(params)
         from schedule.tasks import pool
         key = params.key
         site_list = params.site_list
         my_site_list = MySite.objects.filter(id__in=site_list, search_torrents=True) if len(
             site_list) > 0 else MySite.objects.filter(search_torrents=True)
         print(my_site_list)
-        params = [(my_site, key) for my_site in my_site_list]
-        results = pool.starmap(pt_spider.search_torrents, params)
+        param_list = [(my_site, key) for my_site in my_site_list]
+        # results = pool.starmap(pt_spider.search_torrents, params)
         search_result = {
             "results": [],
             "warning": [],
             "error": []
         }
-        for result, my_site in zip(results, my_site_list):
+        for result in pool.imap_unordered(lambda p: pt_spider.search_torrents(*p), param_list):
             if result.code == 0:
-                res = pt_spider.parse_search_result(my_site, result.data)
+                my_site, response = result.data
+                res = pt_spider.parse_search_result(my_site, response)
                 if res.code == 0:
                     if len(res.data) > 0:
                         search_result['results'].extend(res.data)
@@ -586,7 +588,6 @@ def search(request, params: SearchParamsSchema):
                     search_result['error'].append(msg)
             else:
                 msg = f'{my_site.nickname} 搜索出错啦！{result.msg}'
-                logger.error(msg)
                 search_result['error'].append(msg)
             print(search_result)
         return CommonResponse.success(data=search_result)

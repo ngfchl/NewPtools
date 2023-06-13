@@ -29,7 +29,10 @@ def get_mysite_list(request):
 @router.get('/mysite/get', response=CommonResponse[Optional[MySiteSchemaEdit]], description='我的站点-单个')
 def get_mysite(request, mysite_id: int):
     try:
-        return CommonResponse.success(data=MySite.objects.get(id=mysite_id))
+        my_site = MySite.objects.get(id=mysite_id)
+        print(my_site.downloader)
+        print(my_site.downloader_id)
+        return CommonResponse.success(data=my_site)
     except Exception as e:
         print(e)
         return CommonResponse.error(msg='没有这个站点的信息哦')
@@ -43,8 +46,18 @@ def add_mysite(request, my_site_params: MySiteSchemaIn):
         logger.info(f'开始处理：{my_site_params.nickname}')
         logger.info(my_site_params)
         my_site_params.id = None
+
         params = my_site_params.dict()
         del params['joined']
+        if not my_site_params.nickname:
+            site = get_object_or_404(WebSite, id=my_site_params.site)
+            params.update({
+                "nickname": site.name
+            })
+        params.update({
+            "downloader": get_object_or_404(Downloader,
+                                            id=my_site_params.downloader_id) if my_site_params.downloader_id else None
+        })
         print(params)
         my_site = MySite.objects.create(**params)
         if my_site:
@@ -62,11 +75,17 @@ def add_mysite(request, my_site_params: MySiteSchemaIn):
 
 
 @router.put('/mysite', response=CommonResponse, description='我的站点-更新')
-async def edit_mysite(request, my_site_params: MySiteSchemaEdit):
+def edit_mysite(request, my_site_params: MySiteSchemaIn):
     try:
         logger.info(f'开始更新：{my_site_params.nickname}')
         print(my_site_params)
-        my_site_res = await MySite.objects.filter(id=my_site_params.id).aupdate(**my_site_params.dict())
+        params = my_site_params.dict()
+        downloader = get_object_or_404(Downloader, id=my_site_params.downloader) if my_site_params.downloader else None
+        print(downloader)
+        params.update({
+            "downloader": downloader
+        })
+        my_site_res = MySite.objects.filter(id=my_site_params.id).update(**my_site_params.dict())
         if my_site_res > 0:
             logger.info(f'处理完毕：{my_site_params.nickname}，成功处理 {my_site_res} 条数据！')
             return CommonResponse.success(

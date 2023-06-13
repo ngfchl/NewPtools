@@ -1,4 +1,4 @@
-from typing import Optional, List
+from typing import Optional, List, Union
 
 from ninja import ModelSchema, Schema
 
@@ -55,20 +55,19 @@ class MySiteSchemaIn(Schema):
     repeat_torrents: bool
     hr_discern: bool
     search_torrents: bool
-    user_id: str
-    joined: str
+    user_id: Union[str, int]
     user_agent: str
     cookie: str
     rss: Optional[str]
     torrents: Optional[str]
     custom_server: Optional[str]
-    downloader_id: Optional[int]
+    downloader: Optional[int]
     remove_torrent_rules: Optional[str]
 
 
 class MySiteSchemaEdit(ModelSchema):
     # site: create_schema(WebSite, fields=['id', 'name'])
-    downloader_id: Optional[int]
+    # downloader_id: Optional[int]
 
     # id: Optional[int]
     # sort_id: int
@@ -92,12 +91,12 @@ class MySiteSchemaEdit(ModelSchema):
     # custom_server: Optional[str]
     # remove_torrent_rules: Optional[str]
 
-    def resolve_downloader_id(self, obj):
-        if not obj.downloader_id:
-            if self.downloader:
-                return self.downloader.id
-            else:
-                return None
+    # def resolve_downloader_id(self, obj):
+    #     if not obj.downloader_id:
+    #         if self.downloader:
+    #             return self.downloader.id
+    #         else:
+    #             return None
 
     class Config:
         model = MySite

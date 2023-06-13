@@ -49,8 +49,13 @@ INSTALLED_APPS = [
     "download",
     "django_celery_beat",
     "django_celery_results",
+    "channels",
 ]
-
+CHANNEL_LAYERS = {
+    'default': {
+        'BACKEND': 'channels.layers.InMemoryChannelLayer'
+    }
+}
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",

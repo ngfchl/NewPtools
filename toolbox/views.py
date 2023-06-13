@@ -58,7 +58,7 @@ def cookie2dict(source_str: str) -> dict:
         if len(i) <= 0:
             continue
         list2 = i.split('=', 1)
-        dist_dict[list2[0]] = list2[1]
+        dist_dict[list2[0].strip()] = list2[1].strip()
     return dist_dict
 
 

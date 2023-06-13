@@ -8,6 +8,7 @@ from channels.generic.websocket import AsyncWebsocketConsumer
 
 from my_site.models import MySite
 from spider.views import PtSpider
+from toolbox.schema import CommonResponse
 from ws.views import search_and_parse_torrents
 
 pt_spider = PtSpider()
@@ -36,6 +37,8 @@ class ProgressConsumer(AsyncWebsocketConsumer):
         key = text_data_json['key']
         site_list = text_data_json['site_list']
         my_site_list = await self.get_my_site_list(site_list)  # Use the async function
+        if len(my_site_list) <= 0:
+            await self.send(text_data=json.dumps(CommonResponse.error(msg='没有站点可以搜索！').to_dict()))
         tasks = [search_and_parse_torrents(my_site, key) for my_site in my_site_list]
 
         for completed_future in asyncio.as_completed(tasks):
@@ -45,7 +48,7 @@ class ProgressConsumer(AsyncWebsocketConsumer):
             else:
                 logger.warning(result.msg)
             await self.send(text_data=json.dumps(result.to_dict()))
- 
+
     @database_sync_to_async
     def get_my_site_list(self, site_list):  # This is a synchronous function
         return list(MySite.objects.filter(id__in=site_list, search_torrents=True) if len(

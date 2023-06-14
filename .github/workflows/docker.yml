@@ -4,7 +4,7 @@ on:
     workflow_dispatch:
 
 jobs:
-  bgmi:
+  ptools:
     runs-on: ubuntu-latest
     steps:
       - 

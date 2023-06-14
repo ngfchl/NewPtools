@@ -55,8 +55,8 @@ envsubst "\$DJANGO_WEB_PORT,\$WEBUI_PORT,\$FLOWER_UI_PORT" </ptools/nginx/nginx.
 
 for file in /ptools/supervisor/product/*.ini; do
     sed -i "s/-l INFO/-l $LOGGER_LEVEL/g" "$file"
-    sed -i "s/--port 6379/--port $REDIS_SERVER_PORT/g" "$file"
 done
+sed -i "s/--port 6379/--port $REDIS_SERVER_PORT/g" /ptools/supervisor/product/redis.ini
 
 if [ ! -e $CONTAINER_ALREADY_STARTED ]; then
     INFO "First container startup"

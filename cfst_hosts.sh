@@ -33,9 +33,9 @@ _UPDATE() {
   ARCH=$(uname -m)
   echo $ARCH
   if [ "$ARCH" = "x86_64" ]; then
-    cd /ptools/CloudflareST_linux_amd64
+    cd /ptools/CloudflareST/CloudflareST_linux_amd64
   elif [ "$ARCH" = "aarch64" ]; then
-    cd /ptools/CloudflareST_linux_arm64
+    cd /ptools/CloudflareST/CloudflareST_linux_arm64
   else
     echo "Unsupported architecture: $ARCH"
   fi

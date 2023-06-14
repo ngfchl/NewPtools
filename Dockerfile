@@ -3,6 +3,7 @@ FROM python:3.9-slim-bullseye AS Prepare
 ENV PYTHONUNBUFFERED=1
 
 RUN set -ex && \
+    export DEBIAN_FRONTEND="noninteractive" && \
     apt-get update -y && \
     apt-get install -y \
         gcc \
@@ -21,9 +22,14 @@ RUN set -ex && \
 
 FROM python:3.9-slim-bullseye
 
-ENV PYTHONUNBUFFERED=1
+ENV PYTHONUNBUFFERED=1 \
+    LANGUAGE="zh_CN.UTF-8" \
+    LANG="zh_CN.UTF-8" \
+    TERM="xterm" \
+    TZ=Asia/Shanghai
 
 RUN set -ex && \
+    export DEBIAN_FRONTEND="noninteractive" && \
     apt-get update -y && \
     apt-get install -y \
         gettext-base \
@@ -33,6 +39,9 @@ RUN set -ex && \
         nginx \
         bash \
         procps \
+        locales \
+        netcat \
+        tzdata \
         mysql-common \
         mariadb-common \
         libmariadb-dev-compat \
@@ -40,6 +49,7 @@ RUN set -ex && \
         libmariadb3 \
         default-libmysqlclient-dev && \
     pip install --upgrade pip && \
+    locale-gen zh_CN.UTF-8 && \
     apt-get autoremove -y && \
     apt-get clean -y && \
     rm -rf \
@@ -51,9 +61,9 @@ COPY --from=Prepare /install /usr/local
 COPY --chmod=755 . /ptools
 WORKDIR /ptools
 
-ENV TOKEN=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6ImRkc3RvbW9AZ21haWwuY29tIiwiZXhwIjo0ODQwMDgwNjMwfQ.-zRoiXJK4A1Kw88tQeLD-TuV_g-gCuwN--NLtjgdNmk \
+ENV TOKEN= \
     DJANGO_SUPERUSER_USERNAME=admin \
-    DJANGO_SUPERUSER_EMAIL=ddstomo@gmail.com \
+    DJANGO_SUPERUSER_EMAIL=admin@email.com \
     DJANGO_SUPERUSER_PASSWORD=adminadmin \
     DJANGO_WEB_PORT=8000 \
     REDIS_SERVER_PORT=6379 \
@@ -66,3 +76,4 @@ ENV TOKEN=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6ImRkc3RvbW9AZ21haWwuY
 ENTRYPOINT [ "/ptools/entrypoint.sh" ]
 
 VOLUME ["/ptools/db", "/ptools/logs"]
+EXPOSE 80

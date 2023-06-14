@@ -1,1 +1,0 @@
-import{b as r}from"./index-a22e57c8.js";import"./vue-3732522d.js";import"./lodash-18690875.js";import"./naiveUI-5e433394.js";import"./ionicons5-ced7f89a.js";const t={};function o(e,c){return" 刷流管理 "}const s=r(t,[["render",o]]);export{s as default};

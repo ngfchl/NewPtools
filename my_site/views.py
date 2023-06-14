@@ -45,17 +45,17 @@ def add_mysite(request, my_site_params: MySiteSchemaIn):
         logger.info(f'开始处理：{my_site_params.nickname}')
         logger.info(my_site_params)
         my_site_params.id = None
-
         params = my_site_params.dict()
-        del params['joined']
+
         if not my_site_params.nickname:
             site = get_object_or_404(WebSite, id=my_site_params.site)
             params.update({
                 "nickname": site.name
             })
+        downloader = get_object_or_404(Downloader,
+                                       id=my_site_params.downloader) if my_site_params.downloader else None
         params.update({
-            "downloader": get_object_or_404(Downloader,
-                                            id=my_site_params.downloader_id) if my_site_params.downloader_id else None
+            "downloader": downloader
         })
         print(params)
         my_site = MySite.objects.create(**params)
@@ -80,7 +80,6 @@ def edit_mysite(request, my_site_params: MySiteSchemaIn):
         print(my_site_params)
         params = my_site_params.dict()
         downloader = get_object_or_404(Downloader, id=my_site_params.downloader) if my_site_params.downloader else None
-        print(downloader)
         params.update({
             "downloader": downloader
         })

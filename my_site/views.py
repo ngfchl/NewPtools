@@ -1,6 +1,5 @@
 import logging
 import traceback
-from typing import Union
 
 from django.core.paginator import Paginator
 from django.db import IntegrityError
@@ -614,6 +613,25 @@ def search(request, params: SearchParamsSchema):
         msg = f'搜索功能出错了？{traceback.format_exc(3)}'
         logger.error(msg)
         return CommonResponse.error(msg=msg)
+
+
+@router.get('/push_torrent', response=CommonResponse[Optional[SearchResultSchema]], description='聚合搜索')
+def push_torrent(request, site: int, downloader_id: int, url: str, category: str):
+    mysite = get_object_or_404(MySite, site=site)
+    website = get_object_or_404(WebSite, id=site)
+    client, downloader_category = toolbox.get_downloader_instance(downloader_id)
+    return toolbox.push_torrents_to_downloader(
+        client=client,
+        downloader_category=downloader_category,
+        urls=url,
+        category=category,
+        cookie=mysite.cookie,
+        upload_limit=website.limit_speed,
+        download_limit=150,
+        is_skip_checking=False,
+        is_paused=False,
+        use_auto_torrent_management=True,
+    )
 
 
 @router.get('/test/send_sms/{mobile}', response=CommonResponse, description='站点排序')

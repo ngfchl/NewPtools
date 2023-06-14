@@ -42,6 +42,7 @@ RUN set -ex && \
         locales \
         netcat \
         tzdata \
+        dumb-init \
         mysql-common \
         mariadb-common \
         libmariadb-dev-compat \

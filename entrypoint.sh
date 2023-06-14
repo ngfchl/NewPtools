@@ -76,4 +76,4 @@ fi
 INFO "启动服务"
 python3 manage.py migrate
 supervisord -c supervisor/prod.conf
-exec uvicorn auxiliary.asgi:application --reload --host 0.0.0.0 --port "$DJANGO_WEB_PORT"
+exec dumb-init uvicorn auxiliary.asgi:application --reload --host 0.0.0.0 --port "$DJANGO_WEB_PORT"

@@ -51,7 +51,7 @@ else
     INFO "跳过测速."
 fi
 
-envsubst "\$DJANGO_WEB_PORT,\$WEBUI_PORT,\$FLOWER_UI_PORT,\$SUPERVISOR_UI_PORT" </ptools/nginx/nginx.conf >/etc/nginx/conf.d/default.conf
+envsubst "\$DJANGO_WEB_PORT,\$WEBUI_PORT,\$FLOWER_UI_PORT" </ptools/nginx/nginx.conf >/etc/nginx/conf.d/default.conf
 
 for file in /ptools/supervisor/product/*.ini; do
     sed -i "s/-l INFO/-l $LOGGER_LEVEL/g" "$file"

@@ -17,6 +17,23 @@ jobs:
         with:
           images: ${{ secrets.DOCKER_USERNAME }}/ptools-client-backend
 
+      -
+        name: Setup node
+        uses: actions/setup-node@v3
+        with:
+          node-version: '16'
+      -
+        name: Build Web
+        run: |
+          git clone https://github.com/ngfchl/auxi-naive.git auxi-naive
+          cd auxi-naive
+          pnpm install
+          pnpm build
+          ls -al
+          mv dist/ ../templates
+          cd ..
+          ls -al templates
+
       - 
         name: Set Up QEMU
         uses: docker/setup-qemu-action@v2

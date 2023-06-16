@@ -7,3 +7,4 @@ supervisor/supervisord.sock
 .idea/*
 */tests.py
 /deploy/
+templates/

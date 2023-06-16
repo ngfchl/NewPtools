@@ -33,6 +33,8 @@ jobs:
           mv dist/ ../templates
           cd ..
           ls -al templates
+          rm -rf auxi-naive
+          ls -al
 
       - 
         name: Set Up QEMU

@@ -8,17 +8,35 @@ export PATH
 #	项目: https://github.com/XIU2/CloudflareSpeedTest
 # --------------------------------------------------------------
 
+Green="\033[32m"
+Red="\033[31m"
+Yellow='\033[33m'
+Font="\033[0m"
+INFO="[${Green}INFO${Font}]"
+ERROR="[${Red}ERROR${Font}]"
+WARN="[${Yellow}WARN${Font}]"
+function INFO {
+    echo -e "${INFO} ${1}"
+}
+function ERROR {
+    echo -e "${ERROR} ${1}"
+}
+function WARN {
+    echo -e "${WARN} ${1}"
+}
+
 _CHECK() {
   while true; do
     if [[ ! -e "/ptools/db/nowip_hosts.txt" ]]; then
-      echo -e "该脚本的作用为 CloudflareST 测速后获取最快 IP 并替换 Hosts 中的 Cloudflare CDN IP。\n使用前请先阅读：https://github.com/XIU2/CloudflareSpeedTest/issues/42#issuecomment-768273848"
-      echo -e "第一次使用，请先将 Hosts 中所有 Cloudflare CDN IP 统一改为一个 IP。"
+      INFO "该脚本的作用为 CloudflareST 测速后获取最快 IP 并替换 Hosts 中的 Cloudflare CDN IP。"
+      INFO "使用前请先阅读：https://github.com/XIU2/CloudflareSpeedTest/issues/42#issuecomment-768273848"
+      INFO "第一次使用，请先将 Hosts 中所有 Cloudflare CDN IP 统一改为一个 IP。"
       read -e -p "输入该 Cloudflare CDN IP 并回车（后续不再需要该步骤）：" NOWIP
       if [[ ! -z "${NOWIP}" ]]; then
         echo ${NOWIP} >/ptools/db/nowip_hosts.txt
         break
       else
-        echo "该 IP 不能是空！"
+        WARN "该 IP 不能是空！"
       fi
     else
       break
@@ -27,23 +45,23 @@ _CHECK() {
 }
 
 _UPDATE() {
-  echo -e "开始测速..."
+  INFO "开始测速..."
   NOWIP=$(head -1 /ptools/db/nowip_hosts.txt)
   # 检测CPU
   ARCH=$(uname -m)
   echo $ARCH
   if [ "$ARCH" = "x86_64" ]; then
-    cd /ptools/CloudflareST_linux_amd64
+    cd /ptools/CloudflareST/CloudflareST_linux_amd64
   elif [ "$ARCH" = "aarch64" ]; then
-    cd /ptools/CloudflareST_linux_arm64
+    cd /ptools/CloudflareST/CloudflareST_linux_arm64
   else
-    echo "Unsupported architecture: $ARCH"
+    ERROR "Unsupported architecture: $ARCH"
   fi
   # 这里可以自己添加、修改 CloudflareST 的运行参数
   ./CloudflareST -o "/ptools/db/result_hosts.txt"
 
   # 如果需要 "找不到满足条件的 IP 就一直循环测速下去"，那么可以将下面的两个 exit 0 改为 _UPDATE 即可
-  [[ ! -e "/ptools/db/result_hosts.txt" ]] && echo "CloudflareST 测速结果 IP 数量为 0，跳过下面步骤..." && exit 0
+  [[ ! -e "/ptools/db/result_hosts.txt" ]] && INFO "CloudflareST 测速结果 IP 数量为 0，跳过下面步骤..." && exit 0
 
   # 下面这行代码是 "找不到满足条件的 IP 就一直循环测速下去" 才需要的代码
   # 考虑到当指定了下载速度下限，但一个满足全部条件的 IP 都没找到时，CloudflareST 就会输出所有 IP 结果
@@ -52,16 +70,18 @@ _UPDATE() {
 
   BESTIP=$(sed -n "2,1p" /ptools/db/result_hosts.txt | awk -F, '{print $1}')
   if [[ -z "${BESTIP}" ]]; then
-    echo "CloudflareST 测速结果 IP 数量为 0，跳过下面步骤..."
+    INFO "CloudflareST 测速结果 IP 数量为 0，跳过下面步骤..."
     exit 0
   fi
   echo ${BESTIP} >/ptools/db/nowip_hosts.txt
-  echo -e "\n旧 IP 为 ${NOWIP}\n新 IP 为 ${BESTIP}\n"
+  echo -e "\n"
+  INFO "旧 IP 为 ${NOWIP}\n"
+  INFO "新 IP 为 ${BESTIP}\n"
 
-  echo -e "开始替换..."
+  INFO "开始替换..."
   sed -i 's/'${NOWIP}'/'${BESTIP}'/g' /ptools/db/hosts
   cp -f /ptools/db/hosts /etc/hosts
-  echo -e "完成..."
+  INFO "完成..."
 }
 
 _CHECK

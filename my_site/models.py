@@ -65,7 +65,7 @@ class SiteStatus(BaseEntity):
     ratio = models.FloatField(verbose_name='分享率', default=0)
     my_bonus = models.FloatField(verbose_name='魔力值', default=0)
     my_score = models.FloatField(verbose_name='做种积分', default=0)
-    seed_volume = models.IntegerField(verbose_name='做种体积', default=0)
+    seed_volume = models.BigIntegerField(verbose_name='做种体积', default=0)
     seed_days = models.IntegerField(verbose_name='做种时间', default=0)
     leech = models.IntegerField(verbose_name='当前下载', default=0)
     seed = models.IntegerField(verbose_name='当前做种', default=0)

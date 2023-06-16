@@ -3,6 +3,8 @@ FROM python:3.9-slim-bullseye AS Prepare
 ENV PYTHONUNBUFFERED=1
 
 RUN set -ex && \
+    sed -i 's/deb.debian.org/mirrors.ustc.edu.cn/g' /etc/apt/sources.list && \
+    pip config set global.index-url https://pypi.douban.com/simple/ && \
     export DEBIAN_FRONTEND="noninteractive" && \
     apt-get update -y && \
     apt-get install -y \
@@ -29,6 +31,8 @@ ENV PYTHONUNBUFFERED=1 \
     TZ=Asia/Shanghai
 
 RUN set -ex && \
+    sed -i 's/deb.debian.org/mirrors.ustc.edu.cn/g' /etc/apt/sources.list && \
+    pip config set global.index-url https://pypi.douban.com/simple/ && \
     export DEBIAN_FRONTEND="noninteractive" && \
     apt-get update -y && \
     apt-get install -y \
@@ -58,7 +62,6 @@ RUN set -ex && \
         /etc/nginx/sites-enabled/default \
         /etc/nginx/sites-available/default
 COPY --from=Prepare /install /usr/local
-
 COPY --chmod=755 . /ptools
 WORKDIR /ptools
 

@@ -70,7 +70,7 @@ function first_start {
 
     INFO "程序初始化中..."
     python3 manage.py migrate
-    
+
     INFO "创建超级用户"
     DJANGO_SUPERUSER_USERNAME=$DJANGO_SUPERUSER_USERNAME
     DJANGO_SUPERUSER_EMAIL=$DJANGO_SUPERUSER_EMAIL

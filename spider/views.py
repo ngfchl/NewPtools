@@ -1293,7 +1293,7 @@ class PtSpider:
         except RequestException as nce:
             msg = f'🆘 与网站 {my_site.nickname} 建立连接失败，请检查网络？？'
             logger.error(msg)
-            logger.error(traceback.format_exc(limit=3))
+            logger.error(traceback.format_exc(limit=5))
             return CommonResponse.error(msg=msg)
         except Exception as e:
             message = f'🆘 {my_site.nickname} 统计个人数据失败！原因：{err_msg} {e}'
@@ -1668,6 +1668,9 @@ class PtSpider:
                         'https://sharkpt.net/',
                         'https://pt.soulvoice.club/',
                         'https://dajiao.cyou/',
+                        'https://www.okpt.net/',
+                        'https://pandapt.net/',
+                        'https://ubits.club/',
                     ]:
                         # 获取到的是整段，需要解析
                         logger.debug('做种体积：{}'.format(seed_vol_list))

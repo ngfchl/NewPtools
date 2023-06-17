@@ -50,7 +50,6 @@ def auto_sign_in(self):
     """执行签到"""
     start = time.time()
     logger.info('开始执行签到任务')
-    toolbox.send_text(title='通知：正在签到', message=f'开始执行签到任务，当前时间：{datetime.fromtimestamp(start)}')
     logger.info('筛选需要签到的站点')
     message_list = []
     queryset = [
@@ -67,6 +66,8 @@ def auto_sign_in(self):
         logger.info(message_list)
         # toolbox.send_text(title='通知：自动签到', message='\n'.join(message_list))
         return message_list
+    toolbox.send_text(title='通知：正在签到',
+                      message=f'开始执行签到任务，共有{len(queryset)}站点需要签到，当前时间：{datetime.fromtimestamp(start)}')
     results = pool.map(pt_spider.sign_in, queryset)
     logger.info('执行签到任务')
     success_message = []
@@ -86,12 +87,14 @@ def auto_sign_in(self):
     message = f'当前时间：{datetime.fromtimestamp(end)},' \
               f'本次签到任务执行完毕，共有{len(queryset)}站点需要签到，成功签到{len(success_message)}个站点，' \
               f'失败{len(failed_message)}个站点，耗费时间：{round(end - start, 2)} \n'
+    success_message.insert(0, message)
     message_list.append(message)
     message_list.extend(failed_message)
     message_list.append('*' * 20)
-    # message_list.extend(success_message)
-    logger.info(message)
-    logger.debug(len(message_list))
+    message_list.extend(success_message)
+    logger.info(f'签到记录{message}')
+    logger.debug(f'失败记录{len(message_list)}')
+    logger.debug(f'成功记录{len(success_message)}')
     toolbox.send_text(title='通知：自动签到', message='\n'.join(message_list))
     toolbox.send_text(title='通知：签到成功', message='\n'.join(success_message))
     # 释放内存
@@ -171,6 +174,9 @@ def auto_get_status(self):
     message_list.extend(failed_message)
     message_list.append('*' * 20)
     message_list.extend(success_message)
+    logger.info(f'更新记录{consuming}')
+    logger.debug(f'失败记录{len(message_list)}')
+    logger.debug(f'成功记录{len(success_message)}')
     toolbox.send_text(title='通知：更新个人数据', message='\n'.join(message_list))
     # toolbox.send_text(title='通知：更新个人数据-成功', message='\n'.join(success_message))
     # 释放内存

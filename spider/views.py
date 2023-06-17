@@ -1261,6 +1261,8 @@ class PtSpider:
                 detail_msg = f'个人主页解析失败!'
                 err_msg.append(detail_msg)
                 logger.warning(f'{my_site.nickname} {detail_msg}')
+            else:
+                self.get_time_join(my_site, details_html.data)
             # 请求时魔页面,信息写入数据库
             hour_bonus = self.get_hour_sp(my_site, headers=headers)
             if hour_bonus.code != 0:

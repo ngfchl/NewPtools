@@ -290,11 +290,18 @@ def repeat_torrent(request, torrent_hashes: str):
                 website = website_list.filter(iyuu=sid).first()
                 if not website:
                     continue
-                url = f'{website.url}{website.page_download.format(torrent.get("torrent_id"), random.randint(100, 10000))}' if \
+                magnet_url = f'{website.url}{website.page_download.format(torrent.get("torrent_id"), random.randint(100, 10000))}' if \
                     sid == 14 else \
                     f'{website.url}{website.page_download.format(torrent.get("torrent_id"))}'
-                print(url)
-                torrents.append(url)
+                print(magnet_url)
+                detail_url = f'{website.url}{website.page_detail.format(torrent.get("torrent_id"))}'
+                torrents.append({
+                    "site": website.id,
+                    "magnet_url": magnet_url,
+                    "detail_url": detail_url,
+                    "siteName": website.name,
+
+                })
             repeat_data.update({repeat_info.get('hash'): torrents})
         return CommonResponse.success(data=repeat_data)
     return res

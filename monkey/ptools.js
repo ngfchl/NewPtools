@@ -4,6 +4,15 @@
 // @description  PT站点cookie等信息发送到Ptools
 // @namespace    http://tampermonkey.net/
 
+
+// @match        https://www.biho.xyz/*
+// @match        https://pt.dhtclub.com/*
+// @match        https://ubits.club/*
+// @match        https://kufei.org/*
+// @match        https://pandapt.net/*
+// @match        https://www.okpt.net/*
+// @match        https://share.ilolicon.com/*
+
 // @match        https://1ptba.com/*
 // @match        https://52pt.site/*
 // @match        https://audiences.me/*
@@ -110,7 +119,7 @@
 //// @match        https://zhuque.in/*
 //// @match        https://dicmusic.club/*
 
-// @version      0.0.5
+// @version      0.1.02
 // @grant        GM_xmlhttpRequest
 // @grant        GM_getResourceURL
 // @grant        GM_getResourceText
@@ -125,6 +134,8 @@
 
 /*
 日志：
+    2023.06.19  添加站点：必火，DHTCLUB
+    2023.06.18  添加站点：OKPT，PANDAPT，库非,Ubits,ilolicon
     2023.01.28  优化：添加CSS美化代码（其实Copy的bootstrap），优化代码逻辑
     2023.01.28  优化：无须右键菜单，直接在网页显示悬浮窗，点击运行
     2023.01.26  优化：适配站点进一步完善，如遇到PTOOLS支持的站点没有油猴脚本选项，请把网址发给我；优化：取消油猴脚本发送COOKIE的一小时限制
@@ -142,7 +153,8 @@ this.$ = this.jQuery = jQuery.noConflict(true);
  * token：ptools.toml中设置的token，获取安全密钥token，可以在ptools.toml中自定义，格式 [token] token="ptools"
  * @type {string}
  */
-var ptools = "http://192.168.123.5:8001/";
+// var ptools = "http://192.168.123.5:5173/";
+var ptools = "http://127.0.0.1:8000/";
 var token = "ptools";
 /**
  * 以下内容无需修改

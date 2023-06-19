@@ -212,7 +212,12 @@ def send_text(message: str, title: str = '', url: str = None):
     """通知分流"""
     notifies = parse_toml("notify")
     res = '你还没有配置通知参数哦！'
-    message = f'{verify_token()}\n{"*" * 30}\n{message}'
+    try:
+        message = f'{verify_token()}\n{"*" * 30}\n{message}'
+    except Exception as e:
+        msg = f'授权验证失败！'
+        logger.error(msg)
+        return msg
     if len(notifies) <= 0:
         return res
     for key, notify in notifies.items():

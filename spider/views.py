@@ -10,6 +10,7 @@ from datetime import datetime
 from urllib.parse import urlparse, parse_qs
 
 import cloudscraper
+import dateutil.parser
 import requests
 import toml
 from channels.db import database_sync_to_async
@@ -1330,11 +1331,24 @@ class PtSpider:
                         time_join = datetime.strptime(time_str, '%b %d %Y')
                         logger.debug(f'注册时间：{time_join}')
                         my_site.time_join = time_join
-                    elif 'hd-torrents.org' in site.url:
+                    elif site.url in [
+                        'https://hd-torrents.org/',
+                    ]:
                         my_site.time_join = datetime.strptime(
-                            ''.join(details_html.xpath(site.my_time_join_rule)),
+                            ''.join(details_html.xpath(site.my_time_join_rule)).replace('\xa0', ''),
                             '%d/%m/%Y %H:%M:%S'
                         )
+                    elif site.url in [
+                        'https://hd-space.org/',
+                    ]:
+                        my_site.time_join = datetime.strptime(
+                            ''.join(details_html.xpath(site.my_time_join_rule)).replace('\xa0', ''),
+                            '%B %d, %Y,%H:%M:%S'
+                        )
+                    elif site.url in [
+                        'https://www.torrentleech.org/',
+                    ]:
+                        my_site.time_join = dateutil.parser.parse(''.join(details_html.xpath(site.my_time_join_rule)))
                     elif site.url in [
                         'https://exoticaz.to/',
                         'https://cinemaz.to/',
@@ -1698,6 +1712,7 @@ class PtSpider:
                         'https://reelflix.xyz/',
                         'https://pterclub.com/',
                         'https://hd-torrents.org/',
+                        'https://hd-space.org/',
                         'https://filelist.io/',
                         'https://www.pttime.org/',
                         'https://totheglory.im/',
@@ -1810,6 +1825,10 @@ class PtSpider:
         """获取时魔"""
         site = get_object_or_404(WebSite, id=my_site.site)
         url = site.url + site.page_mybonus
+        if site.url in [
+            'https://www.torrentleech.org/',
+        ]:
+            return CommonResponse.success(data=0)
         if site.url in [
             'https://monikadesign.uk/',
             'https://pt.hdpost.top/',

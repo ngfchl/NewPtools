@@ -610,10 +610,10 @@ class PtSpider:
                     data = result.data.get("data")
                     bonus = data.get("bonus")
                     message = f'技能释放成功，获得{bonus}灵石'
-                    # if bonus > 0:
-                    #     signin_today.sign_in_today = True
-                    #     signin_today.sign_in_info = message
-                    #     signin_today.save()
+                    if bonus > 0:
+                        signin_today.sign_in_today = True
+                        signin_today.sign_in_info = message
+                        signin_today.save()
                     result.msg = message
                 return result
             if 'hdupt.com' in site.url:

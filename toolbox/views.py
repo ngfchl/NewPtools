@@ -1096,3 +1096,15 @@ def parse_hashes_from_iyuu(torrent_hashes: str):
             repeat_data.update({repeat_info.get('hash'): torrents})
         return CommonResponse.success(data=repeat_data)
     return res
+
+
+def repeat_torrents(downloader_id: int):
+    # 1. 获取下载器实例与分类
+    # 从下载器获取所有种子信息
+    # 获取所有种子hash
+    # 从IYUU服务器获取辅种数据
+    # 从ptools服务器获取辅种数据
+    # 对辅种数据进行去重
+    # 2. 根据hash获取要辅种的种子本地文件信息（路径，分类）
+    # 3. 推送到下载器（使用Cookie）
+    pass

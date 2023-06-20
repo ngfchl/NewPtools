@@ -1,5 +1,4 @@
 import logging
-import random
 import time
 import traceback
 import urllib.parse
@@ -276,32 +275,5 @@ def brush_remove_torrent(request, downloader_id: int):
 
 @router.get('/repeat_torrent', response=CommonResponse, description='获取种子辅种信息')
 def repeat_torrent(request, torrent_hashes: str):
-    iyuu_token = 'IYUU10227T6942484114699c63a6df9bc30f3c81f1bd1cd9b4'
-    res = toolbox.get_torrents_hash_from_iyuu(iyuu_token, torrent_hashes.lower().split('|'))
-    website_list = WebSite.objects.all()
-    if res.code == 0:
-        data = res.data
-        repeat_data = {}
-        for repeat_info in data:
-            torrent_list = repeat_info.get('torrent')
-            torrents = []
-            for torrent in torrent_list:
-                sid = torrent.get('sid')
-                website = website_list.filter(iyuu=sid).first()
-                if not website:
-                    continue
-                magnet_url = f'{website.url}{website.page_download.format(torrent.get("torrent_id"), random.randint(100, 10000))}' if \
-                    sid == 14 else \
-                    f'{website.url}{website.page_download.format(torrent.get("torrent_id"))}'
-                print(magnet_url)
-                detail_url = f'{website.url}{website.page_detail.format(torrent.get("torrent_id"))}'
-                torrents.append({
-                    "site": website.id,
-                    "magnet_url": magnet_url,
-                    "detail_url": detail_url,
-                    "siteName": website.name,
-
-                })
-            repeat_data.update({repeat_info.get('hash'): torrents})
-        return CommonResponse.success(data=repeat_data)
+    res = toolbox.parse_hashes_from_iyuu(torrent_hashes)
     return res

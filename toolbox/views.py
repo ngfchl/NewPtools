@@ -1065,3 +1065,34 @@ def get_hashes(downloader_id):
         torrents = client.get_torrents()
         hashes = [torrent.hashString for torrent in torrents]
     return hashes
+
+
+def parse_hashes_from_iyuu(torrent_hashes: str):
+    iyuu_token = parse_toml('token').get('iyuu_token')
+    res = get_torrents_hash_from_iyuu(iyuu_token, torrent_hashes.lower().split('|'))
+    website_list = WebSite.objects.all()
+    if res.code == 0:
+        data = res.data
+        repeat_data = {}
+        for repeat_info in data:
+            torrent_list = repeat_info.get('torrent')
+            torrents = []
+            for torrent in torrent_list:
+                sid = torrent.get('sid')
+                website = website_list.filter(iyuu=sid).first()
+                if not website:
+                    continue
+                magnet_url = f'{website.url}{website.page_download.format(torrent.get("torrent_id"), random.randint(100, 10000))}' if \
+                    sid == 14 else \
+                    f'{website.url}{website.page_download.format(torrent.get("torrent_id"))}'
+                print(magnet_url)
+                detail_url = f'{website.url}{website.page_detail.format(torrent.get("torrent_id"))}'
+                torrents.append({
+                    "site": website.id,
+                    "magnet_url": magnet_url,
+                    "detail_url": detail_url,
+                    "siteName": website.name,
+                })
+            repeat_data.update({repeat_info.get('hash'): torrents})
+        return CommonResponse.success(data=repeat_data)
+    return res

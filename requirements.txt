@@ -80,5 +80,4 @@ vine==5.0.0
 wcwidth==0.2.6
 websocket-client==1.5.1
 wsproto==1.2.0
-wxpusher==2.2.0
 yarl==1.9.2

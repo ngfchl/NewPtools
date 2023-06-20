@@ -20,7 +20,6 @@ import toml as toml
 import transmission_rpc
 from django.conf import settings
 from pypushdeer import PushDeer
-from wxpusher import WxPusher
 
 from auxiliary.base import DownloaderCategory
 from auxiliary.settings import BASE_DIR
@@ -30,6 +29,7 @@ from my_site.models import SiteStatus, TorrentInfo, MySite
 from toolbox.schema import CommonResponse, DotDict
 from website.models import WebSite
 from .wechat_push import WechatPush
+from .wxpusher import WxPusher
 
 # Create your views here.
 logger = logging.getLogger('ptools')
@@ -214,6 +214,7 @@ def send_text(message: str, title: str = '', url: str = None):
     res = '你还没有配置通知参数哦！'
     try:
         message = f'{verify_token()}\n{"*" * 30}\n{message}'
+        pass
     except Exception as e:
         msg = f'授权验证失败！'
         logger.error(msg)
@@ -286,11 +287,11 @@ def send_text(message: str, title: str = '', url: str = None):
                     })
                 msg = f'爱语飞飞通知：{res}'
                 logger.info(msg)
-            return msg
+            # return msg
         except Exception as e:
             msg = f'通知发送失败，{res} {traceback.format_exc(limit=5)}'
             logger.error(msg)
-            return msg
+            # return msg
 
 
 def today_data():

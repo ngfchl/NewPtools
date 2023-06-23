@@ -19,6 +19,7 @@ import requests
 import toml as toml
 import transmission_rpc
 from django.conf import settings
+from django.shortcuts import get_object_or_404
 from pypushdeer import PushDeer
 
 from auxiliary.base import DownloaderCategory
@@ -387,7 +388,6 @@ def parse_rss(rss_url: str):
 
 
 def get_torrents_hash_from_iyuu(iyuu_token: str, hash_list: List[str]):
-    # hash_list = get_hashes()
     hash_list.sort()
     # 由于json解析的原因，列表元素之间有空格，需要替换掉所有空格
     hash_list_json = json.dumps(hash_list).replace(' ', '')
@@ -1052,59 +1052,76 @@ def torrents_filter_by_percent_completed_rule(client, num_complete_percent, down
     return hashes
 
 
-def get_hashes(downloader_id):
-    """返回下载器中所有种子的HASH列表"""
+def parse_hashes_from_iyuu(torrent_hashes: List[str]):
+    try:
+        iyuu_token = parse_toml('token').get('iyuu_token')
+        res = get_torrents_hash_from_iyuu(iyuu_token, torrent_hashes)
+        website_list = WebSite.objects.all()
+        if res.code == 0:
+            data = res.data
+            repeat_data = {}
+            for repeat_info in data:
+                torrent_list = repeat_info.get('torrent')
+                torrents = []
+                for torrent in torrent_list:
+                    sid = torrent.get('sid')
+                    website = website_list.filter(iyuu=sid).first()
+                    if not website:
+                        continue
+                    magnet_url = f'{website.url}{website.page_download.format(torrent.get("torrent_id"), random.randint(100, 10000))}' if \
+                        sid == 14 else \
+                        f'{website.url}{website.page_download.format(torrent.get("torrent_id"))}'
+                    print(magnet_url)
+                    detail_url = f'{website.url}{website.page_detail.format(torrent.get("torrent_id"))}'
+                    torrents.append({
+                        # "site": website.id,
+                        'my_site': get_object_or_404(MySite, site=website.id),
+                        "magnet_url": magnet_url,
+                        "detail_url": detail_url,
+                        # "siteName": website.name,
+                    })
+                repeat_data.update({repeat_info.get('hash'): torrents})
+            return CommonResponse.success(data=repeat_data)
+        return res
+    except Exception as e:
+        msg = f'从IYUU获取辅种数据失败！'
+        logger.error(msg)
+        return CommonResponse.error(msg=msg)
+
+
+def parse_repeat_data(repeat_infos):
+    pass
+
+
+def repeat_torrents(downloader_id: int):
+    # 1. 获取下载器实例与分类
     client, downloader_category = get_downloader_instance(downloader_id)
     hashes = []
     if not client:
         return hashes
     if downloader_category == DownloaderCategory.qBittorrent:
+        # 从下载器获取所有种子信息
         torrents = client.torrents_info()
+        # 获取所有种子hash
         hashes = [torrent.get('hash') for torrent in torrents]
+        # 从IYUU服务器获取辅种数据
+        iyuu_repeat_infos = parse_hashes_from_iyuu(hashes)
+        # 从ptools服务器获取辅种数据
+        # todo
+        # 对辅种数据进行去重
+        parse_repeat_data(iyuu_repeat_infos)
+        # 2. 根据hash获取要辅种的种子本地文件信息（路径，分类）
+        # 3. 推送到下载器（使用Cookie）
     if downloader_category == DownloaderCategory.Transmission:
+        # 从下载器获取所有种子信息
         torrents = client.get_torrents()
+        # 获取所有种子hash
         hashes = [torrent.hashString for torrent in torrents]
-    return hashes
-
-
-def parse_hashes_from_iyuu(torrent_hashes: str):
-    iyuu_token = parse_toml('token').get('iyuu_token')
-    res = get_torrents_hash_from_iyuu(iyuu_token, torrent_hashes.lower().split('|'))
-    website_list = WebSite.objects.all()
-    if res.code == 0:
-        data = res.data
-        repeat_data = {}
-        for repeat_info in data:
-            torrent_list = repeat_info.get('torrent')
-            torrents = []
-            for torrent in torrent_list:
-                sid = torrent.get('sid')
-                website = website_list.filter(iyuu=sid).first()
-                if not website:
-                    continue
-                magnet_url = f'{website.url}{website.page_download.format(torrent.get("torrent_id"), random.randint(100, 10000))}' if \
-                    sid == 14 else \
-                    f'{website.url}{website.page_download.format(torrent.get("torrent_id"))}'
-                print(magnet_url)
-                detail_url = f'{website.url}{website.page_detail.format(torrent.get("torrent_id"))}'
-                torrents.append({
-                    "site": website.id,
-                    "magnet_url": magnet_url,
-                    "detail_url": detail_url,
-                    "siteName": website.name,
-                })
-            repeat_data.update({repeat_info.get('hash'): torrents})
-        return CommonResponse.success(data=repeat_data)
-    return res
-
-
-def repeat_torrents(downloader_id: int):
-    # 1. 获取下载器实例与分类
-    # 从下载器获取所有种子信息
-    # 获取所有种子hash
-    # 从IYUU服务器获取辅种数据
-    # 从ptools服务器获取辅种数据
-    # 对辅种数据进行去重
-    # 2. 根据hash获取要辅种的种子本地文件信息（路径，分类）
-    # 3. 推送到下载器（使用Cookie）
-    pass
+        # 从IYUU服务器获取辅种数据
+        iyuu_repeat_infos = parse_hashes_from_iyuu(hashes)
+        # 从ptools服务器获取辅种数据
+        # todo
+        # 对辅种数据进行去重
+        parse_repeat_data(iyuu_repeat_infos)
+        # 2. 根据hash获取要辅种的种子本地文件信息（路径，分类）
+        # 3. 推送到下载器（使用Cookie）

@@ -63,6 +63,7 @@ function first_start {
     envsubst "\$DJANGO_WEB_PORT,\$WEBUI_PORT,\$FLOWER_UI_PORT" </ptools/nginx/nginx.conf >/etc/nginx/conf.d/default.conf
 
     INFO "Supervisor 初始化中..."
+    sed -i "s/:9001/:$SUPERVISOR_UI_PORT/g" /ptools/supervisor/prod.conf
     for file in /ptools/supervisor/product/*.ini; do
         sed -i "s/-l INFO/-l $LOGGER_LEVEL/g" "$file"
     done

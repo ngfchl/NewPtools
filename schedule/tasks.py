@@ -66,8 +66,8 @@ def auto_sign_in(self):
         logger.info(message_list)
         # toolbox.send_text(title='通知：自动签到', message='\n'.join(message_list))
         return message_list
-    toolbox.send_text(title='通知：正在签到',
-                      message=f'开始执行签到任务，共有{len(queryset)}站点需要签到，当前时间：{datetime.fromtimestamp(start)}')
+    # toolbox.send_text(title='通知：正在签到',
+    #                   message=f'开始执行签到任务，共有{len(queryset)}站点需要签到，当前时间：{datetime.fromtimestamp(start)}')
     results = pool.map(pt_spider.sign_in, queryset)
     logger.info('执行签到任务')
     success_message = []
@@ -96,7 +96,7 @@ def auto_sign_in(self):
     logger.debug(f'失败记录{len(message_list)}')
     logger.debug(f'成功记录{len(success_message)}')
     toolbox.send_text(title='通知：自动签到', message='\n'.join(message_list))
-    toolbox.send_text(title='通知：签到成功', message='\n'.join(success_message))
+    # toolbox.send_text(title='通知：签到成功', message='\n'.join(success_message))
     # 释放内存
     gc.collect()
     return message_list
@@ -177,6 +177,7 @@ def auto_get_status(self):
     logger.info(f'更新记录{consuming}')
     logger.debug(f'失败记录{len(message_list)}')
     logger.debug(f'成功记录{len(success_message)}')
+    time.sleep(2)
     toolbox.send_text(title='通知：更新个人数据', message='\n'.join(message_list))
     # toolbox.send_text(title='通知：更新个人数据-成功', message='\n'.join(success_message))
     # 释放内存

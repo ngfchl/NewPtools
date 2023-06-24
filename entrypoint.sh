@@ -68,6 +68,7 @@ function first_start {
         sed -i "s/-l INFO/-l $LOGGER_LEVEL/g" "$file"
     done
     sed -i "s/--port 6379/--port $REDIS_SERVER_PORT/g" /ptools/supervisor/product/redis.ini
+    sed -i "s/--port=5566/--port=$FLOWER_UI_PORT/g" /ptools/supervisor/product/supervisor_celery_flower.ini
 
     INFO "程序初始化中..."
     python3 manage.py migrate

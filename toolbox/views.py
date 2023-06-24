@@ -19,7 +19,6 @@ import requests
 import toml as toml
 import transmission_rpc
 from django.conf import settings
-from django.shortcuts import get_object_or_404
 from pypushdeer import PushDeer
 
 from auxiliary.base import DownloaderCategory
@@ -385,32 +384,6 @@ def parse_rss(rss_url: str):
             'published': datetime.fromtimestamp(time.mktime(article.published_parsed)),
         })
     return torrents
-
-
-def get_torrents_hash_from_iyuu(iyuu_token: str, hash_list: List[str]):
-    hash_list.sort()
-    # 由于json解析的原因，列表元素之间有空格，需要替换掉所有空格
-    hash_list_json = json.dumps(hash_list).replace(' ', '')
-    hash_list_sha1 = hashlib.sha1(hash_list_json.encode(encoding='utf-8')).hexdigest()
-    url = 'http://api.iyuu.cn/index.php?s=App.Api.Hash'
-    data = {
-        # IYUU token
-        'sign': iyuu_token,
-        # 当前时间戳
-        'timestamp': int(time.time()),
-        # 客户端版本
-        'version': '2.0.0',
-        # hash列表
-        'hash': hash_list_json,
-        # hash列表sha1
-        'sha1': hash_list_sha1
-    }
-    res = requests.post(url=url, data=data).json()
-    logger.info(res)
-    ret = res.get('ret')
-    if ret == 200:
-        return CommonResponse.success(data=res.get('data'))
-    return CommonResponse.error(msg=res.get('msg'))
 
 
 def get_downloader_instance(downloader_id):
@@ -1052,39 +1025,52 @@ def torrents_filter_by_percent_completed_rule(client, num_complete_percent, down
     return hashes
 
 
-def parse_hashes_from_iyuu(torrent_hashes: List[str]):
+def get_torrents_hash_from_iyuu(hash_list: List[str]):
     try:
-        iyuu_token = parse_toml('token').get('iyuu_token')
-        res = get_torrents_hash_from_iyuu(iyuu_token, torrent_hashes)
-        website_list = WebSite.objects.all()
-        if res.code == 0:
-            data = res.data
-            repeat_data = {}
-            for repeat_info in data:
-                torrent_list = repeat_info.get('torrent')
-                torrents = []
-                for torrent in torrent_list:
+        hash_list.sort()
+        # 由于json解析的原因，列表元素之间有空格，需要替换掉所有空格
+        hash_list_json = json.dumps(hash_list).replace(' ', '')
+        hash_list_sha1 = hashlib.sha1(hash_list_json.encode(encoding='utf-8')).hexdigest()
+        url = 'http://api.iyuu.cn/index.php?s=App.Api.Hash'
+        data = {
+            # IYUU token
+            'sign': parse_toml('token').get('iyuu_token'),
+            # 当前时间戳
+            'timestamp': int(time.time()),
+            # 客户端版本
+            'version': '2.0.0',
+            # hash列表
+            'hash': hash_list_json,
+            # hash列表sha1
+            'sha1': hash_list_sha1
+        }
+        res = requests.post(url=url, data=data).json()
+        logger.info(res)
+        ret = res.get('ret')
+        if ret == 200:
+            website_list = WebSite.objects.all()
+            grouped_torrents = {}
+
+            for repeat_info in res.get('data'):
+                for torrent in repeat_info['torrent']:
                     sid = torrent.get('sid')
                     website = website_list.filter(iyuu=sid).first()
                     if not website:
+                        logger.warning(f'还未支持此站点，站点IYUU-ID：{sid}')
                         continue
-                    magnet_url = f'{website.url}{website.page_download.format(torrent.get("torrent_id"), random.randint(100, 10000))}' if \
-                        sid == 14 else \
-                        f'{website.url}{website.page_download.format(torrent.get("torrent_id"))}'
-                    print(magnet_url)
+                    magnet_url = f'{website.url}{website.page_download.format(torrent.get("torrent_id"), random.randint(100, 10000))}' if sid == 14 else f'{website.url}{website.page_download.format(torrent.get("torrent_id"))}'
                     detail_url = f'{website.url}{website.page_detail.format(torrent.get("torrent_id"))}'
-                    torrents.append({
-                        # "site": website.id,
-                        'my_site': get_object_or_404(MySite, site=website.id),
+
+                    grouped_torrents.setdefault(website.id, []).append({
+                        "site": website.id,
                         "magnet_url": magnet_url,
                         "detail_url": detail_url,
-                        # "siteName": website.name,
                     })
-                repeat_data.update({repeat_info.get('hash'): torrents})
-            return CommonResponse.success(data=repeat_data)
-        return res
+
+            return CommonResponse.success(data=grouped_torrents)
+        return CommonResponse.error(msg=res.get('msg'))
     except Exception as e:
-        msg = f'从IYUU获取辅种数据失败！'
+        msg = f'从IYUU获取辅种数据失败！{e}'
         logger.error(msg)
         return CommonResponse.error(msg=msg)
 
@@ -1105,7 +1091,7 @@ def repeat_torrents(downloader_id: int):
         # 获取所有种子hash
         hashes = [torrent.get('hash') for torrent in torrents]
         # 从IYUU服务器获取辅种数据
-        iyuu_repeat_infos = parse_hashes_from_iyuu(hashes)
+        iyuu_repeat_infos = get_torrents_hash_from_iyuu(hashes)
         # 从ptools服务器获取辅种数据
         # todo
         # 对辅种数据进行去重

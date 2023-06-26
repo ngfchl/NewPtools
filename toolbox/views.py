@@ -1283,6 +1283,13 @@ def process_repeat_info(repeat_info, hash_lookup, website_list, my_site_list, re
 
 
 def generate_magnet_url(sid, torrent, website):
+    """
+    生成下载链接
+    :param sid:
+    :param torrent:
+    :param website:
+    :return:
+    """
     if sid == 14:
         return f'{website.url}{website.page_download.format(torrent.get("torrent_id"), random.randint(100, 10000))}'
     return f'{website.url}{website.page_download.format(torrent.get("torrent_id"))}'
@@ -1290,43 +1297,66 @@ def generate_magnet_url(sid, torrent, website):
 
 def repeat_torrents(downloader_id: int):
     client, downloader_category = get_downloader_instance(downloader_id)
-    hashes = []
     if not client:
-        return hashes
+        return CommonResponse.error(msg=f'未找到下载器：{1}')
+    downloader = Downloader.objects.get(id=downloader_id)
     my_site_list = MySite.objects.filter(repeat_torrents=True).all()
     website_list = WebSite.objects.filter(repeat_torrents=True).all()
+    # 新辅种数据
     new_params = {}
+    # 辅种数据HASH
     repeat_hashes = []
+    # 准备辅种的数据
     repeat_params = {}
     handler_map = {
         DownloaderCategory.qBittorrent: handle_qBittorrent,
         DownloaderCategory.Transmission: handle_Transmission,
     }
     handler = handler_map[downloader_category]
+    # 从下载器获取所有种子信息
     torrents = client.torrents_info() if downloader_category == DownloaderCategory.qBittorrent else client.get_torrents()
+    logger.info(f'下载器 {downloader.name} 共有 {len(torrents)} 个种子')
+    # 获取所有种子HASH, 并生成HASH：种子对应字典
     hashes = [torrent.get('hash') for torrent in torrents]
     hash_lookup = {item["hash"]: item for item in torrents}
+    # 从IYUU服务器获取辅种数据
     iyuu_repeat_infos = get_torrents_hash_from_iyuu(hashes)
     if iyuu_repeat_infos.code == 0:
         for repeat_info in iyuu_repeat_infos.data:
+            # 解析从IYUU获取的数据
             process_repeat_info(repeat_info, hash_lookup, website_list, my_site_list, repeat_params, handler)
     else:
         logger.error(iyuu_repeat_infos.msg)
+    # 获取已缓存的辅种数据
     params = cache.get(f"params_data_{downloader_id}")
+    logger.info(f'当前下载器 当前有 {len(new_params)} 条缓存数据！')
+
     if params is not None:
         params = json.loads(params)
+        # 将新数据添加到旧数据中
         for website_id, torrents in repeat_params.items():
             params.setdefault(website_id, []).extend(torrents)
+    # 每个站点获取指定数量的辅种数据，并推送到下载器
     for website_id, torrents in params.items():
-        top_ten_torrents = torrents[:10]
-        remaining_torrents = torrents[10:]
+        repeat = parse_toml('repeat')
+        if not repeat:
+            limit = 15
+        else:
+            limit = repeat.get('limit', 15)
+        top_ten_torrents = torrents[:limit]
+        remaining_torrents = torrents[limit:]
         if remaining_torrents:
             new_params[website_id] = remaining_torrents
         for torrent in top_ten_torrents:
             handler(client, torrent, repeat_hashes)
+    # 去除已推送数据后，剩下的继续写入缓存
+    logger.info(f'下载器  {downloader.name}  当前有 {len(new_params)} 个站点的辅种数据！')
     cache.set(f"params_data_{downloader_id}", json.dumps(new_params))
+    logger.info(f'下载器  {downloader.name}  待缓存 {len(repeat_hashes)} 条校验数据！')
+
     cached_repeat_hashes = cache.get(f"repeat_hashes_data_{downloader_id}")
     if cached_repeat_hashes is not None:
         cached_repeat_hashes = json.loads(cached_repeat_hashes)
         repeat_hashes = list(set(repeat_hashes + cached_repeat_hashes))
+    logger.info(f'下载器 {downloader.name} 当前已缓存 {len(repeat_hashes)} 条校验数据！')
     cache.set(f"repeat_hashes_data_{downloader_id}", repeat_hashes)

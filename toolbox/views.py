@@ -19,6 +19,7 @@ import requests
 import toml as toml
 import transmission_rpc
 import telebot
+from telebot import apihelper
 from django.conf import settings
 from django.core.cache import cache
 from pypushdeer import PushDeer
@@ -295,6 +296,9 @@ def send_text(message: str, title: str = '', url: str = None):
                 telegram_token = notify.get('telegram_token')
                 telegram_chat_id = notify.get('telegram_chat_id')
                 bot = telebot.TeleBot(telegram_token)
+                proxy = notify.get('proxy')
+                if proxy:
+                    apihelper.proxy = proxy
                 bot.send_message(telegram_chat_id, message)
                 msg = 'Telegram通知成功'
                 logger.info(msg)

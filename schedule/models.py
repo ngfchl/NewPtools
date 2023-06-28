@@ -9,6 +9,7 @@ class Task(models.TextChoices):
     backend_cleanup = 'celery.backend_cleanup', '清理任务记录'
     auto_sign_in = 'schedule.tasks.auto_sign_in', '执行签到'
     auto_get_status = 'schedule.tasks.auto_get_status', '更新个人数据'
+    auto_repeat_torrent = 'schedule.tasks.auto_repeat_torrent', '辅种任务'
     auto_get_rss = 'schedule.tasks.auto_get_rss', 'RSS刷流'
     auto_get_torrents = 'schedule.tasks.auto_get_torrents', 'Free刷流'
     # auto_push_to_downloader = 'schedule.tasks.auto_push_to_downloader', '推送种子'

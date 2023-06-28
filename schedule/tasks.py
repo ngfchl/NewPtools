@@ -921,6 +921,44 @@ def import_from_ptpp(self, data_list: List):
     return message_list
 
 
+# @shared_task
+@shared_task(bind=True, base=BaseTask)
+def auto_repeat_torrent(self):
+    # 加载辅种配置项
+    repeat = toolbox.parse_toml('repeat')
+    logger.debug(f'加载辅种配置项: {repeat}')
+    push_timeout = repeat.get('push_timeout', 150)
+    logger.info('筛选开启辅种的下载器')
+    downloaders = Downloader.objects.filter(repeat=True).all()
+    downloader_ids = [downloader.id for downloader in downloaders]
+    logger.info(downloaders)
+    logger.info('开始辅种')
+    results1 = pool.map(toolbox.repeat_torrents, downloader_ids)
+    time.sleep(push_timeout)
+    results2 = pool.map(toolbox.start_torrent, downloader_ids)
+    logger.info('辅种结束')
+    message_list = []
+    for downloader, result1, result2 in zip(downloaders, results1, results2):
+        logger.info(f'result1: {result1}')
+        repeat_count, cached_count, push_count = result1
+
+        logger.info(f'result2: {result2}')
+        paused_count, recheck_count, resume_count = result2
+        
+        message = f'✅ 下载器 {downloader.name} 在本次辅种任务中：' \
+                  f'> 获取{repeat_count}条可辅种数据  \n' \
+                  f'> 缓存{cached_count}条辅种数据  \n' \
+                  f'> 推送{push_count}条辅种数据  \n' \
+                  f'> 获取到{paused_count}个暂停的种子  \n' \
+                  f'> 校验了{recheck_count}个种子  \n' \
+                  f'> 开始了{resume_count}个种子  \n'
+        message_list.append(message)
+    messages = ''.join(message_list)
+    logger.info(messages)
+    toolbox.send_text(title=f'辅种任务', message=messages)
+    return messages
+
+
 @shared_task(bind=True, base=BaseTask)
 def test_task(self, *args):
     logger.info(args)

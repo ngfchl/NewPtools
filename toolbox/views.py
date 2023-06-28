@@ -18,6 +18,7 @@ import qbittorrentapi
 import requests
 import toml as toml
 import transmission_rpc
+import telebot
 from django.conf import settings
 from django.core.cache import cache
 from pypushdeer import PushDeer
@@ -288,6 +289,16 @@ def send_text(message: str, title: str = '', url: str = None):
                     })
                 msg = f'爱语飞飞通知：{res}'
                 logger.info(msg)
+
+            if key == PushConfig.telegram_push:
+                """Telegram通知"""
+                telegram_token = notify.get('telegram_token')
+                telegram_chat_id = notify.get('telegram_chat_id')
+                bot = telebot.TeleBot(telegram_token)
+                bot.send_message(telegram_chat_id, message)
+                msg = 'Telegram通知成功'
+                logger.info(msg)
+
             # return msg
         except Exception as e:
             msg = f'通知发送失败，{res} {traceback.format_exc(limit=5)}'

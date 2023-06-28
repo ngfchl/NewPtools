@@ -945,7 +945,7 @@ def auto_repeat_torrent(self):
         logger.info(f'result2: {result2}')
         paused_count, recheck_count, resume_count = result2
 
-        message = f'- ### ✅ 下载器 {downloader.name} 在本次辅种任务中：  \n' \
+        message = f'- ✅ 下载器 {downloader.name} 在本次辅种任务中：  \n' \
                   f'> 获取{repeat_count}条可辅种数据  \n' \
                   f'> 缓存{cached_count}条辅种数据  \n' \
                   f'> 推送{push_count}条辅种数据  \n' \
@@ -953,7 +953,7 @@ def auto_repeat_torrent(self):
                   f'> 校验了{recheck_count}个种子  \n' \
                   f'> 开始了{resume_count}个种子  \n'
         message_list.append(message)
-    messages = ''.join(message_list)
+    messages = '\n'.join(message_list)
     logger.info(messages)
     toolbox.send_text(title=f'辅种任务', message=messages)
     return messages

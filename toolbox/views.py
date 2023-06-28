@@ -1351,11 +1351,11 @@ def repeat_torrents(downloader_id: int):
                         website_id = website.id
 
                         repeat_params.setdefault(website_id, []).append({
-                            "url": generate_magnet_url(sid, torrent, website),
+                            "torrent": generate_magnet_url(sid, torrent, website),
                             "paused": True,
                             "labels": repeat_torrent.labels,
                             "cookies": my_site.cookie,
-                            "download_dir": repeat_torrent.downloadDir,
+                            "download_dir": repeat_torrent.download_dir,
                             "info_hash": torrent["info_hash"],
                         })
                     logger.info(f'本次辅种数据，共有：{len(repeat_params)}个站点的辅种数据')

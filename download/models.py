@@ -34,6 +34,7 @@ class Downloader(BaseEntity):
         MinValueValidator(1001)
     ])
     brush = models.BooleanField(default=False, verbose_name='刷流专用', help_text='刷流和保种一定要分开！')
+    repeat = models.BooleanField(default=False, verbose_name='开启辅种', help_text='刷流和保种一定要分开！')
     keep_completed = models.BooleanField(default=False, verbose_name='保留已完成',
                                          help_text='可用空间充足时保留已完成的种子!')
     # 预留空间

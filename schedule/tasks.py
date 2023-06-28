@@ -944,8 +944,8 @@ def auto_repeat_torrent(self):
 
         logger.info(f'result2: {result2}')
         paused_count, recheck_count, resume_count = result2
-        
-        message = f'✅ 下载器 {downloader.name} 在本次辅种任务中：' \
+
+        message = f'- ### ✅ 下载器 {downloader.name} 在本次辅种任务中：  \n' \
                   f'> 获取{repeat_count}条可辅种数据  \n' \
                   f'> 缓存{cached_count}条辅种数据  \n' \
                   f'> 推送{push_count}条辅种数据  \n' \

@@ -1202,6 +1202,10 @@ def repeat_torrents(downloader_id: int):
             logger.info(f'解析辅种数据为我想要的样子')
             for repeat_info in iyuu_repeat_infos.data:
                 for torrent in repeat_info['torrent']:
+                    info_hash = torrent["info_hash"]
+                    if info_hash in hash_lookup:
+                        logger.info(f'种子 {info_hash} 已存在，跳过')
+                        continue
                     sid = torrent.get('sid')
                     website = website_list.filter(iyuu=sid).first()
                     logger.debug(f'当前站点：{website}')
@@ -1235,7 +1239,7 @@ def repeat_torrents(downloader_id: int):
                             "is_skip_checking": False,
                             "is_paused": True,
                             "use_auto_torrent_management": True,
-                            "info_hash": torrent["info_hash"],
+                            "info_hash": info_hash,
                         })
             logger.info(f'本次辅种数据，共有：{len(repeat_params)}个站点的辅种数据')
             repeat_count = sum(len(values) for values in repeat_params.values())
@@ -1338,6 +1342,10 @@ def repeat_torrents(downloader_id: int):
                     # detail_url = f'{website.url}{website.page_detail.format(torrent.get("torrent_id"))}'
 
                     logger.info(f'生成辅种数据')
+                    info_hash = torrent["info_hash"]
+                    if info_hash in hash_lookup:
+                        logger.info(f'种子 {info_hash} 已存在，跳过')
+                        continue
                     if repeat_info["hash"] in hash_lookup:
                         repeat_torrent = hash_lookup[repeat_info["hash"]]
                         website_id = website.id

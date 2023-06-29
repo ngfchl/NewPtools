@@ -12,6 +12,7 @@ from typing import List, Union
 
 import aip
 import feedparser
+import git
 import jwt
 import qbittorrentapi
 # import git
@@ -311,6 +312,19 @@ def send_text(message: str, title: str = '', url: str = None):
             msg = f'通知发送失败，{res} {traceback.format_exc(limit=5)}'
             logger.error(msg)
             # return msg
+
+
+def get_git_log(branch='master', n=20):
+    repo = git.Repo(path='.')
+    # 拉取仓库更新记录元数据
+    repo.remote().fetch()
+    # commits更新记录
+    logger.info('当前分支{}'.format(branch))
+    return [{
+        'date': log.committed_datetime.strftime('%Y-%m-%d %H:%M:%S'),
+        'data': log.message,
+        'hex': log.hexsha[:16],
+    } for log in list(repo.iter_commits(branch, max_count=n))]
 
 
 def today_data():

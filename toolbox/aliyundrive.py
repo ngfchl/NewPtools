@@ -68,7 +68,7 @@ def get_reward(access_token, sign_in_day):
         "authorization": access_token,
         "Content-Type": "application/json"
     }
-    data = {"sign_in_day": sign_in_day}
+    data = {"signInDay": sign_in_day}
     response = requests.post(reward_url, headers=headers, json=data)
     json_data = response.json()
     if not json_data["success"]:

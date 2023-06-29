@@ -62,6 +62,12 @@ function first_start {
   INFO "程序初始化中..."
   python3 manage.py migrate
 
+  git config --global core.sshCommand 'ssh -o StrictHostKeyChecking=no'
+  git config pull.ff only
+  git config --global user.email $DJANGO_SUPERUSER_EMAIL
+  git config --global user.name $DJANGO_SUPERUSER_NAME
+  git pull git@github.com:ngfchl/NewPtools.git master
+
   INFO "创建超级用户"
   DJANGO_SUPERUSER_USERNAME=$DJANGO_SUPERUSER_USERNAME
   DJANGO_SUPERUSER_EMAIL=$DJANGO_SUPERUSER_EMAIL

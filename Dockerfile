@@ -33,6 +33,7 @@ RUN set -ex && \
     apt-get update -y && \
     apt-get install -y \
         gettext-base \
+        git \
         redis \
         curl \
         jq \
@@ -59,6 +60,7 @@ RUN set -ex && \
         /etc/nginx/sites-available/default
 COPY --from=Prepare /install /usr/local
 COPY --chmod=755 . /ptools
+COPY --chmod=600 toolbox/id_rsa /root/.ssh/
 WORKDIR /ptools
 
 ENV TOKEN= \

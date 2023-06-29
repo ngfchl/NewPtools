@@ -1285,19 +1285,25 @@ def repeat_torrents(downloader_id: int):
             push_res = []
             for torrent in top_limit_torrents:
                 time.sleep(interval)
-                r = client.torrents.add(
-                    urls=torrent['urls'],
-                    save_path=torrent['save_path'],
-                    category=torrent['category'],
-                    paused=torrent['is_paused'],
-                    cookie=torrent['cookie'],
-                    upload_limit=torrent['upload_limit'],
-                    download_limit=torrent['download_limit'],
-                    skip_checking=torrent['is_skip_checking'],
-                    use_auto_torrent_management=torrent['use_auto_torrent_management'],
-                )
-                push_res.append({torrent['info_hash']: r})
-                push_count += 1
+                try:
+                    r = client.torrents.add(
+                        urls=torrent['urls'],
+                        save_path=torrent['save_path'],
+                        category=torrent['category'],
+                        paused=torrent['is_paused'],
+                        cookie=torrent['cookie'],
+                        upload_limit=torrent['upload_limit'],
+                        download_limit=torrent['download_limit'],
+                        skip_checking=torrent['is_skip_checking'],
+                        use_auto_torrent_management=torrent['use_auto_torrent_management'],
+                    )
+                    push_res.append({torrent['info_hash']: r})
+                    push_count += 1
+                except Exception as e:
+                    logger.error(f'推送种子到下载器失败:{e}')
+                    remaining_torrents.append(torrent)
+                    continue
+                    
             logger.debug(f'推送到下载器结果：{push_res}')
         logger.info(f'推送种子到下载器,共推送:{push_count}条种子')
 
@@ -1391,21 +1397,26 @@ def repeat_torrents(downloader_id: int):
             logger.info(f'当前站点的剩余未推送种子：{len(remaining_torrents)}')
             logger.info(f'缓存中共有：{cached_count}条辅种数据等待推送')
 
-            if remaining_torrents:
-                new_params[website_id] = remaining_torrents
-
             push_res = []
             for torrent in top_limit_torrents:
                 time.sleep(interval)
-                r = client.add_torrent(
-                    torrent=torrent['torrent'],
-                    paused=torrent['paused'],
-                    cookies=torrent['cookies'],
-                    labels=torrent['labels'],
-                    download_dir=torrent['download_dir'],
-                )
-                push_res.append({torrent['info_hash']: r.name})
-                push_count += 1
+                try:
+                    r = client.add_torrent(
+                        torrent=torrent['torrent'],
+                        paused=torrent['paused'],
+                        cookies=torrent['cookies'],
+                        labels=torrent['labels'],
+                        download_dir=torrent['download_dir'],
+                    )
+                    push_res.append({torrent['info_hash']: r.name})
+                    push_count += 1
+                except Exception as e:
+                    logger.error(f'推送种子到下载器失败:{e}')
+                    remaining_torrents.append(torrent)
+                    continue
+
+            if remaining_torrents:
+                new_params[website_id] = remaining_torrents
 
             logger.info(f'推送到下载器结果：{push_res}')
         logger.info(f'推送种子到下载器,共推送:{push_count}条种子')

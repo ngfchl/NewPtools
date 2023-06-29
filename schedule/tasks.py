@@ -22,6 +22,7 @@ from auxiliary.celery import BaseTask
 from download.models import Downloader
 from my_site.models import MySite, TorrentInfo
 from spider.views import PtSpider, toolbox
+from toolbox import aliyundrive
 from toolbox.schema import CommonResponse
 from website.models import WebSite
 
@@ -50,6 +51,24 @@ def auto_sign_in(self):
     """执行签到"""
     start = time.time()
     logger.info('开始执行签到任务')
+    aliyundrive_sign_in_list = cache.get(f"aliyundrive_sign_in_list", [])
+
+    aliyundrive_params = toolbox.parse_toml('aliyundrive')
+    if aliyundrive_params is not None:
+        try:
+            logger.info('检测到阿里云参数，开始签到阿里云盘')
+            refresh_token_list = aliyundrive_params.get('refresh_token')
+            if len(refresh_token_list) == len(aliyundrive_sign_in_list):
+                logger.info('阿里云盘签到任务已完成')
+            else:
+                welfare = aliyundrive_params.get('reward', True)
+                result = aliyundrive.aliyundrive_sign_in(refresh_token_list=refresh_token_list, welfare=welfare)
+                toolbox.send_text(title='阿里云签到', message=result)
+        except Exception as e:
+            msg = f'阿里云签到失败！{e}'
+            logger.error(msg)
+            logger.error(traceback.format_exc(5))
+            toolbox.send_text(title='阿里云签到', message=msg)
     logger.info('筛选需要签到的站点')
     message_list = []
     queryset = [

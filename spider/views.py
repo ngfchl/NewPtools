@@ -928,7 +928,6 @@ class PtSpider:
     def get_mail_info(self, my_site: MySite, details_html, header):
         """获取站点短消息"""
         site = get_object_or_404(WebSite, id=my_site.site)
-        mail = 0
         mail_check = len(details_html.xpath(site.my_mailbox_rule))
         if 'zhuque.in' in site.url:
             mail_res = self.send_request(my_site=my_site, url=f'{site.url}api/user/getMainInfo', header=header)
@@ -979,7 +978,7 @@ class PtSpider:
                 mail = "".join(mail_list)
                 logger.info(f'PM信息列表：{mail}')
                 # 测试发送网站消息原内容
-                message = f'\n# 短消息  \n> 只显示第一页哦\n{mail}'
+                message = f'\n# {site.name} 短消息  \n> 只显示第一页哦\n{mail}'
                 message_list += message
             status.mail = len(mail_list)
             status.save()
@@ -1001,7 +1000,7 @@ class PtSpider:
         else:
             notice = 0
             notice_check = len(details_html.xpath(site.my_notice_rule))
-            logger.debug(f'公告：{notice_check} ')
+            logger.debug(f'{site.name} 公告：{notice_check} ')
             if notice_check > 0:
                 notice_str = ''.join(details_html.xpath(site.my_notice_rule))
                 notice_count = re.sub(u"([^\u0030-\u0039])", "", notice_str)
@@ -1047,7 +1046,7 @@ class PtSpider:
                     logger.debug(f'公告信息列表：{notice_list}')
                     # notice = '  \n\n### '.join(notice_list[:notice_count])
                     notice = ''.join(notice_list[:1])
-                    message_list += f'# 公告  \n## {notice}'
+                    message_list += f'# {site.name} 公告  \n## {notice}'
                     title = f'{site.name}有{notice_count}条新公告！'
                     toolbox.send_text(title=title, message=message_list)
 

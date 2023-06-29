@@ -296,8 +296,9 @@ def send_text(message: str, title: str = '', url: str = None):
                 telegram_token = notify.get('telegram_token')
                 telegram_chat_id = notify.get('telegram_chat_id')
                 bot = telebot.TeleBot(telegram_token)
-                proxy = notify.get('proxy')
-                if proxy:
+                proxy_str = notify.get('proxy')
+                if proxy_str:
+                    proxy = json.loads(proxy_str)
                     apihelper.proxy = proxy
                 bot.send_message(telegram_chat_id, message)
                 msg = 'Telegram通知成功'

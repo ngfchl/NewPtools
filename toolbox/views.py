@@ -314,7 +314,7 @@ def send_text(message: str, title: str = '', url: str = None):
             # return msg
 
 
-def get_git_log(branch='master', n=20):
+def get_git_log(branch='master', n=5):
     repo = git.Repo(path='.')
     # 拉取仓库更新记录元数据
     repo.remote().fetch()

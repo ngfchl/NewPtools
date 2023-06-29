@@ -1,17 +1,18 @@
-from typing import Optional
+from typing import Optional, List
 
 from ninja import Schema
 
 
+class GitLog(Schema):
+    date: str
+    data: str
+    hex: str
+
+
 class UpdateSchemaOut(Schema):
-    cid: str
-    delta: str
-    restart: str
-    local_logs: list
-    update_notes: list
-    update: str
-    update_tip: str
-    branch: str
+    local_logs: GitLog
+    update_notes: List[GitLog]
+    update: bool
 
 
 class UserIn(Schema):

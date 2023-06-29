@@ -3,15 +3,14 @@ import os
 import subprocess
 import traceback
 from datetime import datetime
+from typing import Optional
 
-import docker
 import jwt
 import toml
 from django.conf import settings
 from django.contrib import auth
 from django.http import FileResponse, HttpResponse
 from ninja import Router
-from ninja.responses import codes_4xx
 
 from auxiliary.settings import BASE_DIR
 from configuration.schema import UpdateSchemaOut, UserIn, SettingsIn
@@ -57,50 +56,25 @@ def get_user_info(request):
     })
 
 
-@router.get('update/log', response={200: UpdateSchemaOut, codes_4xx: CommonMessage}, description='更新日志')
+@router.get('update/log', response=CommonResponse[Optional[UpdateSchemaOut]], description='更新日志')
 def update_page(request):
     """更新日志"""
     try:
-        # 获取docker对象
-        client = docker.from_env()
-        # 从内部获取容器id
-        cid = ''
-        delta = 0
-        restart = 'false'
-        for c in client.api.containers():
-            if 'ngfchl/ptools' in c.get('Image'):
-                cid = c.get('Id')
-                delta = c.get('Status')
-                restart = 'true'
+        local_logs = toolbox.get_git_log(n=1)
+        logger.info('本地代码日志{} \n'.format(local_logs))
+        update_notes = toolbox.get_git_log('origin/master', n=10)
+        logger.info('远程代码日志{} \n'.format(update_notes))
+        return CommonResponse.success(data={
+            'local_logs': local_logs[0],
+            'update_notes': update_notes,
+            'update': datetime.strptime(update_notes[0].get('date'), '%Y-%m-%d %H:%M:%S') > datetime.strptime(
+                local_logs[0].get('date'), '%Y-%m-%d %H:%M:%S')
+        })
     except Exception as e:
-        cid = ''
-        restart = 'false'
-        delta = '程序未在容器中启动？'
-    branch = os.getenv('DEV') if os.getenv('DEV') else 'master'
-    local_logs = toolbox.get_git_log(branch)
-    logger.info('本地代码日志{} \n'.format(local_logs))
-    update_notes = toolbox.get_git_log('origin/' + branch)
-    logger.info('远程代码日志{} \n'.format(update_notes))
-    if datetime.strptime(
-            update_notes[0].get('date'), '%Y-%m-%d %H:%M:%S') > datetime.strptime(
-        local_logs[0].get('date'), '%Y-%m-%d %H:%M:%S'
-    ):
-        update = 'true'
-        update_tips = '已有新版本，请根据需要升级！'
-    else:
-        update = 'false'
-        update_tips = '目前您使用的是最新版本！'
-    return {
-        'cid': cid,
-        'delta': delta,
-        'restart': restart,
-        'local_logs': local_logs,
-        'update_notes': update_notes,
-        'update': update,
-        'update_tips': update_tips,
-        'branch': ('开发版：{}，更新于{}' if branch == 'dev' else '稳定版：{}，更新于{}').format(
-            local_logs[0].get('hexsha'), local_logs[0].get('date'))
-    }
+        msg = f'更新日志获取失败：{e}'
+        logger.error(msg)
+        logger.error(traceback.format_exc(5))
+        return CommonResponse.error(msg=msg)
 
 
 @router.get('update/migrate', response=CommonMessage, description='同步数据库')

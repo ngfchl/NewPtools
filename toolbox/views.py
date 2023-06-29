@@ -1398,7 +1398,7 @@ def repeat_torrents(downloader_id: int):
             for torrent in top_limit_torrents:
                 time.sleep(interval)
                 r = client.add_torrent(
-                    torrent=torrent['url'],
+                    torrent=torrent['torrent'],
                     paused=torrent['paused'],
                     cookies=torrent['cookies'],
                     labels=torrent['labels'],

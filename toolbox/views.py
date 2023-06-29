@@ -228,15 +228,18 @@ def send_text(message: str, title: str = '', url: str = None):
         try:
             if key == PushConfig.wechat_work_push:
                 """企业微信通知"""
+                server = notify.get('server', 'https://qyapi.weixin.qq.com/')
+                if not server.endswith('/'):
+                    server = server + '/'
                 notify_push = WechatPush(
                     corp_id=notify.get('corp_id'),
                     secret=notify.get('corpsecret'),
                     agent_id=notify.get('agent_id'),
-                    server=notify.get('server', 'https://qyapi.weixin.qq.com/')
+                    server=server,
                 )
                 res = notify_push.send_text(
                     text=message,
-                    to_uid=notify.get('touser') if notify.get('touser') else '@all'
+                    to_uid=notify.get('to_uid', '@all')
                 )
                 msg = '企业微信通知：{}'.format(res)
                 logger.info(msg)

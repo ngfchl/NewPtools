@@ -1175,7 +1175,9 @@ def repeat_torrents(downloader_id: int):
     logger.debug(f'加载辅种配置项: {repeat}')
     limit = repeat.get('limit', 15)
     interval = repeat.get('interval', 0)
-
+    auto_torrent_management = repeat.get('auto_torrent_management', False)
+    content_layout = repeat.get('content_layout', "Original")
+    
     # 新的params数据，将会存储新的种子信息
     new_params = {}
     repeat_count = 0
@@ -1244,7 +1246,6 @@ def repeat_torrents(downloader_id: int):
                             "download_limit": 150 * 1024,
                             "is_skip_checking": False,
                             "is_paused": True,
-                            "use_auto_torrent_management": True,
                             "info_hash": info_hash,
                         })
             logger.info(f'本次辅种数据，共有：{len(repeat_params)}个站点的辅种数据')
@@ -1295,7 +1296,8 @@ def repeat_torrents(downloader_id: int):
                         upload_limit=torrent['upload_limit'],
                         download_limit=torrent['download_limit'],
                         skip_checking=torrent['is_skip_checking'],
-                        use_auto_torrent_management=torrent['use_auto_torrent_management'],
+                        use_auto_torrent_management=auto_torrent_management,
+                        content_layout=content_layout,
                     )
                     push_res.append({torrent['info_hash']: r})
                     push_count += 1

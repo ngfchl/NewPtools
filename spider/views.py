@@ -567,6 +567,135 @@ class PtSpider:
                 msg='{} 签到失败: {}'.format(site.name, e)
             )
 
+    def sign_in_leaves(self, my_site: MySite):
+        """
+        红叶签到，暂不支持
+        :param my_site:
+        :return:
+        """
+        try:
+            site = get_object_or_404(WebSite, id=my_site.site)
+            url = site.url + site.page_sign_in.lstrip('/')
+            result = self.send_request(
+                my_site=my_site,
+                url=url,
+            )
+            # 检测是否已签到
+            logger.info(result.content)
+            # sign_str = self.parse(site, result, '//span[@id="qiandao"]')
+            # logger.debug(sign_str)
+            # if len(sign_str) < 1:
+            #     return CommonResponse.success(msg=f'{site.name} 已签到，请勿重复操作！！')
+            mood_list = [
+                "情绪愉悦，充满喜悦和快乐",
+                "心情愉快，感到幸福和满足",
+                "心情欢畅，感到愉悦和舒适",
+                "感受到内心的满足和幸福",
+                "情绪高涨，充满激动和期待",
+                "情绪激昂，兴奋或激烈的感受",
+                "感到放松和安逸，没有压力",
+                "感到舒服和宜人",
+                "内心安宁，没有波动和激情",
+                "心情安定，放心和安心",
+                "感到满足和满意，对结果感到满意",
+                "为自己的成就感到自豪和满足",
+                "感到畅快和痛快，毫不犹豫",
+                "感到高兴和喜悦",
+                "对别人的帮助或恩情感到感激和感谢",
+                "关系和谐，感到和睦和融洽",
+                "感到温馨和宽慰，心情舒畅",
+                "充满爱和情意",
+                "精神饱满，容光焕发",
+                "情绪低落，感到忧伤和沉闷",
+                "心情受伤，感到悲伤和痛苦",
+                "心情低落，感到失望和沮丧",
+                "感到疑惑和不安，心情紧张",
+                "感到疲惫和精疲力尽",
+                "感到烦躁和不耐烦",
+                "感到愤怒和气愤",
+                "感到恐惧和不安",
+                "感到孤独和寂寞"
+            ]
+            answer_list = [
+                "蜜蜂是通过花朵采集花蜜，并将花蜜带回蜂巢。",
+                "地球的外部结构包括地壳、地幔和地核。",
+                "太阳是太阳系的中心星体，是由氢和氦等元素组成的巨大热核反应堆。",
+                "光的传播速度是每秒约30万公里，它在真空中传播得更快。",
+                "DNA是一种分子，包含生物体遗传信息的编码。",
+                "水的化学式是H2O，由氢原子和氧原子组成。",
+                "地球上最高的山峰是珠穆朗玛峰，位于喜马拉雅山脉。",
+                "人类的骨骼系统由206块骨头组成，提供身体结构和支持。",
+                "植物通过光合作用将阳光转化为能量，同时释放氧气。",
+                "牛顿三大运动定律描述了物体的运动规律和力的作用关系。",
+                "宇宙大爆炸理论是关于宇宙起源的一种科学理论。",
+                "地球绕太阳运行一周的时间大约是365.25天，所以闰年有366天。",
+                "蝴蝶是昆虫中的一种，具有独特的鳞状翅膀和蜡样外壳。",
+                "地球上最大的洋是太平洋，占地球表面积的约30%。",
+                "人类的心脏位于胸腔中，是泵血和循环系统的中心。",
+                "地球上最长的河流是尼罗河，位于非洲大陆。",
+                "昆虫是地球上数量最多的动物类别，约有100万已知种类。",
+                "人类的大脑是控制思维、感觉和行为的中枢器官。",
+                "月球是地球的卫星，是人类探索和观测的对象之一。",
+                "地球是第三颗离太阳最近的行星，也是人类居住的家园。",
+                "鱼是一类生活在水中的脊椎动物，有鳞和鳍。",
+                "地球的大气层由氮、氧、氩和其他气体组成，保护地球并维持气候。",
+                "人类的眼睛是感知光线和视觉的器官。",
+                "Photosynthesis is the process by which plants convert sunlight into energy and produce oxygen.",
+                "The theory of relativity, proposed by Albert Einstein, describes the relationship between space, time, and gravity.",
+                "The human respiratory system consists of organs such as the lungs, trachea, and diaphragm, which are responsible for breathing and gas exchange.",
+                "The Great Wall of China is an ancient fortification that stretches over 13,000 miles and was built to protect against invasions.",
+                "Plate tectonics is the scientific theory that explains the movement of Earth's lithospheric plates and the formation of continents, mountains, and volcanoes.",
+                "The concept of supply and demand is a fundamental principle in economics that describes the relationship between the availability of a product or service and its demand by consumers.",
+                "The water cycle is the continuous movement of water on Earth, involving processes such as evaporation, condensation, precipitation, and runoff.",
+                "The human immune system is a complex network of cells, tissues, and organs that protects the body against pathogens and foreign substances.",
+                "The theory of evolution, proposed by Charles Darwin, explains how species change and adapt over time through the process of natural selection.",
+                "The concept of inertia, introduced by Isaac Newton, states that an object at rest tends to stay at rest, and an object in motion tends to stay in motion unless acted upon by an external force.",
+                "The Mona Lisa, painted by Leonardo da Vinci, is one of the most famous and iconic artworks in the world.",
+                "The process of cellular respiration is how cells convert glucose and oxygen into energy, carbon dioxide, and water.",
+                "The human digestive system includes organs such as the stomach, intestines, and liver, which break down food and absorb nutrients.",
+                "The theory of electromagnetism, formulated by James Clerk Maxwell, describes the relationship between electricity and magnetism.",
+                "The concept of gravity, described by Sir Isaac Newton, explains the force of attraction between objects with mass.",
+                "The human nervous system consists of the brain, spinal cord, and nerves, and is responsible for transmitting signals throughout the body.",
+                "The Renaissance was a period of cultural and intellectual rebirth in Europe, characterized by advancements in art, literature, science, and philosophy.",
+                "The greenhouse effect is the process by which certain gases in Earth's atmosphere trap heat and contribute to global warming.",
+                "The human skeletal system provides support, protection, and movement, with bones connected by joints and held together by ligaments.",
+                "The concept of entropy, introduced in thermodynamics, refers to the measure of disorder or randomness in a system.",
+                "The theory of quantum mechanics describes the behavior of matter and energy at the atomic and subatomic levels.",
+                "The human reproductive system includes organs such as the ovaries, uterus, and testes, and is responsible for reproduction and the production of offspring.",
+                "The concept of elasticity in economics refers to the responsiveness of demand or supply to changes in price or other factors.",
+                "The concept of cultural diversity recognizes and values the presence of different cultures, languages, and traditions within a society.",
+            ]
+            # 解析form表单
+            form = self.parse(site, result, '//td/h2[contains(text(), "签到")]/following::form[1]')[0]
+
+            # 构造表单数据
+            form_data = {}
+            for input_element in form.xpath(".//input"):
+                field_name = input_element.get("name")
+                field_value = input_element.get("value")
+                form_data[field_name] = field_value
+
+            # 添加其他需要的字段和值
+            form_data["character"] = random.choice(answer_list)
+            form_data["mood"] = random.choice(mood_list)
+            logger.info(f'红叶签到参数：{form_data}')
+
+            sign_res = self.send_request(
+                my_site=my_site,
+                url=url,
+                method='post',
+                data=form_data,
+            )
+            logger.info(f'红叶签到反馈：{sign_res.content}')
+            return CommonResponse.success(
+                msg='你还需要继续努力哦！此次签到，你获得了魔力奖励：{}'
+            )
+        except Exception as e:
+            logger.error(traceback.format_exc(3))
+            return CommonResponse.error(
+                msg=f'签到失败！: {e}'
+            )
+
     @staticmethod
     def get_user_torrent(html, rule):
         res_list = html.xpath(rule)
@@ -604,6 +733,14 @@ class PtSpider:
                     signin_today.sign_in_info = result.msg
                     signin_today.save()
                 return result
+            # if 'leaves.red' in site.url:
+            # 红叶签到，暂不支持
+            #     result = self.sign_in_leaves(my_site)
+            # if result.code == 0:
+            #     signin_today.sign_in_today = True
+            #     signin_today.sign_in_info = result.msg
+            #     signin_today.save()
+            # return result
             if 'zhuque.in' in site.url:
                 result = self.sign_in_zhuque(my_site)
                 if result.code == 0 and result.data.get('status') == 200:

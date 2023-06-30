@@ -106,7 +106,7 @@ def aliyundrive_sign_in(refresh_token_list: List[str], welfare: bool = True):
             expiration = end_of_day - now
 
             # 将数据存入缓存并设置有效期
-            cache.set(f"aliyundrive_sign_in_list", aliyundrive_sign_in_list, expiration)
+            cache.set(f"aliyundrive_sign_in_list", aliyundrive_sign_in_list, expiration.seconds)
         except Exception as e:
             message_list.append(str(e))
     messages = '\n'.join(message_list)

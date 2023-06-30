@@ -1303,7 +1303,7 @@ def repeat_torrents(downloader_id: int):
                     logger.error(f'推送种子到下载器失败:{e}')
                     remaining_torrents.append(torrent)
                     continue
-                    
+
             logger.debug(f'推送到下载器结果：{push_res}')
         logger.info(f'推送种子到下载器,共推送:{push_count}条种子')
 
@@ -1412,6 +1412,7 @@ def repeat_torrents(downloader_id: int):
                     push_count += 1
                 except Exception as e:
                     logger.error(f'推送种子到下载器失败:{e}')
+                    logger.error(f'推送失败的种子信息：{torrent}')
                     remaining_torrents.append(torrent)
                     continue
 

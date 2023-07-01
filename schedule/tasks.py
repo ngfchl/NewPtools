@@ -952,9 +952,9 @@ def auto_repeat_torrent(self):
     downloader_ids = [downloader.id for downloader in downloaders]
     logger.info(downloaders)
     logger.info('开始辅种')
-    results1 = pool.map(toolbox.repeat_torrents, downloader_ids)
+    results1 = pool.map(pt_spider.repeat_torrents, downloader_ids)
     time.sleep(push_timeout)
-    results2 = pool.map(toolbox.start_torrent, downloader_ids)
+    results2 = pool.map(pt_spider.start_torrent, downloader_ids)
     logger.info('辅种结束')
     message_list = []
     for downloader, result1, result2 in zip(downloaders, results1, results2):

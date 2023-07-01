@@ -73,6 +73,7 @@ ENV TOKEN= \
     FLOWER_UI_PORT=5566 \
     SUPERVISOR_UI_PORT=9001 \
     CloudFlareSpeedTest=false \
+    GIT_PROXY= \
     LOGGER_LEVEL="DEBUG"
 
 ENTRYPOINT [ "/ptools/entrypoint.sh" ]

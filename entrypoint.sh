@@ -92,6 +92,18 @@ function init_supervisor() {
 
 }
 
+function upgrade() {
+
+  if [ ! -e "$GIT_PROXY" ]; then
+    git config --global http.proxy "$GIT_PROXY"
+    git config --global https.proxy "$GIT_PROXY"
+  fi
+  git pull git@github.com:ngfchl/NewPtools.git master
+
+}
+
+upgrade
+
 token_verification
 
 cloudflarespeedtest_host

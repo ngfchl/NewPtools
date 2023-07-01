@@ -99,6 +99,7 @@ function upgrade() {
     git config --global https.proxy "$GIT_PROXY"
   fi
   git pull git@github.com:ngfchl/NewPtools.git master
+  chmod +x entrypoint.sh
 
 }
 

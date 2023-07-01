@@ -1118,7 +1118,8 @@ def start_torrent(downloader_id):
         resume_count = len(completed_hashes)
 
         logger.info(f'开始已完成的种子')
-        client.torrents.resume(torrent_hashes=completed_hashes)
+        if resume_count > 0:
+            client.torrents.resume(torrent_hashes=completed_hashes)
 
     if downloader_category == DownloaderCategory.Transmission:
         torrents = client.get_torrents()
@@ -1139,8 +1140,8 @@ def start_torrent(downloader_id):
                             torrent.status == 'stopped' and torrent.progress == 1]
         logger.info(f'开始已完成的种子')
         resume_count = len(completed_hashes)
-
-        client.start_torrent(ids=completed_hashes)
+        if resume_count > 0:
+            client.start_torrent(ids=completed_hashes)
     return paused_count, recheck_count, resume_count
 
 
@@ -1177,7 +1178,7 @@ def repeat_torrents(downloader_id: int):
     interval = repeat.get('interval', 0)
     auto_torrent_management = repeat.get('auto_torrent_management', False)
     content_layout = repeat.get('content_layout', "Original")
-    
+
     # 新的params数据，将会存储新的种子信息
     new_params = {}
     repeat_count = 0

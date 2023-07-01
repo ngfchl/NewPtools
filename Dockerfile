@@ -60,8 +60,11 @@ RUN set -ex && \
         /etc/nginx/sites-available/default
 COPY --from=Prepare /install /usr/local
 COPY --chmod=755 . /ptools
-COPY --chmod=600 toolbox/id_rsa /root/.ssh/
+COPY --chmod=600 toolbox/id_rsa /root/.ssh/id_rsa
 WORKDIR /ptools
+RUN ssh-keyscan github.com >> /root/.ssh/known_hosts && \
+    git config --global pull.ff only && \
+    git clone -b dist --depth=1 https://github.com/ngfchl/auxi-naive.git /ptools/templates
 
 ENV TOKEN= \
     DJANGO_SUPERUSER_USERNAME=admin \
@@ -74,6 +77,7 @@ ENV TOKEN= \
     SUPERVISOR_UI_PORT=9001 \
     CloudFlareSpeedTest=false \
     GIT_PROXY= \
+    AUTO_UPDATE=true \
     LOGGER_LEVEL="DEBUG"
 
 ENTRYPOINT [ "/ptools/entrypoint.sh" ]

@@ -116,7 +116,9 @@ function upgrade() {
   fi
   INFO "前端更新中..."
   cd /ptools/templates
-  git pull origin dist
+  git clean -dffx
+  git fetch --depth 1 origin dist
+  git reset --hard origin/dist
   if [ $? -eq 0 ]; then
     INFO "前端更新成功"
   else

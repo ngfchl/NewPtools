@@ -15,7 +15,6 @@ import feedparser
 import git
 import jwt
 import qbittorrentapi
-# import git
 import requests
 import telebot
 import toml as toml
@@ -289,15 +288,21 @@ def send_text(message: str, title: str = '', url: str = None):
                 proxy = notify.get('proxy')
                 if proxy:
                     apihelper.proxy = proxy
-                bot.send_message(telegram_chat_id, message)
+                max_length = 4096  # 最大消息长度限制
+                if len(message) <= max_length:
+                    bot.send_message(telegram_chat_id, message)  # 如果消息长度不超过最大限制，直接发送消息
+                else:
+                    while message:
+                        chunk = message[:max_length]  # 从消息中截取最大长度的部分
+                        bot.send_message(telegram_chat_id, chunk, parse_mode="Markdown")  # 发送消息部分
+                        message = message[max_length:]  # 剩余部分作为新的消息进行下一轮发送
+
                 msg = 'Telegram通知成功'
                 logger.info(msg)
 
-            # return msg
         except Exception as e:
             msg = f'通知发送失败，{res} {traceback.format_exc(limit=5)}'
             logger.error(msg)
-            # return msg
 
 
 def get_git_log(branch='master', n=5):

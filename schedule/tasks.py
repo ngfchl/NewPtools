@@ -36,6 +36,8 @@ else:
 pool = ThreadPool(cpu_count)
 pt_spider = PtSpider()
 notice = toolbox.parse_toml("notice")
+if not notice:
+    notice = {}
 notice_category_enable = notice.get("notice_category_enable", {
     # 签到通知开关
     "sign_in_info": True,

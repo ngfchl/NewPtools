@@ -17,7 +17,7 @@ from django.core.cache import cache
 from django.db.models import Q
 from lxml import etree
 
-from auxiliary.base import MessageTemplate, DownloaderCategory
+from auxiliary.base import DownloaderCategory
 from auxiliary.celery import BaseTask
 from download.models import Downloader
 from my_site.models import MySite, TorrentInfo
@@ -35,6 +35,19 @@ else:
     cpu_count = os.cpu_count() if os.cpu_count() <= 8 else 8
 pool = ThreadPool(cpu_count)
 pt_spider = PtSpider()
+notice = toolbox.parse_toml("notice")
+notice_category_enable = notice.get("notice_category_enable", {
+    # 签到通知开关
+    "sign_in_info": True,
+    "aliyundrive_notice": True,
+    # 站点数据开关
+    "site_data": True,
+    # 今日数据
+    "today_data": True,
+    # PTPP
+    "ptpp_import": True,
+
+})
 
 
 @shared_task
@@ -50,6 +63,7 @@ def auto_reload_supervisor():
 def auto_sign_in(self):
     """执行签到"""
     start = time.time()
+
     logger.info('开始执行签到任务')
     aliyundrive_sign_in_list = cache.get(f"aliyundrive_sign_in_list", [])
 
@@ -63,7 +77,8 @@ def auto_sign_in(self):
             else:
                 welfare = aliyundrive_params.get('reward', True)
                 result = aliyundrive.aliyundrive_sign_in(refresh_token_list=refresh_token_list, welfare=welfare)
-                toolbox.send_text(title='阿里云签到', message=result)
+                if notice_category_enable.get("aliyundrive_notice"):
+                    toolbox.send_text(title='阿里云签到', message=result)
         except Exception as e:
             msg = f'阿里云签到失败！{e}'
             logger.error(msg)
@@ -114,7 +129,9 @@ def auto_sign_in(self):
     logger.info(f'签到记录{message}')
     logger.debug(f'失败记录{len(message_list)}')
     logger.debug(f'成功记录{len(success_message)}')
-    toolbox.send_text(title='通知：自动签到', message='\n'.join(message_list))
+
+    if notice_category_enable.get('today_data'):
+        toolbox.send_text(title='通知：自动签到', message='\n'.join(message_list))
     # toolbox.send_text(title='通知：签到成功', message='\n'.join(success_message))
     # 释放内存
     gc.collect()
@@ -137,53 +154,43 @@ def auto_get_status(self):
     queryset = [my_site for my_site in MySite.objects.filter(get_info=True) if
                 websites.get(id=my_site.site).get_info]
     results = pool.map(pt_spider.send_status_request, queryset)
-    message_template = MessageTemplate.status_message_template
+    message_template = "{} 等级：{} 魔力：{} 时魔：{} 积分：{} 分享率：{} " \
+                       "做种量：{} 上传量：{} 下载量：{} 上传数：{} 下载数：{} " \
+                       "邀请：{} H&R：{}\n"
     for my_site, result in zip(queryset, results):
         if result.code == 0:
             # res = pt_spider.parse_status_html(my_site, result.data)
             logger.info('自动更新个人数据: {}, {}'.format(my_site.nickname, result))
             # if res.code == 0:
             status = result.data
-            message = message_template.format(
-                my_site.nickname,
-                status.my_level,
-                status.my_bonus,
-                status.bonus_hour,
-                status.my_score,
-                status.ratio,
-                toolbox.FileSizeConvert.parse_2_file_size(status.seed_volume),
-                toolbox.FileSizeConvert.parse_2_file_size(status.uploaded),
-                toolbox.FileSizeConvert.parse_2_file_size(status.downloaded),
-                status.seed,
-                status.leech,
-                status.invitation,
-                status.my_hr,
-            )
+            message = toolbox.generate_notify_content(my_site.nickname, status)
             logger.info(message)
             # toolbox.send_text(title='通知：个人数据更新', message=my_site.nickname + ' 信息更新成功！' + message)
-            success_message.append(f'✅ {my_site.nickname} 信息更新成功！{message}\n\n')
+            success_message.append(f'✅ {my_site.nickname} 信息更新成功！{message}  \n')
         else:
             print(result)
             message = f'🆘 {my_site.nickname} 信息更新失败！原因：{result.msg}'
             logger.warning(message)
-            failed_message.append(f'{message} \n\n')
+            failed_message.append(f'{message}  \n')
             # toolbox.send_text(title='通知：个人数据更新', message=f'{my_site.nickname} 信息更新失败！原因：{message}')
     # 发送今日数据
-    total_upload, total_download, increase_info_list = toolbox.today_data()
-    increase_list = []
-    for increase_info in increase_info_list:
-        info = f'\n\n- ♻️ 站点：{increase_info.get("name")}'
-        if increase_info.get("uploaded") > 0:
-            info += f'\n\t\t⬆ {toolbox.FileSizeConvert.parse_2_file_size(increase_info.get("uploaded"))}'
-        if increase_info.get("downloaded") > 0:
-            info += f'\n\t\t⬇ {toolbox.FileSizeConvert.parse_2_file_size(increase_info.get("downloaded"))}'
-        increase_list.append(info)
-    incremental = f'⬆ 总上传：{toolbox.FileSizeConvert.parse_2_file_size(total_upload)}\n' \
-                  f'⬇ 总下载：{toolbox.FileSizeConvert.parse_2_file_size(total_download)}\n' \
-                  f'✔ 说明: 数据均相较于本站今日之前最近的一条数据，可能并非昨日\n' \
-                  f'⚛ 数据列表：{"".join(increase_list)}'
-    logger.info(incremental)
-    toolbox.send_text(title='通知：今日数据', message=incremental)
+
+    if notice_category_enable.get('today_data'):
+        total_upload, total_download, increase_info_list = toolbox.today_data()
+        increase_list = []
+        for increase_info in increase_info_list:
+            info = f'\n\n- ♻️ 站点：{increase_info.get("name")}'
+            if increase_info.get("uploaded") > 0:
+                info += f'\n\t\t⬆ {toolbox.FileSizeConvert.parse_2_file_size(increase_info.get("uploaded"))}'
+            if increase_info.get("downloaded") > 0:
+                info += f'\n\t\t⬇ {toolbox.FileSizeConvert.parse_2_file_size(increase_info.get("downloaded"))}'
+            increase_list.append(info)
+        incremental = f'⬆ 总上传：{toolbox.FileSizeConvert.parse_2_file_size(total_upload)}\n' \
+                      f'⬇ 总下载：{toolbox.FileSizeConvert.parse_2_file_size(total_download)}\n' \
+                      f'✔ 说明: 数据均相较于本站今日之前最近的一条数据，可能并非昨日\n' \
+                      f'⚛ 数据列表：{"".join(increase_list)}'
+        logger.info(incremental)
+        toolbox.send_text(title='通知：今日数据', message=incremental)
     end = time.time()
     consuming = f'自动更新个人数据 任务运行成功！共有{len(queryset)}个站点需要执行，' \
                 f'共计成功 {len(success_message)} 个站点，失败 {len(failed_message)} 个站点，' \
@@ -197,7 +204,8 @@ def auto_get_status(self):
     logger.debug(f'失败记录{len(message_list)}')
     logger.debug(f'成功记录{len(success_message)}')
     time.sleep(2)
-    toolbox.send_text(title='通知：更新个人数据', message='\n'.join(message_list))
+    if notice_category_enable.get('site_data'):
+        toolbox.send_text(title='通知：更新个人数据', message='\n'.join(message_list))
     # toolbox.send_text(title='通知：更新个人数据-成功', message='\n'.join(success_message))
     # 释放内存
     gc.collect()
@@ -282,7 +290,8 @@ def auto_get_torrents(self, *site_list: List[int]):
                         message = f'♻️ 拆包任务执行结束！耗时：{time.time() - package_start} \n ' \
                                   f'当前时间：{time.strftime("%Y-%m-%d %H:%M:%S")} \n' \
                                   f'成功拆包{len(torrents) - len(hash_list)}个，失败{len(hash_list)}个！'
-                        toolbox.send_text(title='拆包', message=message)
+                        if notice_category_enable.get("package_torrent"):
+                            toolbox.send_text(title='拆包', message=message)
                     message_push.append(msg)
             else:
                 message = f'> 🆘 {my_site.nickname} 抓取种子信息失败！原因：{res.msg}  \n'
@@ -471,7 +480,8 @@ def auto_get_rss(self, *site_list: List[int]):
                     message = f'♻️ 拆包任务执行结束！耗时：{time.time() - package_start} \n ' \
                               f'当前时间：{time.strftime("%Y-%m-%d %H:%M:%S")} \n' \
                               f'成功拆包{len(torrent_list) - len(hash_list)}个，失败{len(hash_list)}个！'
-                    toolbox.send_text(title='拆包', message=message)
+                    if notice_category_enable.get("package_torrent"):
+                        toolbox.send_text(title='拆包', message=message)
                     package_files = {
                         'site': my_site.nickname,
                         'time': time.strftime("%Y-%m-%d %H:%M:%S"),
@@ -566,7 +576,8 @@ def auto_torrents_package_files(self):
                 logger.error(traceback.format_exc(3))
                 continue
         message = f'♻️ 拆包任务执行结束！{time.strftime("%Y-%m-%d %H:%M:%S")} \n {"".join(message_list)}'
-        toolbox.send_text(title='拆包', message=message)
+        if notice_category_enable.get("package_torrent"):
+            toolbox.send_text(title='拆包', message=message)
 
 
 @shared_task(bind=True, base=BaseTask, time_limit=200)
@@ -633,7 +644,8 @@ def auto_remove_brush_task(self, *site_list: List[int]):
     message = '\n\n> '.join(message_list)
     logger.debug(message)
     if len(failed_message) > 0 or count > 0:
-        toolbox.send_text(title=f'删种-成功删除{count}条', message=message)
+        if notice_category_enable.get("delete_torrent"):
+            toolbox.send_text(title=f'删种-成功删除{count}条', message=message)
     return message
 
 
@@ -697,7 +709,8 @@ def auto_get_rss_torrent_detail(self, my_site_id: int = None):
                 logging.info(res.msg)
             msg = f'✅ {my_site.nickname} 新增种子{created} 个，更新{updated}个'
             logger.info(msg)
-            toolbox.send_text(title='RSS', message=msg)
+            if notice_category_enable.get("rss_torrent"):
+                toolbox.send_text(title='RSS', message=msg)
             if len(my_site_list) == 1:
                 return {'hash_list': hash_list, 'msg': msg}
         except Exception as e:
@@ -767,7 +780,8 @@ def auto_push_to_downloader(self, *site_list: List[int]):
             message_list.append(msg)
     end = time.time()
     message = f'> ♻️ 签到 任务运行成功！耗时：{end - start}  \n{time.strftime("%Y-%m-%d %H:%M:%S")} \n{"".join(message_list)}'
-    toolbox.send_text(title='通知：推送种子任务', message=message)
+    if notice_category_enable.get("push_torrent"):
+        toolbox.send_text(title='通知：推送种子任务', message=message)
     # 释放内存
     gc.collect()
 
@@ -780,7 +794,8 @@ def auto_update_torrent_info(self, ):
     time.sleep(5)
     end = time.time()
     message = f'> ♻️获取种子HASH 任务运行成功！耗时：{end - start}  \n{time.strftime("%Y-%m-%d %H:%M:%S")}'
-    toolbox.send_text(title='通知：自动获取种子HASH', message=message)
+    if notice_category_enable.get("get_torrent_hash"):
+        toolbox.send_text(title='通知：自动获取种子HASH', message=message)
     # 释放内存
     gc.collect()
 
@@ -818,7 +833,8 @@ def auto_program_upgrade(self, ):
         result = exec_command(update_commands)
         logger.info('更新完毕')
         message = f'> 更新完成！！请在接到通知后同步数据库！{datetime.now()}'
-        toolbox.send_text(title='通知：程序更新', message=message)
+        if notice_category_enable.get("program_upgrade"):
+            toolbox.send_text(title='通知：程序更新', message=message)
         return CommonResponse.success(
             msg='更新成功！稍后请在接到通知后同步数据库！！',
             data={
@@ -936,7 +952,8 @@ def import_from_ptpp(self, data_list: List):
     message_list = [result.msg for result in results]
     logger.info(message_list)
     # send_text(title='PTPP站点导入通知', message='Cookies解析失败，请确认导入了正确的cookies备份文件！')
-    toolbox.send_text(title='PTPP站点导入通知', message='\n\n'.join(message_list))
+    if notice_category_enable.get("ptpp_import"):
+        toolbox.send_text(title='PTPP站点导入通知', message='\n\n'.join(message_list))
     return message_list
 
 
@@ -974,7 +991,8 @@ def auto_repeat_torrent(self):
         message_list.append(message)
     messages = '\n'.join(message_list)
     logger.info(messages)
-    toolbox.send_text(title=f'辅种任务', message=messages)
+    if notice_category_enable.get("ptpp_import"):
+        toolbox.send_text(title=f'辅种任务', message=messages)
     return messages
 
 

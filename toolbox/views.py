@@ -1084,3 +1084,44 @@ def get_torrents_hash_from_iyuu(hash_list: List[str]):
         msg = f'从IYUU获取辅种数据失败！{e}'
         logger.error(msg)
         return CommonResponse.error(msg=msg)
+
+
+def generate_notify_content(nickname: str, status: SiteStatus):
+    notice = parse_toml("notice")
+    notice_content_enable = notice.get("notice_content_enable", True)
+    if not notice_content_enable:
+        return ''
+    notify_content_item = notice.get("notice_content_item", {
+        'level': True,
+        'bonus': True,
+        'per_bonus': True,
+        'score': True,
+        'ratio': True,
+        'seeding_vol': True,
+        'uploaded': True,
+        'downloaded': True,
+        'seeding': True,
+        'leeching': True,
+        'invite': True,
+        'hr': True
+    })
+
+    data = {
+        'level': status.my_level,
+        'bonus': status.my_bonus,
+        'per_bonus': status.bonus_hour,
+        'score': status.my_score,
+        'ratio': status.ratio,
+        'seeding_vol': FileSizeConvert.parse_2_file_size(status.seed_volume),
+        'uploaded': FileSizeConvert.parse_2_file_size(status.uploaded),
+        'downloaded': FileSizeConvert.parse_2_file_size(status.downloaded),
+        'seeding': status.seed,
+        'leeching': status.leech,
+        'invite': status.invitation,
+        'hr': status.my_hr
+    }
+
+    content = f"站点 {nickname}"
+    content += " ".join([f"{key}：{data[key]}" for key in data if notify_content_item[key]])
+
+    return content

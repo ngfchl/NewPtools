@@ -41,6 +41,8 @@ if not notice:
 notice_category_enable = notice.get("notice_category_enable", {
     # 签到通知开关
     "sign_in_info": True,
+    "sign_in_success": True,
+    "sign_in_error": True,
     "aliyundrive_notice": True,
     # 站点数据开关
     "site_data": True,
@@ -129,14 +131,16 @@ def auto_sign_in(self):
               f'失败{len(failed_message)}个站点，耗费时间：{round(end - start, 2)} \n'
     success_message.insert(0, message)
     message_list.append(message)
-    message_list.extend(failed_message)
+    if notice_category_enable.get('sign_in_error'):
+        message_list.extend(failed_message)
     message_list.append('*' * 20)
-    message_list.extend(success_message)
+    if notice_category_enable.get('sign_in_success'):
+        message_list.extend(success_message)
     logger.info(f'签到记录{message}')
     logger.debug(f'失败记录{len(message_list)}')
     logger.debug(f'成功记录{len(success_message)}')
 
-    if notice_category_enable.get('today_data'):
+    if notice_category_enable.get('sign_in_info'):
         toolbox.send_text(title='通知：自动签到', message='\n'.join(message_list))
     # toolbox.send_text(title='通知：签到成功', message='\n'.join(success_message))
     # 释放内存

@@ -106,8 +106,8 @@ function upgrade() {
   else
     ERROR "后端更新失败，请重新拉取镜像"
   fi
-  INFO "重设脚本权限中..."
-  chmod +x entrypoint.sh cfst_hosts.sh
+    INFO "重设脚本权限中..."
+    chmod -R 0755 /ptools
   if [ $? -eq 0 ]; then
     INFO "重设脚本权限成功"
   else

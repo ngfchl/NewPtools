@@ -63,7 +63,8 @@ COPY --from=Prepare /install /usr/local
 COPY --chmod=600 toolbox/id_rsa /root/.ssh/id_rsa
 RUN ssh-keyscan github.com >> /root/.ssh/known_hosts && \
     git config --global pull.ff only && \
-    git clone git@github.com:ngfchl/NewPtools.git /ptools && \
+    git clone --depth=1 git@github.com:ngfchl/NewPtools.git /ptools && \
+    git clone -b dist --depth=1 https://github.com/ngfchl/auxi-naive.git /ptools/templates && \
     chmod 0755 /ptools && chmod +x /ptools/entrypoint.sh /ptools/cfst_hosts.sh
 WORKDIR /ptools
 

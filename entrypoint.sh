@@ -99,12 +99,13 @@ function upgrade() {
     git config --global https.proxy "$GIT_PROXY"
   fi
   INFO "后端更新中..."
+  git reset --hard
   git pull git@github.com:ngfchl/NewPtools.git master
   if [ $? -eq 0 ]; then
     INFO "后端更新成功"
   else
     ERROR "后端更新失败，请重新拉取镜像"
-    exit 1
+    exit 0
   fi
   INFO "重设脚本权限中..."
   chmod +x entrypoint.sh cfst_hosts.sh
@@ -123,7 +124,7 @@ function upgrade() {
     INFO "前端更新成功"
   else
     ERROR "前端更新失败，请重新拉取镜像"
-    exit 1
+    exit 0
   fi
   cd /ptools
 

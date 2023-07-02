@@ -105,7 +105,6 @@ function upgrade() {
     INFO "后端更新成功"
   else
     ERROR "后端更新失败，请重新拉取镜像"
-    exit 0
   fi
   INFO "重设脚本权限中..."
   chmod +x entrypoint.sh cfst_hosts.sh
@@ -116,15 +115,12 @@ function upgrade() {
     exit 1
   fi
   INFO "前端更新中..."
-  cd /ptools/templates
-  git clean -dffx
-  git fetch --depth 1 origin dist
-  git reset --hard origin/dist
+  rm -rf /ptools/templates
+  git clone -b dist --depth=1 https://github.com/ngfchl/auxi-naive.git /ptools/templates
   if [ $? -eq 0 ]; then
     INFO "前端更新成功"
   else
     ERROR "前端更新失败，请重新拉取镜像"
-    exit 0
   fi
   cd /ptools
 

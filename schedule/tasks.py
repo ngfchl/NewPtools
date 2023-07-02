@@ -69,12 +69,12 @@ def auto_sign_in(self):
     start = time.time()
 
     logger.info('开始执行签到任务')
-    aliyundrive_sign_in_list = cache.get(f"aliyundrive_sign_in_list", [])
 
     aliyundrive_params = toolbox.parse_toml('aliyundrive')
     if aliyundrive_params is not None:
         try:
             logger.info('检测到阿里云参数，开始签到阿里云盘')
+            aliyundrive_sign_in_list = cache.get(f"aliyundrive_sign_in_list", [])
             refresh_token_list = aliyundrive_params.get('refresh_token')
             if len(refresh_token_list) == len(aliyundrive_sign_in_list):
                 logger.info('阿里云盘签到任务已完成')

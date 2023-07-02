@@ -60,7 +60,7 @@ function cloudflarespeedtest_host {
       bash cfst_hosts.sh
       echo "$current_date" > "$counter_file"
     else
-      INfO "今日已测速，跳过测速."
+      INFO "今日已测速，跳过测速."
     fi   
   else
     INFO "跳过测速."

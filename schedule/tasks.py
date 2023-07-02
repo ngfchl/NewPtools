@@ -45,8 +45,12 @@ notice_category_enable = notice.get("notice_category_enable", {
     # 今日数据
     "today_data": True,
     # PTPP
+    "delete_torrent": True,
+    "rss_torrent": True,
+    "push_torrent": True,
+    "get_torrent_hash": True,
+    "program_upgrade": True,
     "ptpp_import": True,
-
 })
 
 

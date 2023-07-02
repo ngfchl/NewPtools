@@ -49,8 +49,19 @@ function cloudflarespeedtest_host {
     INFO '存在自定义HOSTS文件，apply'
   fi
   if [ "$CloudFlareSpeedTest" = "true" ]; then
-    INFO "启动测速..."
-    bash cfst_hosts.sh
+    counter_file="/ptools/counter.txt"
+    current_date=$(date +%Y-%m-%d)
+    if [ ! -f "$counter_file" ]; then
+      echo "1" > "$counter_file"
+    fi
+    counter=$(<"$counter_file")
+    if [ "$current_date" != "$counter" ]; then
+      INFO "启动测速..."
+      bash cfst_hosts.sh
+      echo "$current_date" > "$counter_file"
+    else
+      INfO "今日已测速，跳过测速."
+    fi   
   else
     INFO "跳过测速."
   fi

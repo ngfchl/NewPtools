@@ -1219,7 +1219,7 @@ def sht_sign(host, username, password, cookie, user_agent):
             },
             cookies=cookies_dict,
         )
-        check_sign = etree.HTML(response.content.decode('utf8')).xpath('//a[contains(text(),"今日已签到")]')
+        check_sign = etree.HTML(check_sign_response.content.decode('utf8')).xpath('//a[contains(text(),"今日已签到")]')
         if not check_sign or len(check_sign) <= 0:
             # 打开签到界面
             sign_ui_url = f'{host}/plugin.php?id=dd_sign&mod=sign&infloat=yes&handlekey=pc_click_ddsign&inajax=1&ajaxtarget=fwin_content_pc_click_ddsign'
@@ -1289,9 +1289,12 @@ def sht_sign(host, username, password, cookie, user_agent):
                     data=sign_form_data,
                 )
                 logger.debug(f"签到结果页：{sign_response.content.decode('utf8')}")
-                match = re.search(r"showDialog\('([^']*)'", sign_response.content.decode('utf8'))
-                result = match.group(1)
-                logger.info(f'本次签到：{result}')
+                if '已经签到过啦，请明天再来！' in sign_response.content.decode('utf8'):
+                    result = f't98已经签到过啦！请不要重复签到！'
+                else:
+                    match = re.search(r"showDialog\('([^']*)'", sign_response.content.decode('utf8'))
+                    result = match.group(1)
+                    logger.info(f'本次签到：{result}')
             else:
                 result = f't98已经签到过啦！请不要重复签到！'
                 logger.info(result)

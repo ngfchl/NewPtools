@@ -1120,7 +1120,21 @@ def generate_notify_content(notice, status: SiteStatus):
         'invite': status.invitation,
         'hr': status.my_hr
     }
+    chinese_key = {
+        'level': '等级',
+        'bonus': '魔力',
+        'per_bonus': '时魔',
+        'score': '做种积分',
+        'ratio': '分享率',
+        'seeding_vol': '做种凉',
+        'uploaded': '已上传',
+        'downloaded': '已下载',
+        'seeding': '做种中',
+        'leeching': '下载中',
+        'invite': '邀请',
+        'hr': 'H&R',
+    }
 
-    content += " ".join([f"{key}：{data[key]}" for key in data if notify_content_item.get(key, True)])
+    content += " ".join([f"{chinese_key[key]}：{data[key]}" for key in data if notify_content_item.get(key, True)])
 
     return content

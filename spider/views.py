@@ -1421,7 +1421,6 @@ class PtSpider:
                 bonus_msg = f'时魔获取失败!'
                 err_msg.append(bonus_msg)
                 logger.warning(f'{my_site.nickname} {bonus_msg}')
-
             # 请求邮件页面，直接推送通知到手机
             if site.url not in [
                 'https://dicmusic.club/',
@@ -1429,9 +1428,20 @@ class PtSpider:
                 'https://zhuque.in/',
             ]:
                 if details_html.code == 0:
-                    self.get_mail_info(my_site, details_html.data, header=headers)
-                    # 请求公告信息，直接推送通知到手机
-                    self.get_notice_info(my_site, details_html.data)
+                    notice = toolbox.parse_toml("notice")
+                    if not notice:
+                        notice = {}
+                    notice_category_enable = notice.get("notice_category_enable", {
+                        "announcement": True,
+                        "message": True,
+                    })
+                    if notice_category_enable.get("announcement"):
+                        # 请求公告信息，直接推送通知到手机
+                        self.get_notice_info(my_site, details_html.data)
+                    if notice_category_enable.get("message"):
+                        # 请求邮件信息,直接推送通知到手机
+                        self.get_mail_info(my_site, details_html.data, header=headers)
+
             # return self.parse_status_html(my_site, data)
             status = my_site.sitestatus_set.latest('created_at')
             if len(err_msg) <= 3:

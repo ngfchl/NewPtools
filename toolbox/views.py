@@ -1298,34 +1298,34 @@ def sht_sign(host, username, password, cookie, user_agent):
             else:
                 result = f't98已经签到过啦！请不要重复签到！'
                 logger.info(result)
-            # 检查当前积分与金币
-            credit_url = f'{host}/home.php?mod=spacecp&ac=credit&op=base'
-            credit_response = session.get(
-                url=credit_url,
-                headers={
-                    "User-Agent": user_agent,
-                    'referer': f"{host}/plugin.php?id=dd_sign:index",
-                },
-                cookies=cookies_dict,
-            )
-            logger.debug(f'积分金币页面详情：{credit_response.content.decode("utf8")}')
+        # 检查当前积分与金币
+        credit_url = f'{host}/home.php?mod=spacecp&ac=credit&op=base'
+        credit_response = session.get(
+            url=credit_url,
+            headers={
+                "User-Agent": user_agent,
+                'referer': f"{host}/plugin.php?id=dd_sign:index",
+            },
+            cookies=cookies_dict,
+        )
+        logger.debug(f'积分金币页面详情：{credit_response.content.decode("utf8")}')
 
-            pattern = re.compile(
-                r'(金钱:\s)*<\/em>(\d+)|(色币:\s)*<\/em>(\d+)|(积分:\s)*<\/em>(\d+)|(评分:\s)*<\/em>(\d+)',
-                re.S)
-            matches = re.findall(pattern, credit_response.content.decode("utf8"))
-            info = '，'.join([''.join(match) for match in matches])
-            logger.info(f'积分金币详情: {info}')
-            msg = f"本次签到:{result}\n积分金币详情: {info}"
+        pattern = re.compile(
+            r'(金钱:\s)*<\/em>(\d+)|(色币:\s)*<\/em>(\d+)|(积分:\s)*<\/em>(\d+)|(评分:\s)*<\/em>(\d+)',
+            re.S)
+        matches = re.findall(pattern, credit_response.content.decode("utf8"))
+        info = '，'.join([''.join(match) for match in matches])
+        logger.info(f'积分金币详情: {info}')
+        msg = f"本次签到:{result}\n积分金币详情: {info}"
 
-            # 获取当前时间
-            now = datetime.now()
-            # 计算当天结束的时间
-            end_of_day = now.replace(hour=23, minute=59, second=59)
-            # 计算当前时间到当天结束的时间间隔
-            expiration = end_of_day - now
-            cache.set(f"t98_sign_in_state", True, expiration.seconds)
-            return CommonResponse.success(msg=msg)
+        # 获取当前时间
+        now = datetime.now()
+        # 计算当天结束的时间
+        end_of_day = now.replace(hour=23, minute=59, second=59)
+        # 计算当前时间到当天结束的时间间隔
+        expiration = end_of_day - now
+        cache.set(f"t98_sign_in_state", True, expiration.seconds)
+        return CommonResponse.success(msg=msg)
 
     except Exception as e:
         msg = f'98签到失败：{e}'

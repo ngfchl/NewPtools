@@ -1,0 +1,48 @@
+name: Build new ptools image
+
+on:
+  workflow_dispatch:
+
+jobs:
+  ptools:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Set date
+        id: date
+        run: |
+          echo "date=$(date +'%Y-%m-%d')" >> $GITHUB_OUTPUT
+
+      - name: Checkout
+        uses: actions/checkout@master
+
+      - name: Docker meta
+        id: meta
+        uses: docker/metadata-action@v4
+        with:
+          images: ${{ secrets.NEW_PTOOLS_DOCKER_USERNAME }}/ptools-client-backend
+
+      - name: Set Up QEMU
+        uses: docker/setup-qemu-action@v2
+
+      - name: Set Up Buildx
+        uses: docker/setup-buildx-action@v2
+
+      - name: Login DockerHub
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.NEW_PTOOLS_DOCKER_USERNAME }}
+          password: ${{ secrets.NEW_PTOOLS_DOCKER_PASSWORD }}
+
+      - name: Build
+        uses: docker/build-push-action@v4
+        with:
+          context: .
+          file: Dockerfile
+          platforms: |
+            linux/amd64
+            linux/arm64/v8
+          push: true
+          tags: |
+            ${{ secrets.NEW_PTOOLS_DOCKER_USERNAME }}/ptools:latest
+            ${{ secrets.NEW_PTOOLS_DOCKER_USERNAME }}/ptools:${{steps.date.outputs.date}}
+          labels: ${{ steps.meta.outputs.labels }}

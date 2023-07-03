@@ -92,6 +92,25 @@ def auto_sign_in(self):
             logger.error(msg)
             logger.error(traceback.format_exc(5))
             toolbox.send_text(title='阿里云签到', message=msg)
+    t98 = toolbox.parse_toml('t98')
+    if t98 is not None:
+        try:
+            logger.info('检测到98参数，开始签到')
+            t98_sign_in_state = cache.get(f"t98_sign_in_state", False)
+            if not t98_sign_in_state:
+                res = toolbox.sht_sign(
+                    host=t98.get('host'),
+                    username=t98.get('username'),
+                    password=t98.get('password'),
+                    cookie=t98.get('cookie'),
+                    user_agent=t98.get('user_agent'),
+                )
+                toolbox.send_text(title='98签到', message=res.msg)
+        except Exception as e:
+            msg = f'98签到失败！{e}'
+            logger.error(msg)
+            logger.error(traceback.format_exc(5))
+            toolbox.send_text(title='98签到', message=msg)
     logger.info('筛选需要签到的站点')
     message_list = []
     queryset = [

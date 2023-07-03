@@ -1289,15 +1289,16 @@ def sht_sign(host, username, password, cookie, user_agent):
                     data=sign_form_data,
                 )
                 logger.debug(f"签到结果页：{sign_response.content.decode('utf8')}")
-                if '已经签到过啦，请明天再来！' in sign_response.content.decode('utf8'):
-                    result = f't98已经签到过啦！请不要重复签到！'
-                else:
-                    match = re.search(r"showDialog\('([^']*)'", sign_response.content.decode('utf8'))
-                    result = match.group(1)
-                    logger.info(f'本次签到：{result}')
-            else:
+                match = re.search(r"showDialog\('([^']*)'", sign_response.content.decode('utf8'))
+                result = match.group(1)
+                logger.info(f'本次签到：{result}')
+            elif '已经签到过啦，请明天再来！' in sign_response.content.decode('utf8'):
                 result = f't98已经签到过啦！请不要重复签到！'
-                logger.info(result)
+            else:
+                result = f't98签到失败!请检查网页！!'
+        else:
+            result = f't98已经签到过啦！请不要重复签到！'
+            logger.info(result)
         # 检查当前积分与金币
         credit_url = f'{host}/home.php?mod=spacecp&ac=credit&op=base'
         credit_response = session.get(

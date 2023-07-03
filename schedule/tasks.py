@@ -137,7 +137,7 @@ def auto_sign_in(self):
     if notice_category_enable.get('sign_in_success'):
         message_list.extend(success_message)
     logger.info(f'签到记录{message}')
-    logger.debug(f'失败记录{len(message_list)}')
+    logger.debug(f'失败记录{len(failed_message)}')
     logger.debug(f'成功记录{len(success_message)}')
 
     if notice_category_enable.get('sign_in_info'):
@@ -164,9 +164,6 @@ def auto_get_status(self):
     queryset = [my_site for my_site in MySite.objects.filter(get_info=True) if
                 websites.get(id=my_site.site).get_info]
     results = pool.map(pt_spider.send_status_request, queryset)
-    message_template = "{} 等级：{} 魔力：{} 时魔：{} 积分：{} 分享率：{} " \
-                       "做种量：{} 上传量：{} 下载量：{} 上传数：{} 下载数：{} " \
-                       "邀请：{} H&R：{}\n"
     for my_site, result in zip(queryset, results):
         if result.code == 0:
             # res = pt_spider.parse_status_html(my_site, result.data)

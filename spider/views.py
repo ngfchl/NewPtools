@@ -925,7 +925,7 @@ class PtSpider:
                 }
                 '''
                 if status == '0' or status == '1':
-                    message = res.json().get('message')
+                    message = res.json().get('message').replace('\n', '')
                     signin_today.sign_in_today = True
                     signin_today.sign_in_info = message
                     signin_today.save()

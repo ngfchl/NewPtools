@@ -1,3 +1,4 @@
+import time
 from typing import Optional, List, Union
 
 from ninja import ModelSchema, Schema
@@ -11,7 +12,7 @@ class MySiteSchemaOut(ModelSchema):
 
     # site: create_schema(WebSite, fields=['id', 'name'])
     updated: str
-    joined: str
+    joined: int
     downloader_id: Optional[int]
 
     class Config:
@@ -27,7 +28,8 @@ class MySiteSchemaOut(ModelSchema):
         return datetime.strftime(self.updated_at, '%Y年%m月%d日%H:%M:%S')
 
     def resolve_joined(self, obj):
-        return datetime.strftime(self.time_join, '%Y年%m月%d日%H:%M:%S')
+        # return datetime.strftime(self.time_join, '%Y年%m月%d日%H:%M:%S')
+        return time.time() - self.time_join.timestamp()
 
     def resolve_downloader_id(self, obj):
         if self.downloader:

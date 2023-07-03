@@ -1139,57 +1139,62 @@ class PtSpider:
         ]:
             pass
         else:
-            notice = 0
             notice_check = len(details_html.xpath(site.my_notice_rule))
             logger.debug(f'{site.name} 公告：{notice_check} ')
+
             if notice_check > 0:
-                notice_str = ''.join(details_html.xpath(site.my_notice_rule))
-                notice_count = re.sub(u"([^\u0030-\u0039])", "", notice_str)
-                notice_count = int(notice_count) if notice_count else 0
-                notice_list = []
-                message_list = ''
-                if notice_count > 0:
-                    logger.info(f'{site.name} 站点公告')
-                    if site.url in [
-                        'https://hdchina.org/',
-                        'https://hudbt.hust.edu.cn/',
-                        'https://wintersakura.net/',
-                    ]:
-                        # 单独发送请求，解决冬樱签到问题
-                        notice_res = requests.get(url=f'{site.url}{site.page_index}', verify=False,
-                                                  cookies=toolbox.cookie2dict(my_site.cookie),
-                                                  headers={
-                                                      'user-agent': my_site.user_agent
-                                                  })
-                    else:
-                        notice_res = self.send_request(my_site, url=f'{site.url}{site.page_index}')
-                    # notice_res = self.send_request(my_site, url=site.url)
-                    logger.debug(f'公告信息 {notice_res}')
-                    notice_list = self.parse(site, notice_res, site.my_notice_title)
-                    content_list = self.parse(
-                        site,
-                        notice_res,
-                        site.my_notice_content,
-                    )
-                    logger.debug(f'公告信息：{notice_list}')
-                    notice_list = [notice.xpath("string(.)", encoding="utf-8").strip("\n").strip("\r").strip()
-                                   for notice in notice_list]
-                    logger.debug(f'公告信息：{notice_list}')
-                    logger.debug(content_list)
-                    if len(content_list) > 0:
-                        content_list = [
-                            content.xpath("string(.)").replace("\r\n\r\n", "  \n> ").strip()
-                            for content in content_list]
-                        notice_list = [
-                            f'## {title} \n> {content}\n\n' for
-                            title, content in zip(notice_list, content_list)
-                        ]
-                    logger.debug(f'公告信息列表：{notice_list}')
-                    # notice = '  \n\n### '.join(notice_list[:notice_count])
-                    notice = ''.join(notice_list[:1])
-                    message_list += f'# {site.name} 公告  \n## {notice}'
-                    title = f'{site.name}有{notice_count}条新公告！'
-                    toolbox.send_text(title=title, message=message_list)
+                if site.url in [
+                    'https://totheglory.im/',
+                ]:
+                    title = f'{site.name}有新公告！'
+                    toolbox.send_text(title=title, message=title)
+                else:
+                    notice_str = ''.join(details_html.xpath(site.my_notice_rule))
+                    notice_count = re.sub(u"([^\u0030-\u0039])", "", notice_str)
+                    notice_count = int(notice_count) if notice_count else 0
+                    message_list = ''
+                    if notice_count > 0:
+                        logger.info(f'{site.name} 站点公告')
+                        if site.url in [
+                            'https://hdchina.org/',
+                            'https://hudbt.hust.edu.cn/',
+                            'https://wintersakura.net/',
+                        ]:
+                            # 单独发送请求，解决冬樱签到问题
+                            notice_res = requests.get(url=f'{site.url}{site.page_index}', verify=False,
+                                                      cookies=toolbox.cookie2dict(my_site.cookie),
+                                                      headers={
+                                                          'user-agent': my_site.user_agent
+                                                      })
+                        else:
+                            notice_res = self.send_request(my_site, url=f'{site.url}{site.page_index}')
+                        # notice_res = self.send_request(my_site, url=site.url)
+                        logger.debug(f'公告信息 {notice_res}')
+                        notice_list = self.parse(site, notice_res, site.my_notice_title)
+                        content_list = self.parse(
+                            site,
+                            notice_res,
+                            site.my_notice_content,
+                        )
+                        logger.debug(f'公告信息：{notice_list}')
+                        notice_list = [notice.xpath("string(.)", encoding="utf-8").strip("\n").strip("\r").strip()
+                                       for notice in notice_list]
+                        logger.debug(f'公告信息：{notice_list}')
+                        logger.debug(content_list)
+                        if len(content_list) > 0:
+                            content_list = [
+                                content.xpath("string(.)").replace("\r\n\r\n", "  \n> ").strip()
+                                for content in content_list]
+                            notice_list = [
+                                f'## {title} \n> {content}\n\n' for
+                                title, content in zip(notice_list, content_list)
+                            ]
+                        logger.debug(f'公告信息列表：{notice_list}')
+                        # notice = '  \n\n### '.join(notice_list[:notice_count])
+                        notice = ''.join(notice_list[:1])
+                        message_list += f'# {site.name} 公告  \n## {notice}'
+                        title = f'{site.name}有{notice_count}条新公告！'
+                        toolbox.send_text(title=title, message=message_list)
 
     def get_userinfo_html(self, my_site: MySite, headers: dict):
         """请求抓取数据相关页面"""

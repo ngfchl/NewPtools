@@ -7,10 +7,7 @@ jobs:
   ptools:
     runs-on: ubuntu-latest
     steps:
-      - name: Set date
-        id: date
-        run: |
-          echo "date=$(date +'%Y-%m-%d')" >> $GITHUB_OUTPUT
+
 
       - name: Checkout
         uses: actions/checkout@master
@@ -19,7 +16,12 @@ jobs:
         id: meta
         uses: docker/metadata-action@v4
         with:
-          images: ${{ secrets.NEW_PTOOLS_DOCKER_USERNAME }}/ptools-client-backend
+          images: ${{ secrets.NEW_PTOOLS_DOCKER_USERNAME }}/ptools
+
+      - name: Set date
+        id: date
+        run: |
+          echo "date=$(date +'%Y-%m-%d')" >> $GITHUB_OUTPUT
 
       - name: Set Up QEMU
         uses: docker/setup-qemu-action@v2
@@ -44,5 +46,5 @@ jobs:
           push: true
           tags: |
             ${{ secrets.NEW_PTOOLS_DOCKER_USERNAME }}/ptools:latest
-            ${{ secrets.NEW_PTOOLS_DOCKER_USERNAME }}/ptools:${{steps.date.outputs.date}}
+            ${{ secrets.NEW_PTOOLS_DOCKER_USERNAME }}/ptools:v${{steps.date.outputs.date}}
           labels: ${{ steps.meta.outputs.labels }}

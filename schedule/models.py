@@ -15,7 +15,7 @@ class Task(models.TextChoices):
     # auto_push_to_downloader = 'schedule.tasks.auto_push_to_downloader', '推送种子'
     # auto_torrents_package_files = 'schedule.tasks.auto_torrents_package_files', '拆包任务'
     auto_remove_brush_task = 'schedule.tasks.auto_remove_brush_task', '删种任务'
-    auto_cleanup_not_registered = 'schedule.tasks.auto_cleanup_not_registered', '清理废弃种子-刷流'
+    # auto_cleanup_not_registered = 'schedule.tasks.auto_cleanup_not_registered', '清理废弃种子-刷流'
     auto_get_hash_by_category = 'schedule.tasks.auto_get_hash_by_category', '完善种子HASH'
     auto_reload_supervisor = 'schedule.tasks.auto_reload_supervisor', '自动重载任务'
     # auto_program_upgrade = 'schedule.tasks.auto_program_upgrade', '程序更新'

@@ -173,8 +173,8 @@ def auto_get_status(self):
             logger.info('自动更新个人数据: {}, {}'.format(my_site.nickname, result))
             # if res.code == 0:
             status = result.data
-            message = toolbox.generate_notify_content(my_site.nickname, status)
-            logger.info(message)
+            message = toolbox.generate_notify_content(notice, status)
+            logger.info(f'{my_site.nickname} {message}')
             # toolbox.send_text(title='通知：个人数据更新', message=my_site.nickname + ' 信息更新成功！' + message)
             success_message.append(f'✅ {my_site.nickname} 信息更新成功！{message}  \n')
         else:

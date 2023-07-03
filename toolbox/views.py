@@ -1086,11 +1086,11 @@ def get_torrents_hash_from_iyuu(hash_list: List[str]):
         return CommonResponse.error(msg=msg)
 
 
-def generate_notify_content(nickname: str, status: SiteStatus):
-    notice = parse_toml("notice")
+def generate_notify_content(notice, status: SiteStatus):
+    content = f""
     notice_content_enable = notice.get("notice_content_enable", True)
     if not notice_content_enable:
-        return ''
+        return content
     notify_content_item = notice.get("notice_content_item", {
         'level': True,
         'bonus': True,
@@ -1121,7 +1121,6 @@ def generate_notify_content(nickname: str, status: SiteStatus):
         'hr': status.my_hr
     }
 
-    content = f"站点 {nickname}"
-    content += " ".join([f"{key}：{data[key]}" for key in data if notify_content_item[key]])
+    content += " ".join([f"{key}：{data[key]}" for key in data if notify_content_item.get(key, True)])
 
     return content

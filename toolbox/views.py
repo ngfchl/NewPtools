@@ -1126,7 +1126,7 @@ def generate_notify_content(notice, status: SiteStatus):
         'per_bonus': '时魔',
         'score': '做种积分',
         'ratio': '分享率',
-        'seeding_vol': '做种凉',
+        'seeding_vol': '做种量',
         'uploaded': '已上传',
         'downloaded': '已下载',
         'seeding': '做种中',

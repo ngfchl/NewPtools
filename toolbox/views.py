@@ -1387,6 +1387,13 @@ def sign_ssd_forum(cookie, user_agent, todaysay):
         else:
             sign_text = '今日已签到'
             logger.info(sign_text)
+        # 获取当前时间
+        now = datetime.now()
+        # 计算当天结束的时间
+        end_of_day = now.replace(hour=23, minute=59, second=59)
+        # 计算当前时间到当天结束的时间间隔
+        expiration = end_of_day - now
+        cache.set(f"sign_ssd_forum_state", True, expiration.seconds)
         sign_response = requests.get(
             url=sign_url,
             headers={

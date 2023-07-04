@@ -61,7 +61,7 @@ function cloudflarespeedtest_host {
       echo "$current_date" > "$counter_file"
     else
       INFO "今日已测速，跳过测速."
-    fi   
+    fi
   else
     INFO "跳过测速."
   fi
@@ -71,6 +71,8 @@ function cloudflarespeedtest_host {
 function first_start {
 
   INFO "程序初始化中..."
+  touch ptools.toml
+
   python3 manage.py migrate
 
   git config --global core.sshCommand 'ssh -o StrictHostKeyChecking=no'

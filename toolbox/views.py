@@ -1335,3 +1335,76 @@ def sht_sign(host, username, password, cookie, user_agent):
         msg = f'98签到失败：{e}'
         logger.info(traceback.format_exc(8))
         return CommonResponse.error(msg=msg)
+
+
+def sign_ssd_forum(cookie, user_agent, todaysay):
+    try:
+        logger.info('SSDForum开始签到')
+        # 访问签到页
+        sign_url = 'https://ssdforum.org/plugin.php?id=dsu_paulsign:sign'
+        sign_response = requests.get(
+            url=sign_url,
+            headers={
+                'User-Agent': user_agent,
+                'Referer': 'https://ssdforum.org/',
+            },
+            cookies=cookie2dict(cookie),
+        )
+        logger.debug(f'签到页HTML：{sign_response.content.decode("gbk")}')
+        if sign_response.status_code != 200:
+            return CommonResponse.error(msg=f'SSDForum签到失败:{sign_response.status_code}')
+        html_object = etree.HTML(sign_response.content.decode('gbk'))
+        sign_check = html_object.xpath('//div[@class="c"]/text()')
+        logger.info(f"签到检测：{sign_check}")
+        sign_text = ''
+        if not sign_check or len(sign_check):
+            logger.info(f"签到检测：{len(sign_check)}")
+            # action_url = html_object.xpath('//form[@id="qiandao"]/@action')
+            formhash = ''.join(html_object.xpath('//form[@id="qiandao"]/input[@name="formhash"]/@value'))
+            # 获取并生成签到参数
+            qdxq_options = ['kx', 'ng', 'ym', 'wl', 'nu', 'ch', 'fd', 'yl', 'shuai']
+            form_data = {
+                'formhash': formhash,
+                'qdxq': random.choice(qdxq_options),  # replace with the desired value
+                'qdmode': '1',  # replace with the desired value
+                'todaysay': random.choice(todaysay),  # replace with the desired value
+            }
+            logger.info(f'签到参数：{form_data}')
+            # 发送签到请求
+            sign_in_url = 'https://ssdforum.org/plugin.php?id=dsu_paulsign:sign&operation=qiandao&infloat=1'
+            sign_in_response = requests.post(
+                url=sign_in_url,
+                headers={
+                    'User-Agent': user_agent,
+                    'Referer': 'https://ssdforum.org/',
+                },
+                cookies=cookie2dict(cookie),
+                data=form_data,
+            )
+            # 解析签到反馈
+            logger.debug(f'签到反馈：{sign_in_response.content.decode("gbk")}')
+            sign_text = ''.join(etree.HTML(sign_in_response.content.decode('gbk')).xpath('//div[@class="c"]/text()'))
+        else:
+            sign_text = '今日已签到'
+            logger.info(sign_text)
+        sign_response = requests.get(
+            url=sign_url,
+            headers={
+                'User-Agent': user_agent,
+                'Referer': 'https://ssdforum.org/',
+            },
+            cookies=cookie2dict(cookie),
+        )
+        logger.debug(f"签到页：{sign_response.content.decode('gbk')}")
+        sign_title_rule = '//div[@class="mn"]/h1[1]/text()'
+        sign_content_rule = '//div[@class="mn"]/p/text()'
+        title = etree.HTML(sign_response.content.decode('gbk')).xpath(sign_title_rule)
+        content = etree.HTML(sign_response.content.decode('gbk')).xpath(sign_content_rule)
+        result = f'{sign_text}。{title} {content}'
+        logger.info(f'SSDForum签到结果: {result}')
+        return CommonResponse.success(msg=result)
+    except Exception as e:
+        msg = f'SSDForum签到失败，{e}'
+        logger.error(traceback.format_exc(5))
+        logger.error(msg)
+        return CommonResponse.error(msg=msg)

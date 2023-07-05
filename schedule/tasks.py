@@ -3,6 +3,7 @@ from __future__ import absolute_import, unicode_literals
 import gc
 import logging
 import os
+import random
 import subprocess
 import time
 import traceback
@@ -111,6 +112,31 @@ def auto_sign_in(self):
             logger.error(msg)
             logger.error(traceback.format_exc(5))
             toolbox.send_text(title='98签到', message=msg)
+    ssdforum = toolbox.parse_toml('ssdforum')
+    if ssdforum is not None:
+        try:
+            logger.info('检测到SSDForum签到参数，开始签到')
+            sign_ssd_forum_state = cache.get(f"sign_ssd_forum_state", False)
+            if not sign_ssd_forum_state:
+                res = toolbox.sign_ssd_forum(
+                    cookie=ssdforum.get('cookie'),
+                    user_agent=ssdforum.get('user_agent'),
+                    todaysay=random.choice(ssdforum.get('user_agent', [
+                        '今天',
+                        '明天',
+                        '后天',
+                        '周一',
+                        '周二',
+                        '周三',
+                        'Hello World!',
+                    ]))
+                )
+                toolbox.send_text(title='SSDForum签到', message=res.msg)
+        except Exception as e:
+            msg = f'SSDForum签到失败！{e}'
+            logger.error(msg)
+            logger.error(traceback.format_exc(5))
+            toolbox.send_text(title='SSDForum签到', message=msg)
     logger.info('筛选需要签到的站点')
     message_list = []
     queryset = [

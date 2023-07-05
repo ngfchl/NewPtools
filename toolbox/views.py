@@ -1406,10 +1406,10 @@ def sign_ssd_forum(cookie, user_agent, todaysay):
         )
         logger.debug(f"签到页：{sign_response.content.decode('gbk')}")
         sign_title_rule = '//div[@class="mn"]/h1[1]/text()'
-        sign_content_rule = '//div[@class="mn"]/p/text()'
+        sign_content_rule = '//div[@class="mn"]/p//text()'
         title = etree.HTML(sign_response.content.decode('gbk')).xpath(sign_title_rule)
         content = etree.HTML(sign_response.content.decode('gbk')).xpath(sign_content_rule)
-        result = f'{sign_text}。{title} {content}'
+        result = f'{sign_text}。{"".join(title)} {"".join(content)}'
         logger.info(f'SSDForum签到结果: {result}')
         return CommonResponse.success(msg=result)
     except Exception as e:

@@ -1161,9 +1161,11 @@ def sht_sign(host, username, password, cookie, user_agent):
         )
         logger.debug(response.content.decode('utf8'))
         # 检测到签到链接
-        pattern = r'<!\[CDATA\[(.*?)\]\]>'
-        match = re.search(pattern, response.content.decode('utf8'), re.DOTALL)
-        html_code = match.group(1)
+        # pattern = r'<!\[CDATA\[(.*?)\]\]>'
+        # match = re.search(pattern, response.content.decode('utf8'), re.DOTALL)
+        # html_code = match.group(1)
+        html_code = response.content.decode('utf8').replace('<?xml version="1.0" encoding="utf-8"?>', '').replace(
+            '<root><![CDATA[', '').replace(']]></root>', '')
         check_login = etree.HTML(html_code).xpath('//a[@href="plugin.php?id=dd_sign:index"]')
         logger.info(f'Cookie有效检测：签到链接存在数量 {len(check_login)}')
         # 如果检测到签到链接，则直接使用Cookie，否则重新获取Cookie

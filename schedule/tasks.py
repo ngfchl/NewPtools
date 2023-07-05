@@ -121,13 +121,13 @@ def auto_sign_in(self):
                 res = toolbox.sign_ssd_forum(
                     cookie=ssdforum.get('cookie'),
                     user_agent=ssdforum.get('user_agent'),
-                    todaysay=random.choice(ssdforum.get('user_agent', [
-                        '今天',
-                        '明天',
-                        '后天',
-                        '周一',
-                        '周二',
-                        '周三',
+                    todaysay=random.choice(ssdforum.get('todaysay', [
+                        '今天好天气！',
+                        '明天真期待',
+                        '后天星期天？',
+                        '周一bukaixin',
+                        '周二ε＝ε＝ε＝(#>д<)ﾉ',
+                        '周三交水电费啦',
                         'Hello World!',
                     ]))
                 )

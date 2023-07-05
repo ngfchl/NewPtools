@@ -1417,3 +1417,88 @@ def sign_ssd_forum(cookie, user_agent, todaysay):
         logger.error(traceback.format_exc(5))
         logger.error(msg)
         return CommonResponse.error(msg=msg)
+
+
+def cnlang_sign(
+        username,
+        cookie,
+        host,
+        user_agent
+):
+    try:
+        s = requests.session()
+        headers = {
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8',
+            'Accept - Encoding': 'gzip, deflate, br',
+            'Accept-Language': 'zh-CN,zh;q=0.8,zh-TW;q=0.7,zh-HK;q=0.5,en-US;q=0.3,en;q=0.2',
+            'cache-control': 'max-age=0',
+            'Upgrade-Insecure-Requests': '1',
+            'Host': host,
+            'Cookie': cookie2dict(cookie),
+            'User-Agent': user_agent
+        }
+
+        # 访问Pc主页
+        logger.info(host)
+        user_info = s.get('https://' + host + '/dsu_paulsign-sign.html?mobile=no', headers=headers).text
+        user_name = re.search(r'title="访问我的空间">(.*?)</a>', user_info)
+
+        # 解析 HTML 页面
+        # soup = BeautifulSoup(html, 'html.parser')
+        tree = etree.HTML(user_info)
+
+        # 找到 name 为 formhash 的 input 标签
+        # formhash_input = soup.find('input', {'name': 'formhash'})
+        formhash_value = ''.join(tree.xpath('//input[@name="formhash"]/@value'))
+
+        # 从 input 标签中提取 formhash 的值
+        # formhash_value = re.search(r'value="(.+?)"', str(formhash_input)).group(1)
+
+        logger.info("formhash：" + formhash_value)
+        # 随机获取心情
+        xq = s.get('https://v1.hitokoto.cn/?encode=text').text
+        # 保证字数符合要求
+        logger.info("想说的话：" + xq)
+        while (len(xq) < 6 | len(xq) > 50):
+            xq = s.get('https://v1.hitokoto.cn/?encode=text').text
+            logger.info("想说的话：" + xq)
+        if user_name:
+            logger.info("登录用户名为：" + user_name.group(1))
+            logger.info("环境用户名为：" + username)
+        else:
+            logger.info("未获取到用户名")
+        if user_name is None or (user_name.group(1) != username):
+            raise Exception("【国语视界】cookie失效")
+        # 获取签到链接,并签到
+        qiandao_url = 'plugin.php?id=dsu_paulsign:sign&operation=qiandao&infloat=1'
+
+        # 签到
+        payload = dict(formhash=formhash_value, qdxq='kx', qdmode='1', todaysay=xq, fastreply='0')
+        qdjg = s.post('https://' + host + '/' + qiandao_url, headers=headers, data=payload).text
+
+        # soup = BeautifulSoup(html, 'html.parser')
+        # div = soup.find('div', {'class': 'c'})  # 找到 class 为 clash，id 为 c 的 div
+        # content = div.text  # 获取 div 的文本内容
+        content = ''.join(etree.HTML(qdjg).xpath('//div[@class="c"]/text()'))
+
+        logger.info(content)
+        # 获取当前时间
+        now = datetime.now()
+        # 计算当天结束的时间
+        end_of_day = now.replace(hour=23, minute=59, second=59)
+        # 计算当前时间到当天结束的时间间隔
+        expiration = end_of_day - now
+        cache.set(f"cnlang_sign_state", True, expiration.seconds)
+        # 获取积分
+        user_info = s.get(
+            'https://' + host + '/home.php?mod=spacecp&ac=credit&showcredit=1&inajax=1&ajaxtarget=extcreditmenu_menu',
+            headers=headers).text
+        current_money = re.search(r'<span id="hcredit_2">(\d+)</span>', user_info).group(1)
+        log_info = f'clang 签到：{content} 当前大洋余额：{current_money}'
+        logger.info(log_info)
+        # send("签到结果", log_info)
+        return log_info
+    except Exception as e:
+        msg = f'clang签到失败，失败原因: {e}'
+        logger.info(msg)
+        return msg

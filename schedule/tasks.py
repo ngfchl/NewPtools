@@ -112,6 +112,25 @@ def auto_sign_in(self):
             logger.error(msg)
             logger.error(traceback.format_exc(5))
             toolbox.send_text(title='98签到', message=msg)
+    cnlang = toolbox.parse_toml('cnlang')
+    if cnlang is not None:
+        try:
+            logger.info('检测到cnlang参数，开始签到')
+            cnlang_sign_state = cache.get(f"cnlang_sign_state", False)
+            if not cnlang_sign_state:
+                res = toolbox.sht_sign(
+                    username=cnlang.get('username'),
+                    cookie=cnlang.get('cookie'),
+                    host=cnlang.get('host', 'cnlang.org'),
+                    user_agent=cnlang.get('user_agent',
+                                          'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/97.0.4692.71 Safari/537.36 Edg/97.0.1072.62'),
+                )
+                toolbox.send_text(title='cnlang签到', message=res.msg)
+        except Exception as e:
+            msg = f'cnlang签到失败！{e}'
+            logger.error(msg)
+            logger.error(traceback.format_exc(5))
+            toolbox.send_text(title='cnlang签到', message=msg)
     ssdforum = toolbox.parse_toml('ssdforum')
     if ssdforum is not None:
         try:

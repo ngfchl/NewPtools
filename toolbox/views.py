@@ -1369,7 +1369,7 @@ def sign_ssd_forum(cookie, user_agent, todaysay):
                 'formhash': formhash,
                 'qdxq': random.choice(qdxq_options),  # replace with the desired value
                 'qdmode': '1',  # replace with the desired value
-                'todaysay': random.choice(todaysay),  # replace with the desired value
+                'todaysay': todaysay,  # replace with the desired value
             }
             logger.info(f'签到参数：{form_data}')
             # 发送签到请求

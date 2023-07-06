@@ -118,7 +118,7 @@ def auto_sign_in(self):
             logger.info('检测到cnlang参数，开始签到')
             cnlang_sign_state = cache.get(f"cnlang_sign_state", False)
             if not cnlang_sign_state:
-                res = toolbox.sht_sign(
+                res = toolbox.cnlang_sign(
                     username=cnlang.get('username'),
                     cookie=cnlang.get('cookie'),
                     host=cnlang.get('host', 'cnlang.org'),

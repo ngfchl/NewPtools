@@ -41,6 +41,8 @@ class MySite(BaseEntity):
                                    to=Downloader)
     remove_torrent_rules = models.TextField(verbose_name='刷流删种', null=True, blank=True,
                                             help_text='详细内容请查看文档')
+    mirror = models.URLField(verbose_name='镜像网址', null=True, blank=True, help_text='必须带最后的 /')
+    mirror_switch = models.BooleanField(verbose_name='镜像开关', default=False)
     # 用户数据 自动拉取
     time_join = models.DateTimeField(verbose_name='注册时间',
                                      default=datetime(2023, 1, 1, 12, 30, 00),

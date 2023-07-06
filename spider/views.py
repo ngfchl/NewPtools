@@ -205,7 +205,7 @@ class PtSpider:
 
     def sign_in_52pt(self, my_site: MySite):
         site = get_object_or_404(WebSite, id=my_site.site)
-        url = f'{site.url}{site.page_sign_in}'.lstrip('/')
+        url = f'{my_site.mirror if my_site.mirror_switch else site.url}{site.page_sign_in}'.lstrip('/')
         result = self.send_request(my_site=my_site, url=url, )
         # sign_str = self.parse(result, '//font[contains(text(),"签过到")]/text()')
         sign_str = etree.HTML(result.text).xpath('//font[contains(text(),"签过到")]/text()')
@@ -227,7 +227,9 @@ class PtSpider:
         }
         logger.debug(data)
         sign_res = self.send_request(
-            my_site=my_site, url=f'{site.url}{site.page_sign_in}'.lstrip('/'), method='post', data=data
+            my_site=my_site,
+            url=f'{my_site.mirror if my_site.mirror_switch else site.url}{site.page_sign_in}'.lstrip('/'),
+            method='post', data=data
         )
         logger.debug(sign_res.text)
         # sign_str = etree.HTML(sign_res.text.encode('utf-8-sig')).xpath
@@ -240,7 +242,9 @@ class PtSpider:
 
     def sign_in_hdupt(self, my_site: MySite):
         site = get_object_or_404(WebSite, id=my_site.site)
-        url = site.url + site.page_control_panel.lstrip('/')
+        mirror = my_site.mirror if my_site.mirror_switch else site.url
+
+        url = mirror + site.page_control_panel.lstrip('/')
         result = self.send_request(
             my_site=my_site,
             url=url,
@@ -251,7 +255,7 @@ class PtSpider:
             return CommonResponse.success(msg=f'{site.name} 已签到，请勿重复操作！！')
         sign_res = self.send_request(
             my_site=my_site,
-            url=f'{site.url}{site.page_sign_in}'.lstrip('/'),
+            url=f'{mirror}{site.page_sign_in}'.lstrip('/'),
             method='post'
         ).text
         logger.debug(f'好多油签到反馈：{sign_res}')
@@ -269,7 +273,8 @@ class PtSpider:
 
     def sign_in_hd4fans(self, my_site: MySite):
         site = get_object_or_404(WebSite, id=my_site.site)
-        url = site.url + site.page_control_panel.lstrip('/')
+        mirror = my_site.mirror if my_site.mirror_switch else site.url
+        url = mirror + site.page_control_panel.lstrip('/')
         result = self.send_request(
             my_site=my_site,
             url=url,
@@ -280,7 +285,7 @@ class PtSpider:
             return CommonResponse.success(msg=f'{site.name} 已签到，请勿重复操作！！')
         sign_res = self.send_request(
             my_site=my_site,
-            url=f'{site.url}{site.page_sign_in}'.lstrip('/'),
+            url=f'{mirror}{site.page_sign_in}'.lstrip('/'),
             method='post',
             params={
                 'action': 'checkin'
@@ -294,7 +299,8 @@ class PtSpider:
 
     def sign_in_hdc(self, my_site: MySite):
         site = get_object_or_404(WebSite, id=my_site.site)
-        url = site.url + site.page_control_panel.lstrip('/')
+        mirror = my_site.mirror if my_site.mirror_switch else site.url
+        url = mirror + site.page_control_panel.lstrip('/')
         # result = self.send_request(
         #     my_site=my_site,
         #     url=url,
@@ -315,7 +321,7 @@ class PtSpider:
         logger.debug(f'CSRF字符串：{csrf}')
         # sign_res = self.send_request(
         #     my_site=my_site,
-        #     url=f'{site.url}{site.page_sign_in}',
+        #     url=f'{mirror}{site.page_sign_in}',
         #     method=site.sign_in_method,
         #     data={
         #         'csrf': csrf
@@ -324,7 +330,7 @@ class PtSpider:
         cookies = toolbox.cookie2dict(my_site.cookie)
         cookies.update(result.cookies.get_dict())
         logger.debug(cookies)
-        sign_res = requests.request(url=f'{site.url}{site.page_sign_in}', verify=False, method='post', cookies=cookies,
+        sign_res = requests.request(url=f'{mirror}{site.page_sign_in}', verify=False, method='post', cookies=cookies,
                                     headers={'user-agent': my_site.user_agent}, data={'csrf': csrf})
         logger.debug(sign_res.text)
         res_json = sign_res.json()
@@ -350,7 +356,8 @@ class PtSpider:
 
     def sign_in_u2(self, my_site: MySite):
         site = get_object_or_404(WebSite, id=my_site.site)
-        url = f'{site.url}{site.page_sign_in}'.lstrip('/')
+        mirror = my_site.mirror if my_site.mirror_switch else site.url
+        url = f'{mirror}{site.page_sign_in}'.lstrip('/')
         result = self.send_request(my_site=my_site, url=url, )
         sign_str = ''.join(self.parse(site, result, '//a[@href="showup.php"]/text()'))
         logger.info(site.name + sign_str)
@@ -378,7 +385,7 @@ class PtSpider:
         logger.debug(data)
         response = self.send_request(
             my_site,
-            url=f'{site.url}{site.page_sign_in.lstrip("/")}?action=show',
+            url=f'{mirror}{site.page_sign_in.lstrip("/")}?action=show',
             method='post',
             data=data,
         )
@@ -401,19 +408,21 @@ class PtSpider:
     def sign_in_opencd(self, my_site: MySite):
         """皇后签到"""
         site = get_object_or_404(WebSite, id=my_site.site)
-        check_url = site.url + site.page_user
+        mirror = my_site.mirror if my_site.mirror_switch else site.url
+
+        check_url = mirror + site.page_user
         res_check = self.send_request(
             my_site=my_site,
             url=check_url)
         href_sign_in = self.parse(site, res_check, '//a[@href="/plugin_sign-in.php?cmd=show-log"]')
         if len(href_sign_in) >= 1:
             return CommonResponse.success(data={'state': 'false'})
-        url = f'{site.url}{site.page_sign_in}'.lstrip('/')
+        url = f'{mirror}{site.page_sign_in}'.lstrip('/')
         logger.debug('# 开启验证码！')
         res = self.send_request(my_site=my_site, method='get', url=url)
         logger.debug(res.text.encode('utf-8-sig'))
         img_src = ''.join(self.parse(site, res, '//form[@id="frmSignin"]//img/@src'))
-        img_get_url = site.url + img_src
+        img_get_url = mirror + img_src
         times = 0
         # imagestring = ''
         ocr_result = None
@@ -436,14 +445,15 @@ class PtSpider:
         result = self.send_request(
             my_site=my_site,
             method='post',
-            url=f'{site.url}plugin_sign-in.php?cmd=signin', data=data)
+            url=f'{mirror}plugin_sign-in.php?cmd=signin', data=data)
         logger.debug('皇后签到返回值：{}  \n'.format(result.text.encode('utf-8-sig')))
         return CommonResponse.success(data=result.json())
 
     def sign_in_hdsky(self, my_site: MySite):
         """HDSKY签到"""
         site = get_object_or_404(WebSite, id=my_site.site)
-        url = f'{site.url}{site.page_sign_in}'.lstrip('/')
+        mirror = my_site.mirror if my_site.mirror_switch else site.url
+        url = f'{mirror}{site.page_sign_in}'.lstrip('/')
         # sky无需验证码时使用本方案
         # if not captcha:
         #     result = self.send_request(
@@ -457,12 +467,12 @@ class PtSpider:
         res = self.send_request(
             my_site=my_site,
             method='post',
-            url=f'{site.url}image_code_ajax.php',
+            url=f'{mirror}image_code_ajax.php',
             data={
                 'action': 'new'
             }).json()
         # img url
-        img_get_url = f'{site.url}image.php?action=regimage&imagehash={res.get("code")}'
+        img_get_url = f'{mirror}image.php?action=regimage&imagehash={res.get("code")}'
         logger.debug(f'验证码图片链接：{img_get_url}')
         # 获取OCR识别结果
         # imagestring = toolbox.baidu_ocr_captcha(img_url=img_get_url)
@@ -502,7 +512,8 @@ class PtSpider:
         :return:
         """
         site = get_object_or_404(WebSite, id=my_site.site)
-        url = site.url + site.page_user.format(my_site.user_id)
+        mirror = my_site.mirror if my_site.mirror_switch else site.url
+        url = mirror + site.page_user.format(my_site.user_id)
         logger.info(f'{site.name} 个人主页：{url}')
         try:
             res = self.send_request(my_site=my_site, url=url)
@@ -524,7 +535,7 @@ class PtSpider:
 
             resp = self.send_request(
                 my_site,
-                f'{site.url}{site.page_sign_in}',
+                f'{mirror}{site.page_sign_in}',
                 method='post',
                 data=params)
             logger.debug(f'{my_site.nickname}: {resp.content.decode("utf8")}')
@@ -537,7 +548,8 @@ class PtSpider:
     def sign_in_zhuque(self, my_site):
         site = get_object_or_404(WebSite, id=my_site.site)
         try:
-            csrf_res = self.send_request(my_site=my_site, url=site.url)
+            mirror = my_site.mirror if my_site.mirror_switch else site.url
+            csrf_res = self.send_request(my_site=my_site, url=mirror)
             # '<meta name="x-csrf-token" content="4db531b6687b6e7f216b491c06937113">'
             x_csrf_token = self.parse(site, csrf_res, '//meta[@name="x-csrf-token"]/@content')
             logger.debug(f'csrf token: {x_csrf_token}')
@@ -548,7 +560,7 @@ class PtSpider:
                 'x-csrf-token': ''.join(x_csrf_token),
             }
             data = {"resetModal": "true", "all": 1, }
-            url = f'{site.url}{site.page_sign_in}'
+            url = f'{mirror}{site.page_sign_in}'
             logger.info(url)
             res = self.send_request(my_site=my_site, method='post', url=url, json=data, header=header)
             # 单独发送请求，解决冬樱签到问题
@@ -579,7 +591,8 @@ class PtSpider:
         """
         try:
             site = get_object_or_404(WebSite, id=my_site.site)
-            url = site.url + site.page_sign_in.lstrip('/')
+            mirror = my_site.mirror if my_site.mirror_switch else site.url
+            url = mirror + site.page_sign_in.lstrip('/')
             result = self.send_request(
                 my_site=my_site,
                 url=url,
@@ -711,6 +724,7 @@ class PtSpider:
     def sign_in(self, my_site: MySite):
         """签到"""
         site = get_object_or_404(WebSite, id=my_site.site)
+        mirror = my_site.mirror if my_site.mirror_switch else site.url
         logger.info(f'{site.name} 开始签到')
         signin_today = my_site.signin_set.filter(created_at__date__gte=datetime.today()).first()
         # 如果已有签到记录
@@ -719,7 +733,7 @@ class PtSpider:
                 return CommonResponse.success(msg=f'{my_site.nickname} 已签到，请勿重复签到！')
         else:
             signin_today = SignIn(site=my_site, created_at=datetime.now())
-        url = f'{site.url}{site.page_sign_in}'.lstrip('/')
+        url = f'{mirror}{site.page_sign_in}'.lstrip('/')
         logger.info(f'签到链接：{url}')
         try:
             # with lock:
@@ -942,7 +956,7 @@ class PtSpider:
                     location = toolbox.parse_school_location(text)
                     logger.debug(f'学校签到链接：{location}')
                     if 'addbouns.php' in location:
-                        res = self.send_request(my_site=my_site, url=f'{site.url}{location.lstrip("/")}')
+                        res = self.send_request(my_site=my_site, url=f'{mirror}{location.lstrip("/")}')
                 # sign_in_text = self.parse(site, res, '//a[@href="index.php"]/font//text()')
                 # sign_in_stat = self.parse(site, res, '//a[contains(@href,"addbouns")]')
                 sign_in_text = self.parse(site, res, site.sign_info_content)
@@ -1017,12 +1031,13 @@ class PtSpider:
     def get_filelist_cookie(self, my_site: MySite):
         """更新filelist站点COOKIE"""
         site = get_object_or_404(WebSite, id=my_site.site)
+        mirror = my_site.mirror if my_site.mirror_switch else site.url
         logger.info(f'{site.name} 开始获取cookie！')
         session = requests.Session()
         headers = {
             'user-agent': my_site.user_agent
         }
-        res = session.get(url=site.url, headers=headers)
+        res = session.get(url=mirror, headers=headers)
         validator = ''.join(self.parse(site, res, '//input[@name="validator"]/@value'))
         login_url = ''.join(self.parse(site, res, '//form/@action'))
         login_method = ''.join(self.parse(site, res, '//form/@method'))
@@ -1031,7 +1046,7 @@ class PtSpider:
         username = filelist.get('username')
         password = filelist.get('password')
         login_res = session.request(
-            url=f'{site.url}{login_url}',
+            url=f'{mirror}{login_url}',
             method=login_method,
             headers=headers,
             data={
@@ -1055,9 +1070,10 @@ class PtSpider:
     def get_zhuque_header(self, my_site: MySite):
         """获取朱雀csrf-token，并生成请求头"""
         site = get_object_or_404(WebSite, id=my_site.site)
-        user_detail_url = f'{site.url}{site.page_user.lstrip("/").format(my_site.user_id)}'
+        mirror = my_site.mirror if my_site.mirror_switch else site.url
+        user_detail_url = f'{mirror}{site.page_user.lstrip("/").format(my_site.user_id)}'
         logger.info(f'{site.name} 开始抓取站点个人主页信息，网址：{user_detail_url}')
-        csrf_res = self.send_request(my_site=my_site, url=site.url)
+        csrf_res = self.send_request(my_site=my_site, url=mirror)
         # '<meta name="x-csrf-token" content="4db531b6687b6e7f216b491c06937113">'
         x_csrf_token = self.parse(site, csrf_res, '//meta[@name="x-csrf-token"]/@content')
         logger.debug(f'csrf token: {x_csrf_token}')
@@ -1069,9 +1085,10 @@ class PtSpider:
     def get_mail_info(self, my_site: MySite, details_html, header):
         """获取站点短消息"""
         site = get_object_or_404(WebSite, id=my_site.site)
+        mirror = my_site.mirror if my_site.mirror_switch else site.url
         mail_check = len(details_html.xpath(site.my_mailbox_rule))
         if 'zhuque.in' in site.url:
-            mail_res = self.send_request(my_site=my_site, url=f'{site.url}api/user/getMainInfo', header=header)
+            mail_res = self.send_request(my_site=my_site, url=f'{mirror}api/user/getMainInfo', header=header)
             logger.debug(f'新消息: {mail_res.text}')
             mail_data = mail_res.json().get('data')
             mail = mail_data.get('unreadAdmin') + mail_data.get('unreadInbox') + mail_data.get('unreadSystem')
@@ -1105,13 +1122,13 @@ class PtSpider:
                     'https://wintersakura.net/',
                 ]:
                     # 单独发送请求，解决冬樱签到问题
-                    message_res = requests.get(url=f'{site.url}{site.page_message}', verify=False,
+                    message_res = requests.get(url=f'{mirror}{site.page_message}', verify=False,
                                                cookies=toolbox.cookie2dict(my_site.cookie),
                                                headers={
                                                    'user-agent': my_site.user_agent
                                                })
                 else:
-                    message_res = self.send_request(my_site, url=f'{site.url}{site.page_message}')
+                    message_res = self.send_request(my_site, url=f'{mirror}{site.page_message}')
                 logger.info(f'PM消息页面：{message_res}')
                 mail_list = self.parse(site, message_res, site.my_message_title)
                 mail_list = [f'#### {mail.strip()} ...\n' for mail in mail_list]
@@ -1132,6 +1149,7 @@ class PtSpider:
     def get_notice_info(self, my_site: MySite, details_html):
         """获取站点公告信息"""
         site = get_object_or_404(WebSite, id=my_site.site)
+        mirror = my_site.mirror if my_site.mirror_switch else site.url
         if site.url in [
             'https://monikadesign.uk/',
             'https://pt.hdpost.top/',
@@ -1161,14 +1179,14 @@ class PtSpider:
                             'https://wintersakura.net/',
                         ]:
                             # 单独发送请求，解决冬樱签到问题
-                            notice_res = requests.get(url=f'{site.url}{site.page_index}', verify=False,
+                            notice_res = requests.get(url=f'{mirror}{site.page_index}', verify=False,
                                                       cookies=toolbox.cookie2dict(my_site.cookie),
                                                       headers={
                                                           'user-agent': my_site.user_agent
                                                       })
                         else:
-                            notice_res = self.send_request(my_site, url=f'{site.url}{site.page_index}')
-                        # notice_res = self.send_request(my_site, url=site.url)
+                            notice_res = self.send_request(my_site, url=f'{mirror}{site.page_index}')
+                        # notice_res = self.send_request(my_site, url=mirror)
                         logger.debug(f'公告信息 {notice_res}')
                         notice_list = self.parse(site, notice_res, site.my_notice_title)
                         content_list = self.parse(
@@ -1199,7 +1217,8 @@ class PtSpider:
     def get_userinfo_html(self, my_site: MySite, headers: dict):
         """请求抓取数据相关页面"""
         site = get_object_or_404(WebSite, id=my_site.site)
-        user_detail_url = site.url + site.page_user.lstrip('/').format(my_site.user_id)
+        mirror = my_site.mirror if my_site.mirror_switch else site.url
+        user_detail_url = mirror + site.page_user.lstrip('/').format(my_site.user_id)
         logger.info(f'{site.name} 开始抓取站点个人主页信息，网址：{user_detail_url}')
         if site.url in [
             'https://hdchina.org/',
@@ -1247,7 +1266,7 @@ class PtSpider:
                     location = toolbox.parse_school_location(text)
                     logger.debug('学校重定向链接：{}'.format(location))
                     if '__SAKURA' in location:
-                        res = self.send_request(my_site=my_site, url=site.url + location.lstrip('/'), delay=25)
+                        res = self.send_request(my_site=my_site, url=mirror + location.lstrip('/'), delay=25)
                         details_html = etree.HTML(res.text)
                 except Exception as e:
                     logger.debug(f'BT学校个人主页访问失败！{e}')
@@ -1269,12 +1288,13 @@ class PtSpider:
     def get_seeding_html(self, my_site: MySite, headers: dict, details_html=None):
         """请求做种数据相关页面"""
         site = get_object_or_404(WebSite, id=my_site.site)
-        seeding_detail_url = site.url + site.page_seeding.lstrip('/').format(my_site.user_id)
+        mirror = my_site.mirror if my_site.mirror_switch else site.url
+        seeding_detail_url = mirror + site.page_seeding.lstrip('/').format(my_site.user_id)
         logger.info(f'{site.name} 开始抓取站点做种信息，网址：{seeding_detail_url}')
         if site.url in [
             'https://greatposterwall.com/', 'https://dicmusic.club/'
         ]:
-            seeding_detail_res = self.send_request(my_site=my_site, url=site.url + site.page_mybonus).json()
+            seeding_detail_res = self.send_request(my_site=my_site, url=mirror + site.page_mybonus).json()
             if seeding_detail_res.get('status') != 'success':
                 return CommonResponse.error(
                     msg=f'{site.name} 做种信息访问错误，错误：{seeding_detail_res.get("status")}')
@@ -1526,6 +1546,8 @@ class PtSpider:
     def parse_userinfo_html(self, my_site, details_html):
         """解析个人主页"""
         site = get_object_or_404(WebSite, id=my_site.site)
+        mirror = my_site.mirror if my_site.mirror_switch else website.url
+
         with lock:
             try:
                 if 'greatposterwall' in site.url or 'dicmusic' in site.url:
@@ -1724,7 +1746,7 @@ class PtSpider:
                         bonus_hour = toolbox.get_decimals(res_bonus_hour)
                         # 飞天邀请获取
                         logger.info(f'邀请页面：{site.url}Invites')
-                        res_next_pt_invite = self.send_request(my_site, f'{site.url}Invites')
+                        res_next_pt_invite = self.send_request(my_site, f'{mirror}Invites')
                         logger.debug(res_next_pt_invite.text)
                         str_next_pt_invite = ''.join(self.parse(
                             site,
@@ -1942,7 +1964,8 @@ class PtSpider:
         :return:
         """
         try:
-            detail_url = f'{website.url}{website.page_detail.format(torrent_id)}'
+            mirror = my_site.mirror if my_site.mirror_switch else website.url
+            detail_url = f'{mirror}{website.page_detail.format(torrent_id)}'
             torrent_detail = self.send_request(my_site=my_site, url=detail_url)
             download_url = ''.join(self.parse(website, torrent_detail, website.detail_download_url_rule))
             size = ''.join(self.parse(website, torrent_detail, website.detail_size_rule))
@@ -1950,7 +1973,7 @@ class PtSpider:
             return CommonResponse.success(data={
                 'subtitle': ''.join(self.parse(website, torrent_detail, website.detail_subtitle_rule)),
                 'magnet_url': download_url if download_url.startswith(
-                    'http') else f'{website.url}{download_url.lstrip("/")}',
+                    'http') else f'{mirror}{download_url.lstrip("/")}',
                 'size': toolbox.FileSizeConvert.parse_2_byte(size.replace('\xa0', '')),
                 'category': ''.join(self.parse(website, torrent_detail, website.detail_category_rule)).strip(),
                 'area': ''.join(self.parse(website, torrent_detail, website.detail_area_rule)),
@@ -1968,7 +1991,8 @@ class PtSpider:
     def get_update_torrent(self, torrent):
         my_site = torrent.site
         website = get_object_or_404(WebSite, id=my_site.site)
-        res_detail = self.get_torrent_detail(my_site, f'{website.url}{website.page_detail.format(torrent.tid)}')
+        mirror = my_site.mirror if my_site.mirror_switch else website.url
+        res_detail = self.get_torrent_detail(my_site, f'{mirror}{website.page_detail.format(torrent.tid)}')
         if res_detail.code == 0:
             res = TorrentInfo.objects.update_or_create(
                 id=torrent.id,
@@ -1981,7 +2005,8 @@ class PtSpider:
     def get_hour_sp(self, my_site: MySite, headers={}):
         """获取时魔"""
         site = get_object_or_404(WebSite, id=my_site.site)
-        url = site.url + site.page_mybonus
+        mirror = my_site.mirror if my_site.mirror_switch else site.url
+        url = mirror + site.page_mybonus
         if site.url in [
             'https://www.torrentleech.org/',
         ]:
@@ -2025,7 +2050,7 @@ class PtSpider:
                     logger.debug('学校时魔页面url：', url)
                     response = self.send_request(
                         my_site=my_site,
-                        url=site.url + ''.join(url).lstrip('/'),
+                        url=mirror + ''.join(url).lstrip('/'),
                         method='post',
                         # headers=headers,
                         data=data,
@@ -2078,9 +2103,10 @@ class PtSpider:
 
     def send_torrent_info_request(self, my_site: MySite):
         site = get_object_or_404(WebSite, id=my_site.site)
+        mirror = my_site.mirror if my_site.mirror_switch else site.url
         url = my_site.torrents
         if not url or len(url) <= 10:
-            url = site.url + site.page_torrents.lstrip('/')
+            url = mirror + site.page_torrents.lstrip('/')
         logger.info(f'种子页面链接：{url}')
         try:
             response = self.send_request(my_site, url)
@@ -2102,8 +2128,9 @@ class PtSpider:
 
     def search_torrents(self, my_site: MySite, key: str):
         site = get_object_or_404(WebSite, id=my_site.site)
+        mirror = my_site.mirror if my_site.mirror_switch else site.url
         logger.info(f"{site.name} 开始搜索 {key}")
-        url = f'{site.url}{site.page_search.format(key)}'
+        url = f'{mirror}{site.page_search.format(key)}'
         try:
             response = self.send_request(my_site, url)
             if response.status_code == 200:
@@ -2135,6 +2162,7 @@ class PtSpider:
         """
         # site = get_object_or_404(WebSite, id=my_site.site)
         site = await self.get_website(my_site)  # Use the async function
+        mirror = my_site.mirror if my_site.mirror_switch else site.url
         logger.info(f"{site.name} 开始解析搜索结果")
         torrents = []
         try:
@@ -2163,8 +2191,8 @@ class PtSpider:
                 href = ''.join(tr.xpath(site.torrent_magnet_url_rule))
                 logger.debug('href: {}'.format(href))
                 magnet_url = '{}{}'.format(
-                    site.url,
-                    href.replace('&type=zip', '').replace(site.url, '').lstrip('/')
+                    mirror,
+                    href.replace('&type=zip', '').replace(mirror, '').lstrip('/')
                 )
                 parsed_url = urlparse(magnet_url)
                 tid = parse_qs(parsed_url.query).get("id")[0]
@@ -2238,7 +2266,7 @@ class PtSpider:
                     'poster_url': poster_url,
                     'category': category,
                     'magnet_url': magnet_url,
-                    'detail_url': f'{site.url}{site.page_detail.format(tid)}',
+                    'detail_url': f'{mirror}{site.page_detail.format(tid)}',
                     'title': title,
                     'subtitle': subtitle,
                     'sale_status': sale_status,
@@ -2268,6 +2296,8 @@ class PtSpider:
         new_count = 0
         torrents = []
         site = get_object_or_404(WebSite, id=my_site.site)
+        mirror = my_site.mirror if my_site.mirror_switch else site.url
+
         try:
             with lock:
                 trs = self.parse(site, response, site.torrents_rule)
@@ -2299,8 +2329,8 @@ class PtSpider:
                     href = ''.join(tr.xpath(site.torrent_magnet_url_rule))
                     logger.debug('href: {}'.format(href))
                     magnet_url = '{}{}'.format(
-                        site.url,
-                        href.replace('&type=zip', '').replace(site.url, '').lstrip('/')
+                        mirror,
+                        href.replace('&type=zip', '').replace(mirror, '').lstrip('/')
                     )
                     parsed_url = urlparse(magnet_url)
                     tid = parse_qs(parsed_url.query).get("id")[0]

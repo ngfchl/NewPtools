@@ -1434,13 +1434,17 @@ def cnlang_sign(
             'cache-control': 'max-age=0',
             'Upgrade-Insecure-Requests': '1',
             'Host': host,
-            'Cookie': cookie2dict(cookie),
+            'Cookie': cookie,
             'User-Agent': user_agent
         }
 
         # 访问Pc主页
         logger.info(host)
-        user_info = s.get('https://' + host + '/dsu_paulsign-sign.html?mobile=no', headers=headers).text
+        user_info = s.get(
+            'https://' + host + '/dsu_paulsign-sign.html?mobile=no',
+            headers=headers,
+            cookies=cookie2dict(cookie)
+        ).text
         user_name = re.search(r'title="访问我的空间">(.*?)</a>', user_info)
 
         # 解析 HTML 页面
@@ -1474,7 +1478,13 @@ def cnlang_sign(
 
         # 签到
         payload = dict(formhash=formhash_value, qdxq='kx', qdmode='1', todaysay=xq, fastreply='0')
-        qdjg = s.post('https://' + host + '/' + qiandao_url, headers=headers, data=payload).text
+        logger.info(f"form_data: {payload}")
+        qdjg = s.post(
+            'https://' + host + '/' + qiandao_url,
+            headers=headers,
+            data=payload,
+            cookies=cookie2dict(cookie)
+        ).text
 
         # soup = BeautifulSoup(html, 'html.parser')
         # div = soup.find('div', {'class': 'c'})  # 找到 class 为 clash，id 为 c 的 div
@@ -1492,13 +1502,16 @@ def cnlang_sign(
         # 获取积分
         user_info = s.get(
             'https://' + host + '/home.php?mod=spacecp&ac=credit&showcredit=1&inajax=1&ajaxtarget=extcreditmenu_menu',
-            headers=headers).text
+            headers=headers,
+            cookies=cookie2dict(cookie)
+        ).text
         current_money = re.search(r'<span id="hcredit_2">(\d+)</span>', user_info).group(1)
         log_info = f'clang 签到：{content} 当前大洋余额：{current_money}'
         logger.info(log_info)
         # send("签到结果", log_info)
-        return log_info
+        return CommonResponse.success(msg=log_info)
     except Exception as e:
         msg = f'clang签到失败，失败原因: {e}'
-        logger.info(msg)
-        return msg
+        logger.error(msg)
+        logger.error(traceback.format_exc(5))
+        return CommonResponse.error(msg=msg)

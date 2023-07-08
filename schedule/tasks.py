@@ -53,6 +53,7 @@ notice_category_enable = notice.get("notice_category_enable", {
     "delete_torrent": True,
     "rss_torrent": True,
     "push_torrent": True,
+    "repeat_torrent": True,
     "get_torrent_hash": True,
     "program_upgrade": True,
     "ptpp_import": True,
@@ -1047,22 +1048,26 @@ def auto_repeat_torrent(self):
     message_list = []
     for downloader, result1, result2 in zip(downloaders, results1, results2):
         logger.info(f'result1: {result1}')
-        repeat_count, cached_count, push_count = result1
-
         logger.info(f'result2: {result2}')
-        paused_count, recheck_count, resume_count = result2
 
-        message = f'- ✅ 下载器 {downloader.name} 在本次辅种任务中：  \n' \
-                  f'> 获取{repeat_count}条可辅种数据  \n' \
-                  f'> 缓存{cached_count}条辅种数据  \n' \
-                  f'> 推送{push_count}条辅种数据  \n' \
-                  f'> 获取到{paused_count}个暂停的种子  \n' \
-                  f'> 校验了{recheck_count}个种子  \n' \
-                  f'> 开始了{resume_count}个种子  \n'
+        if result1.code == 0 and result2.code == 0:
+            repeat_count, cached_count, push_count = result1.data
+
+            paused_count, recheck_count, resume_count = result2.data
+
+            message = f'- ✅ 下载器 {downloader.name} 在本次辅种任务中：  \n' \
+                      f'> 获取{repeat_count}条可辅种数据  \n' \
+                      f'> 缓存{cached_count}条辅种数据  \n' \
+                      f'> 推送{push_count}条辅种数据  \n' \
+                      f'> 获取到{paused_count}个暂停的种子  \n' \
+                      f'> 校验了{recheck_count}个种子  \n' \
+                      f'> 开始了{resume_count}个种子  \n'
+        else:
+            message = f'- 🚫 下载器 {downloader.name} 在本次辅种出错了：{result1.msg} {result2.msg}'
         message_list.append(message)
     messages = '\n'.join(message_list)
     logger.info(messages)
-    if notice_category_enable.get("ptpp_import"):
+    if notice_category_enable.get("repeat_torrent"):
         toolbox.send_text(title=f'辅种任务', message=messages)
     return messages
 

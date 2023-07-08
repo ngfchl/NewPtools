@@ -41,8 +41,11 @@ logger = logging.getLogger('ptools')
 
 def parse_toml(cmd) -> dict:
     """从配置文件解析获取相关项目"""
-    data = toml.load('db/ptools.toml')
-    return data.get(cmd)
+    try:
+        data = toml.load('db/ptools.toml')
+        return data.get(cmd)
+    except FileNotFoundError as e:
+        return dict()
 
 
 def check_token(token) -> bool:

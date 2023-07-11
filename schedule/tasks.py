@@ -37,26 +37,7 @@ else:
 pool = ThreadPool(cpu_count)
 pt_spider = PtSpider()
 notice = toolbox.parse_toml("notice")
-if not notice:
-    notice = {}
-notice_category_enable = notice.get("notice_category_enable", {
-    # 签到通知开关
-    "sign_in_info": True,
-    "sign_in_success": True,
-    "sign_in_error": True,
-    "aliyundrive_notice": True,
-    # 站点数据开关
-    "site_data": True,
-    # 今日数据
-    "today_data": True,
-    # PTPP
-    "delete_torrent": True,
-    "rss_torrent": True,
-    "push_torrent": True,
-    "get_torrent_hash": True,
-    "program_upgrade": True,
-    "ptpp_import": True,
-})
+notice_category_enable = notice.get("notice_category_enable", {})
 
 
 @shared_task
@@ -76,7 +57,7 @@ def auto_sign_in(self):
     logger.info('开始执行签到任务')
 
     aliyundrive_params = toolbox.parse_toml('aliyundrive')
-    if aliyundrive_params is not None:
+    if len(aliyundrive_params) > 0:
         try:
             logger.info('检测到阿里云参数，开始签到阿里云盘')
             aliyundrive_sign_in_list = cache.get(f"aliyundrive_sign_in_list", [])
@@ -86,7 +67,7 @@ def auto_sign_in(self):
             else:
                 welfare = aliyundrive_params.get('reward', True)
                 result = aliyundrive.aliyundrive_sign_in(refresh_token_list=refresh_token_list, welfare=welfare)
-                if notice_category_enable.get("aliyundrive_notice"):
+                if notice_category_enable.get("aliyundrive_notice", True):
                     toolbox.send_text(title='阿里云签到', message=result)
         except Exception as e:
             msg = f'阿里云签到失败！{e}'
@@ -94,7 +75,7 @@ def auto_sign_in(self):
             logger.error(traceback.format_exc(5))
             toolbox.send_text(title='阿里云签到', message=msg)
     t98 = toolbox.parse_toml('t98')
-    if t98 is not None:
+    if len(t98) > 0:
         try:
             logger.info('检测到98参数，开始签到')
             t98_sign_in_state = cache.get(f"t98_sign_in_state", False)
@@ -113,12 +94,12 @@ def auto_sign_in(self):
             logger.error(traceback.format_exc(5))
             toolbox.send_text(title='98签到', message=msg)
     cnlang = toolbox.parse_toml('cnlang')
-    if cnlang is not None:
+    if len(cnlang) > 0:
         try:
             logger.info('检测到cnlang参数，开始签到')
             cnlang_sign_state = cache.get(f"cnlang_sign_state", False)
             if not cnlang_sign_state:
-                res = toolbox.sht_sign(
+                res = toolbox.cnlang_sign(
                     username=cnlang.get('username'),
                     cookie=cnlang.get('cookie'),
                     host=cnlang.get('host', 'cnlang.org'),
@@ -181,11 +162,11 @@ def auto_sign_in(self):
     for my_site, result in zip(queryset, results):
         logger.debug(f'自动签到：{my_site}, {result}')
         if result.code == 0:
-            msg = f'✅ {my_site.nickname} 签到成功！{result.msg} \n\n'
+            msg = f'✅ {my_site.nickname} 签到成功！{result.msg} \n'
             logger.debug(msg)
             success_message.append(msg)
         else:
-            message = f'🆘 {my_site.nickname}签到失败：{result.msg} \n\n'
+            message = f'🆘 {my_site.nickname}签到失败：{result.msg} \n'
             failed_message.append(message)
             logger.error(message)
         # message_list.append(f'{my_site.nickname}: {result.msg}')
@@ -195,16 +176,16 @@ def auto_sign_in(self):
               f'失败{len(failed_message)}个站点，耗费时间：{round(end - start, 2)} \n'
     success_message.insert(0, message)
     message_list.append(message)
-    if notice_category_enable.get('sign_in_error'):
+    if notice_category_enable.get('sign_in_error', True):
         message_list.extend(failed_message)
     message_list.append('*' * 20)
-    if notice_category_enable.get('sign_in_success'):
+    if notice_category_enable.get('sign_in_success', True):
         message_list.extend(success_message)
     logger.info(f'签到记录{message}')
     logger.debug(f'失败记录{len(failed_message)}')
     logger.debug(f'成功记录{len(success_message)}')
 
-    if notice_category_enable.get('sign_in_info'):
+    if notice_category_enable.get('sign_in_info', True):
         toolbox.send_text(title='通知：自动签到', message='\n'.join(message_list))
     # toolbox.send_text(title='通知：签到成功', message='\n'.join(success_message))
     # 释放内存
@@ -246,7 +227,7 @@ def auto_get_status(self):
             # toolbox.send_text(title='通知：个人数据更新', message=f'{my_site.nickname} 信息更新失败！原因：{message}')
     # 发送今日数据
 
-    if notice_category_enable.get('today_data'):
+    if notice_category_enable.get('today_data', True):
         total_upload, total_download, increase_info_list = toolbox.today_data()
         increase_list = []
         for increase_info in increase_info_list:
@@ -275,7 +256,7 @@ def auto_get_status(self):
     logger.debug(f'失败记录{len(message_list)}')
     logger.debug(f'成功记录{len(success_message)}')
     time.sleep(2)
-    if notice_category_enable.get('site_data'):
+    if notice_category_enable.get('site_data', True):
         toolbox.send_text(title='通知：更新个人数据', message='\n'.join(message_list))
     # toolbox.send_text(title='通知：更新个人数据-成功', message='\n'.join(success_message))
     # 释放内存
@@ -361,7 +342,7 @@ def auto_get_torrents(self, *site_list: List[int]):
                         message = f'♻️ 拆包任务执行结束！耗时：{time.time() - package_start} \n ' \
                                   f'当前时间：{time.strftime("%Y-%m-%d %H:%M:%S")} \n' \
                                   f'成功拆包{len(torrents) - len(hash_list)}个，失败{len(hash_list)}个！'
-                        if notice_category_enable.get("package_torrent"):
+                        if notice_category_enable.get("package_torrent", True):
                             toolbox.send_text(title='拆包', message=message)
                     message_push.append(msg)
             else:
@@ -551,7 +532,7 @@ def auto_get_rss(self, *site_list: List[int]):
                     message = f'♻️ 拆包任务执行结束！耗时：{time.time() - package_start} \n ' \
                               f'当前时间：{time.strftime("%Y-%m-%d %H:%M:%S")} \n' \
                               f'成功拆包{len(torrent_list) - len(hash_list)}个，失败{len(hash_list)}个！'
-                    if notice_category_enable.get("package_torrent"):
+                    if notice_category_enable.get("package_torrent", True):
                         toolbox.send_text(title='拆包', message=message)
                     package_files = {
                         'site': my_site.nickname,
@@ -647,7 +628,7 @@ def auto_torrents_package_files(self):
                 logger.error(traceback.format_exc(3))
                 continue
         message = f'♻️ 拆包任务执行结束！{time.strftime("%Y-%m-%d %H:%M:%S")} \n {"".join(message_list)}'
-        if notice_category_enable.get("package_torrent"):
+        if notice_category_enable.get("package_torrent", True):
             toolbox.send_text(title='拆包', message=message)
 
 
@@ -715,7 +696,7 @@ def auto_remove_brush_task(self, *site_list: List[int]):
     message = '\n\n> '.join(message_list)
     logger.debug(message)
     if len(failed_message) > 0 or count > 0:
-        if notice_category_enable.get("delete_torrent"):
+        if notice_category_enable.get("delete_torrent", True):
             toolbox.send_text(title=f'删种-成功删除{count}条', message=message)
     return message
 
@@ -780,7 +761,7 @@ def auto_get_rss_torrent_detail(self, my_site_id: int = None):
                 logging.info(res.msg)
             msg = f'✅ {my_site.nickname} 新增种子{created} 个，更新{updated}个'
             logger.info(msg)
-            if notice_category_enable.get("rss_torrent"):
+            if notice_category_enable.get("rss_torrent", True):
                 toolbox.send_text(title='RSS', message=msg)
             if len(my_site_list) == 1:
                 return {'hash_list': hash_list, 'msg': msg}
@@ -851,7 +832,7 @@ def auto_push_to_downloader(self, *site_list: List[int]):
             message_list.append(msg)
     end = time.time()
     message = f'> ♻️ 签到 任务运行成功！耗时：{end - start}  \n{time.strftime("%Y-%m-%d %H:%M:%S")} \n{"".join(message_list)}'
-    if notice_category_enable.get("push_torrent"):
+    if notice_category_enable.get("push_torrent", True):
         toolbox.send_text(title='通知：推送种子任务', message=message)
     # 释放内存
     gc.collect()
@@ -865,7 +846,7 @@ def auto_update_torrent_info(self, ):
     time.sleep(5)
     end = time.time()
     message = f'> ♻️获取种子HASH 任务运行成功！耗时：{end - start}  \n{time.strftime("%Y-%m-%d %H:%M:%S")}'
-    if notice_category_enable.get("get_torrent_hash"):
+    if notice_category_enable.get("get_torrent_hash", True):
         toolbox.send_text(title='通知：自动获取种子HASH', message=message)
     # 释放内存
     gc.collect()
@@ -904,7 +885,7 @@ def auto_program_upgrade(self, ):
         result = exec_command(update_commands)
         logger.info('更新完毕')
         message = f'> 更新完成！！请在接到通知后同步数据库！{datetime.now()}'
-        if notice_category_enable.get("program_upgrade"):
+        if notice_category_enable.get("program_upgrade", True):
             toolbox.send_text(title='通知：程序更新', message=message)
         return CommonResponse.success(
             msg='更新成功！稍后请在接到通知后同步数据库！！',
@@ -1023,7 +1004,7 @@ def import_from_ptpp(self, data_list: List):
     message_list = [result.msg for result in results]
     logger.info(message_list)
     # send_text(title='PTPP站点导入通知', message='Cookies解析失败，请确认导入了正确的cookies备份文件！')
-    if notice_category_enable.get("ptpp_import"):
+    if notice_category_enable.get("ptpp_import", True):
         toolbox.send_text(title='PTPP站点导入通知', message='\n\n'.join(message_list))
     return message_list
 
@@ -1047,22 +1028,26 @@ def auto_repeat_torrent(self):
     message_list = []
     for downloader, result1, result2 in zip(downloaders, results1, results2):
         logger.info(f'result1: {result1}')
-        repeat_count, cached_count, push_count = result1
-
         logger.info(f'result2: {result2}')
-        paused_count, recheck_count, resume_count = result2
 
-        message = f'- ✅ 下载器 {downloader.name} 在本次辅种任务中：  \n' \
-                  f'> 获取{repeat_count}条可辅种数据  \n' \
-                  f'> 缓存{cached_count}条辅种数据  \n' \
-                  f'> 推送{push_count}条辅种数据  \n' \
-                  f'> 获取到{paused_count}个暂停的种子  \n' \
-                  f'> 校验了{recheck_count}个种子  \n' \
-                  f'> 开始了{resume_count}个种子  \n'
+        if result1.code == 0 and result2.code == 0:
+            repeat_count, cached_count, push_count = result1.data
+
+            paused_count, recheck_count, resume_count = result2.data
+
+            message = f'- ✅ 下载器 {downloader.name} 在本次辅种任务中：  \n' \
+                      f'> 获取{repeat_count}条可辅种数据  \n' \
+                      f'> 缓存{cached_count}条辅种数据  \n' \
+                      f'> 推送{push_count}条辅种数据  \n' \
+                      f'> 获取到{paused_count}个暂停的种子  \n' \
+                      f'> 校验了{recheck_count}个种子  \n' \
+                      f'> 开始了{resume_count}个种子  \n'
+        else:
+            message = f'- 🚫 下载器 {downloader.name} 在本次辅种出错了：{result1.msg} {result2.msg}'
         message_list.append(message)
     messages = '\n'.join(message_list)
     logger.info(messages)
-    if notice_category_enable.get("ptpp_import"):
+    if notice_category_enable.get("repeat_torrent", True):
         toolbox.send_text(title=f'辅种任务', message=messages)
     return messages
 

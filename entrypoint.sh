@@ -52,13 +52,13 @@ function cloudflarespeedtest_host {
     counter_file="/ptools/counter.txt"
     current_date=$(date +%Y-%m-%d)
     if [ ! -f "$counter_file" ]; then
-      echo "1" > "$counter_file"
+      echo "1" >"$counter_file"
     fi
     counter=$(<"$counter_file")
     if [ "$current_date" != "$counter" ]; then
       INFO "启动测速..."
       bash cfst_hosts.sh
-      echo "$current_date" > "$counter_file"
+      echo "$current_date" >"$counter_file"
     else
       INFO "今日已测速，跳过测速."
     fi
@@ -71,7 +71,7 @@ function cloudflarespeedtest_host {
 function first_start {
 
   INFO "程序初始化中..."
-  touch ptools.toml
+  touch db/ptools.toml
 
   python3 manage.py migrate
 
@@ -119,8 +119,8 @@ function upgrade() {
   else
     ERROR "后端更新失败，请重新拉取镜像"
   fi
-    INFO "重设脚本权限中..."
-    chmod -R 0755 /ptools
+  INFO "重设脚本权限中..."
+  chmod -R 0755 /ptools
   if [ $? -eq 0 ]; then
     INFO "重设脚本权限成功"
   else

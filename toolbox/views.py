@@ -44,7 +44,7 @@ def parse_toml(cmd) -> dict:
     try:
         data = toml.load('db/ptools.toml')
         return data.get(cmd)
-    except FileNotFoundError as e:
+    except Exception as e:
         return dict()
 
 

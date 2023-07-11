@@ -31,6 +31,8 @@ from website.models import WebSite
 
 logger = logging.getLogger('ptools')
 lock = threading.Lock()
+notice = toolbox.parse_toml("notice")
+notice_category_enable = notice.get("notice_category_enable", {})
 
 
 class PtSpider:
@@ -1085,6 +1087,14 @@ class PtSpider:
         )
         status = res[0]
         if mail_check > 0:
+            title = f'{site.name}有新消息！'
+
+            if not notice_category_enable.get("message"):
+                toolbox.send_text(title=title, message=title)
+                status.mail = 1
+                status.save()
+                return
+
             if site.url in [
                 'https://monikadesign.uk/',
                 'https://pt.hdpost.top/',
@@ -1143,10 +1153,14 @@ class PtSpider:
             logger.debug(f'{site.name} 公告：{notice_check} ')
 
             if notice_check > 0:
+                title = f'{site.name}有新公告！'
+
+                if not notice_category_enable.get("announcement"):
+                    toolbox.send_text(title=title, message=title)
+                    return
                 if site.url in [
                     'https://totheglory.im/',
                 ]:
-                    title = f'{site.name}有新公告！'
                     toolbox.send_text(title=title, message=title)
                 else:
                     notice_str = ''.join(details_html.xpath(site.my_notice_rule))
@@ -1428,19 +1442,10 @@ class PtSpider:
                 'https://zhuque.in/',
             ]:
                 if details_html.code == 0:
-                    notice = toolbox.parse_toml("notice")
-                    if not notice:
-                        notice = {}
-                    notice_category_enable = notice.get("notice_category_enable", {
-                        "announcement": True,
-                        "message": True,
-                    })
-                    if notice_category_enable.get("announcement"):
-                        # 请求公告信息，直接推送通知到手机
-                        self.get_notice_info(my_site, details_html.data)
-                    if notice_category_enable.get("message"):
-                        # 请求邮件信息,直接推送通知到手机
-                        self.get_mail_info(my_site, details_html.data, header=headers)
+                    # 请求公告信息，直接推送通知到手机
+                    self.get_notice_info(my_site, details_html.data)
+                    # 请求邮件信息,直接推送通知到手机
+                    self.get_mail_info(my_site, details_html.data, header=headers)
 
             # return self.parse_status_html(my_site, data)
             status = my_site.sitestatus_set.latest('created_at')

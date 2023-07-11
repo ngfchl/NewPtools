@@ -1,8 +1,9 @@
 name: Build new ptools image
 
 on:
-  workflow_dispatch:
-
+  push:
+    branches:
+      - build
 jobs:
   ptools:
     runs-on: ubuntu-latest

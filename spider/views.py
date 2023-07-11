@@ -91,9 +91,12 @@ class PtSpider:
     def parse(site, response, rules):
         if site.url in [
             'https://ourbits.club/',
-            'https://piggo.me/',
         ]:
             return etree.HTML(response.text).xpath(rules)
+        elif site.url in [
+            'https://piggo.me/',
+        ]:
+            return etree.HTML(response.text.encode('utf8')).xpath(rules)
         else:
             return etree.HTML(response.content).xpath(rules)
 
@@ -917,11 +920,13 @@ class PtSpider:
                 'https://hudbt.hust.edu.cn/',
             ]:
                 # 单独发送请求，解决冬樱签到问题
+                print(url)
                 res = requests.get(url=url, verify=False, cookies=toolbox.cookie2dict(my_site.cookie), headers={
                     'user-agent': my_site.user_agent
                 })
                 logger.debug(res.text)
             else:
+
                 res = self.send_request(my_site=my_site, method='post', url=url)
             logger.info(f'{my_site.nickname}: {res}')
             if 'pterclub.com' in site.url:
@@ -1248,6 +1253,7 @@ class PtSpider:
 
         else:
             user_detail_res = self.send_request(my_site=my_site, url=user_detail_url, header=headers)
+        logger.info(f"个人信息页面：{user_detail_res.content.decode('utf8')}")
         if user_detail_res.status_code != 200:
             return CommonResponse.error(msg=f'{site.name} 个人主页访问错误，错误码：{user_detail_res.status_code}')
         if site.url in [
@@ -1270,6 +1276,11 @@ class PtSpider:
             'https://totheglory.im/',
         ]:
             details_html = etree.HTML(user_detail_res.content)
+        elif site.url in [
+            'https://piggo.me/',
+        ]:
+            print('猪猪')
+            details_html = etree.HTML(user_detail_res.text.encode('utf8'))
         else:
             details_html = etree.HTML(user_detail_res.text)
         if 'btschool' in site.url:
@@ -1358,7 +1369,7 @@ class PtSpider:
                 'https://wintersakura.net/',
                 'https://hudbt.hust.edu.cn/',
             ]:
-                print(f"{site.name} 开始签到")
+                logger.info(f"{site.name} 抓取做种信息")
                 # 单独发送请求，解决冬樱签到问题
                 seeding_detail_res = requests.get(url=seeding_detail_url, verify=False,
                                                   cookies=toolbox.cookie2dict(my_site.cookie),
@@ -1551,7 +1562,7 @@ class PtSpider:
     def parse_userinfo_html(self, my_site, details_html):
         """解析个人主页"""
         site = get_object_or_404(WebSite, id=my_site.site)
-        mirror = my_site.mirror if my_site.mirror_switch else website.url
+        mirror = my_site.mirror if my_site.mirror_switch else site.url
 
         with lock:
             try:

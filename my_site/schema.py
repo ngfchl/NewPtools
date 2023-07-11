@@ -47,6 +47,8 @@ class MySiteSchemaIn(Schema):
     id: Optional[int]
     sort_id: int
     site: int
+    mirror: Optional[str]
+    mirror_switch: bool
     nickname: Optional[str]
     passkey: Optional[str]
     get_info: bool

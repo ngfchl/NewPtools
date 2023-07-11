@@ -57,7 +57,7 @@ def auto_sign_in(self):
     logger.info('开始执行签到任务')
 
     aliyundrive_params = toolbox.parse_toml('aliyundrive')
-    if aliyundrive_params is not None:
+    if len(aliyundrive_params) > 0:
         try:
             logger.info('检测到阿里云参数，开始签到阿里云盘')
             aliyundrive_sign_in_list = cache.get(f"aliyundrive_sign_in_list", [])
@@ -75,7 +75,7 @@ def auto_sign_in(self):
             logger.error(traceback.format_exc(5))
             toolbox.send_text(title='阿里云签到', message=msg)
     t98 = toolbox.parse_toml('t98')
-    if t98 is not None:
+    if len(t98) > 0:
         try:
             logger.info('检测到98参数，开始签到')
             t98_sign_in_state = cache.get(f"t98_sign_in_state", False)
@@ -94,7 +94,7 @@ def auto_sign_in(self):
             logger.error(traceback.format_exc(5))
             toolbox.send_text(title='98签到', message=msg)
     cnlang = toolbox.parse_toml('cnlang')
-    if cnlang is not None:
+    if len(cnlang) > 0:
         try:
             logger.info('检测到cnlang参数，开始签到')
             cnlang_sign_state = cache.get(f"cnlang_sign_state", False)

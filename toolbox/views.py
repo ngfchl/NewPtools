@@ -43,7 +43,7 @@ def parse_toml(cmd) -> dict:
     """从配置文件解析获取相关项目"""
     try:
         data = toml.load('db/ptools.toml')
-        return data.get(cmd)
+        return data.get(cmd, {})
     except Exception as e:
         return dict()
 

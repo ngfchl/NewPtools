@@ -1253,7 +1253,7 @@ class PtSpider:
 
         else:
             user_detail_res = self.send_request(my_site=my_site, url=user_detail_url, header=headers)
-        logger.info(f"个人信息页面：{user_detail_res.content.decode('utf8')}")
+        logger.info(f"个人信息页面：{user_detail_res.text}")
         if user_detail_res.status_code != 200:
             return CommonResponse.error(msg=f'{site.name} 个人主页访问错误，错误码：{user_detail_res.status_code}')
         if site.url in [

@@ -128,8 +128,10 @@ function upgrade() {
     exit 1
   fi
   INFO "前端更新中..."
-  rm -rf /ptools/templates
-  git clone -b dist --depth=1 https://github.com/ngfchl/auxi-naive.git /ptools/templates
+  cd /ptools/templates
+  git reset --hard
+  git config pull.ff
+  git pull https://github.com/ngfchl/auxi-naive.git
   if [ $? -eq 0 ]; then
     INFO "前端更新成功"
   else

@@ -4,6 +4,8 @@ on:
   push:
     branches:
       - build
+  workflow_dispatch:
+
 jobs:
   ptools:
     runs-on: ubuntu-latest

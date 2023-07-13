@@ -29,7 +29,9 @@ class AuthenticateMiddleware(MiddlewareMixin):
             request.user = user
         except exceptions.PyJWTError:
             return JsonResponse(data=CommonResponse.error(msg='认证失败，请重新登陆！').dict(), safe=False, status=403)
-
+        except Exception as e:
+            return JsonResponse(data=CommonResponse.error(msg='认证失败，请检查用户是否存在！').dict(), safe=False,
+                                status=403)
         return None
 
     # def process_response(self, request, response):

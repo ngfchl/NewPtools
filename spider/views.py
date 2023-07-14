@@ -1111,6 +1111,13 @@ class PtSpider:
         if mail_check > 0:
             title = f'{site.name}有新消息！'
 
+            if 'torrentleech' in site.url:
+                mail_count = int(''.join(details_html.xpath(site.my_mailbox_rule)))
+                if mail_count <= 0:
+                    status.mail = 0
+                    status.save()
+                    return
+
             if not notice_category_enable.get("message"):
                 toolbox.send_text(title=title, message=title)
                 status.mail = 1

@@ -1918,11 +1918,13 @@ class PtSpider:
                         'https://www.pttime.org/',
                         'https://totheglory.im/',
                         'https://pt.keepfrds.com/',
+                        'https://springsunday.net/',
                     ]:
                         # 无需解析字符串
                         seed_vol_size = ''.join(
                             seeding_html.xpath(site.my_seed_vol_rule)
                         ).replace('i', '').replace('&nbsp;', ' ')
+                        logger.debug('做种信息字符串：{}'.format(seed_vol_size))
                         seed_vol_all = toolbox.FileSizeConvert.parse_2_byte(seed_vol_size)
                         logger.debug(f'做种信息: {seed_vol_all}')
                     elif 'club.hares.top' in site.url:

@@ -1387,7 +1387,7 @@ class PtSpider:
             else:
                 seeding_detail_res = self.send_request(my_site=my_site, url=seeding_detail_url, header=headers,
                                                        delay=25)
-            logger.debug('做种信息：{}'.format(seeding_detail_res))
+            logger.debug('做种信息：{}'.format(seeding_detail_res.text))
             if seeding_detail_res.status_code != 200:
                 return CommonResponse.error(
                     msg=f'{site.name} 做种信息访问错误，错误码：{seeding_detail_res.status_code}')

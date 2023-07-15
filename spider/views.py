@@ -1877,6 +1877,7 @@ class PtSpider:
                         'https://hdpt.xyz/',
                         'https://www.icc2022.com/',
                         'http://leaves.red/',
+                        'https://leaves.red/',
                         'https://www.htpt.cc/',
                         'https://pt.btschool.club/',
                         'https://azusa.wiki/',

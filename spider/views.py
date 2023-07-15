@@ -1855,7 +1855,7 @@ class PtSpider:
                     if site.url in [
                         'https://lemonhd.org/',
                         'https://oldtoons.world/',
-                        'https://xinglin.one/',
+                        'https://xingtan.one/',
                         'https://piggo.me/',
                         'http://hdmayi.com/',
                         'https://pt.0ff.cc/',

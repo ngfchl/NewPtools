@@ -1957,7 +1957,7 @@ class PtSpider:
                             else:
                                 vol = ''.join(seed_vol.xpath('.//text()'))
                             # logger.debug(vol)
-                            if not len(vol) <= 0:
+                            if len(vol) > 0:
                                 # U2返回字符串为mib，gib
                                 size = toolbox.FileSizeConvert.parse_2_byte(vol.replace('i', ''))
                                 if size:

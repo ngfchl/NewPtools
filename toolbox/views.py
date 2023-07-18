@@ -866,6 +866,7 @@ def remove_torrent_by_site_rules(my_site: MySite):
             not_registered_msg = [
                 'torrent not registered with this tracker',
                 'err torrent deleted due to other',
+                'Torrent not exists',
             ]
             trackers = client.torrents_trackers(torrent_hash=hash_string)
             tracker_checked = False

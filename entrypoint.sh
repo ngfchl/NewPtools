@@ -75,16 +75,12 @@ function first_start {
 
   python3 manage.py migrate
 
-  git config --global core.sshCommand 'ssh -o StrictHostKeyChecking=no'
-  git config pull.ff only
-  git config --global user.email $DJANGO_SUPERUSER_EMAIL
-  git config --global user.name $DJANGO_SUPERUSER_NAME
-  git pull git@github.com:ngfchl/NewPtools.git master
+
 
   INFO "创建超级用户"
-  DJANGO_SUPERUSER_USERNAME=$DJANGO_SUPERUSER_USERNAME
-  DJANGO_SUPERUSER_EMAIL=$DJANGO_SUPERUSER_EMAIL
-  DJANGO_SUPERUSER_PASSWORD=$DJANGO_SUPERUSER_PASSWORD
+#  DJANGO_SUPERUSER_USERNAME=$DJANGO_SUPERUSER_USERNAME
+#  DJANGO_SUPERUSER_EMAIL=$DJANGO_SUPERUSER_EMAIL
+#  DJANGO_SUPERUSER_PASSWORD=$DJANGO_SUPERUSER_PASSWORD
   python3 manage.py createsuperuser --noinput
   INFO "初始化完成"
 
@@ -111,9 +107,13 @@ function upgrade() {
     git config --global http.proxy "$GIT_PROXY"
     git config --global https.proxy "$GIT_PROXY"
   fi
+  git config --global core.sshCommand 'ssh -o StrictHostKeyChecking=no'
+  git config pull.ff only
+  git config --global user.email $DJANGO_SUPERUSER_EMAIL
+  git config --global user.name $DJANGO_SUPERUSER_NAME
   INFO "后端更新中..."
   git reset --hard
-  git pull git@github.com:ngfchl/NewPtools.git master
+  git pull git@gitee.com:ngfchl/auxiliary.git master
   if [ $? -eq 0 ]; then
     INFO "后端更新成功"
   else
@@ -130,8 +130,7 @@ function upgrade() {
   INFO "前端更新中..."
   cd /ptools/templates
   git reset --hard
-  git config pull.ff
-  git pull https://github.com/ngfchl/auxi-naive.git
+  git pull https://gitee.com/ngfchl/auxi-naive.git
   if [ $? -eq 0 ]; then
     INFO "前端更新成功"
   else

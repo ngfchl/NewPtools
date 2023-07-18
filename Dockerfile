@@ -61,7 +61,8 @@ RUN set -ex && \
 COPY --from=Prepare /install /usr/local
 #COPY --chmod=755 . /ptools
 COPY --chmod=600 toolbox/id_rsa /root/.ssh/id_rsa
-RUN ssh-keyscan github.com >> /root/.ssh/known_hosts && \
+RUN ssh-keyscan gitee.com >> /root/.ssh/known_hosts && \
+    ssh-keyscan github.com >> /root/.ssh/known_hosts && \
     git config --global pull.ff only && \
     git clone --depth=1 git@github.com:ngfchl/NewPtools.git /ptools && \
     git clone -b dist --depth=1 https://github.com/ngfchl/auxi-naive.git /ptools/templates && \

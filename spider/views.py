@@ -864,7 +864,7 @@ class PtSpider:
                 else:
                     # 签到失败
                     return result
-            if 'hdarea.co' in site.url:
+            if 'hdarea' in site.url:
                 res = self.send_request(my_site=my_site,
                                         method='post',
                                         url=url,

@@ -648,7 +648,7 @@ def filter_torrent_by_rules(my_site: MySite, torrents: List[TorrentInfo]):
     torrent_list = []
     for torrent in torrents:
         try:
-            push_flag = False
+            push_flag = True
             # 发种时间命中
             published = rules.get('published')
             if published:

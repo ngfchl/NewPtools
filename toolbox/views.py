@@ -534,8 +534,8 @@ def push_torrents_to_downloader(
             save_path=save_path,
             is_skip_checking=is_skip_checking,
             is_paused=is_paused,
-            upload_limit=upload_limit * 1024,
-            download_limit=download_limit * 1024,
+            upload_limit=upload_limit * 1024 * 1024,
+            download_limit=download_limit * 1024 * 1024,
             use_auto_torrent_management=use_auto_torrent_management,
             cookie=cookie
         )
@@ -624,6 +624,7 @@ def package_files(
                     file_ids=delete_ids,
                     priority=0
                 )
+                client.torrents_resume(torrent_hash=hash_string)
                 msg = f'种子 {hash_string} 拆包完成'
                 logger.info(msg)
             else:

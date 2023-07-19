@@ -314,7 +314,7 @@ def auto_get_torrents(self, *site_list: List[int]):
                             cookie=my_site.cookie,
                             category=category,
                             is_paused=my_site.package_file and downloader.package_files,
-                            upload_limit=int(site.limit_speed * 1024 * 0.92)
+                            upload_limit=int(site.limit_speed * 0.92)
                         )
                         torrent.downloader = downloader
                         torrent.state = 1
@@ -822,7 +822,7 @@ def auto_push_to_downloader(self, *site_list: List[int]):
                     urls=torrent.magnet_url,
                     cookie=my_site.cookie,
                     category=f'{site.nickname}-{torrent.tid}',
-                    upload_limit=int(site.limit_speed * 1024 * 0.92)
+                    upload_limit=int(site.limit_speed * 0.92)
                 )
                 torrent.downloader = my_site.downloader
                 torrent.state = 1

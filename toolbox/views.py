@@ -769,8 +769,8 @@ def remove_torrent_by_site_rules(my_site: MySite):
     :param my_site:
     :return msg
     """
-    logger.info(f"当前站点：{my_site}, 删种规则：{my_site.remove_torrent_rules}")
     rules = json.loads(my_site.remove_torrent_rules).get('remove')
+    logger.info(f"当前站点：{my_site}, 删种规则：{rules}")
     logger.info(f"当前下载器：{my_site.downloader_id}")
     client, _ = get_downloader_instance(my_site.downloader.id)
     if not client:
@@ -792,7 +792,7 @@ def remove_torrent_by_site_rules(my_site: MySite):
                 count += 1
                 if not torrent_info.hash_string:
                     logger.debug(f'{torrent_info.title} 未抓取到种子HASH')
-                continue
+                    continue
             # 删种规则
             logger.debug(f' {torrent_info.title} -- {hash_string}')
 

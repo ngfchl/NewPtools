@@ -694,7 +694,7 @@ def filter_torrent_by_rules(my_site: MySite, torrents: List[TorrentInfo]):
             if size:
                 min_size = size.get('min') * 1024 * 1024 * 1024
                 max_size = size.get('max') * 1024 * 1024 * 1024
-                push_flag = min_size < torrent.size < max_size
+                push_flag = int(min_size) < int(torrent.size) < int(max_size)
             if not push_flag:
                 excluded_torrents.append(torrent)
                 # 跳过该种子的处理，继续下一个种子的判断

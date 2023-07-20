@@ -6,7 +6,8 @@ import random
 import re
 import subprocess
 import time
-from datetime import timedelta
+import traceback
+from datetime import timedelta, datetime
 from typing import List, Union
 
 import aip
@@ -634,10 +635,6 @@ def package_files(
         msg = f'种子 {hash_string} 拆包失败！'
         logger.error(f'{traceback.format_exc(3)} \n {msg}')
         return CommonResponse.error(msg=msg)
-
-
-from datetime import datetime
-import traceback
 
 
 def filter_torrent_by_rules(my_site: MySite, torrents: List[TorrentInfo]):

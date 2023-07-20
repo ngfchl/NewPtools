@@ -503,7 +503,8 @@ def auto_get_rss(self, *site_list: List[int]):
                         urls=torrent.magnet_url,
                         cookie=my_site.cookie,
                         is_paused=my_site.package_file and downloader.package_files,
-                        category=f'{website.nickname}-{torrent.tid}'
+                        category=f'{website.nickname}-{torrent.tid}',
+                        upload_limit=int(website.limit_speed * 0.92)
                     )
                     if res.code == 0:
                         torrent.downloader = downloader
@@ -752,6 +753,7 @@ def auto_get_rss_torrent_detail(self, my_site_id: int = None):
                     client, downloader_category,
                     urls=urls,
                     cookie=my_site.cookie,
+                    upload_limit=int(website.limit_speed * 0.92)
                 )
                 if downloader.package_files:
                     client, _ = toolbox.get_downloader_instance(downloader.id)

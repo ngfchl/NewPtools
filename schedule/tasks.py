@@ -295,7 +295,7 @@ def auto_get_torrents(self, *site_list: List[int]):
                 logging.info(f'站点Free刷流：{my_site.brush_free}，绑定下载器：{my_site.downloader}')
                 if my_site.downloader:
                     torrents = res.data
-                    torrents.extend(all_torrents.filter(my_site=my_site))
+                    torrents.extend(all_torrents.filter(site=my_site))
                     if len(torrents) <= 0:
                         continue
                     # 解析刷流推送规则,筛选符合条件的种子并推送到下载器

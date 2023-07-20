@@ -781,19 +781,21 @@ def remove_torrent_by_site_rules(my_site: MySite):
     expire_hashes = []
     for torrent_info in my_site.torrentinfo_set.filter(state__lt=3):
         try:
-            # 完善种子信息
-            category = f'{website.nickname}-{torrent_info.tid}'
-            res = get_hash_by_category(client, torrent_info, category)
-            if res.code == -1:
-                logger.error(res.msg)
-            logger.debug(res.msg)
-            count += 1
-            # 删种规则
             hash_string = torrent_info.hash_string
-            logger.debug(f'{hash_string} -- {torrent_info.title}')
             if not hash_string:
-                logger.debug(f'{torrent_info.title} 未抓取到种子HASH')
+                # 完善种子信息
+                category = f'{website.nickname}-{torrent_info.tid}'
+                res = get_hash_by_category(client, torrent_info, category)
+                if res.code == -1:
+                    logger.error(res.msg)
+                logger.debug(res.msg)
+                count += 1
+                if not torrent_info.hash_string:
+                    logger.debug(f'{torrent_info.title} 未抓取到种子HASH')
                 continue
+            # 删种规则
+            logger.debug(f' {torrent_info.title} -- {hash_string}')
+
             torrent = client.torrents_info(torrent_hashes=hash_string)
             if len(torrent) != 1:
                 logger.error(f'{hash_string} - 出错啦，未找到符合条件的种子')
@@ -920,7 +922,7 @@ def remove_torrent_by_site_rules(my_site: MySite):
                 logger.debug(f'{hash_string} -- {torrent_info.title} 指定进度与平均上传速度达标检测 高于设定值 未命中')
             # 达到指定分享率
             ratio = prop.get('share_ratio')
-            if rules.get("max_ratio") and ratio >= rules.get("max_ratio"):
+            if torrent.get('progress') >= 1 and rules.get("max_ratio") and ratio >= rules.get("max_ratio"):
                 hashes.append(hash_string)
                 logger.debug(f'{hash_string} -- {torrent_info.title} 已达到指定分享率 命中')
                 continue

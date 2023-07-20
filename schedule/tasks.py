@@ -280,6 +280,7 @@ def auto_get_torrents(self, *site_list: List[int]):
     queryset = [my_site for my_site in MySite.objects.filter(id__in=site_list) if
                 websites.get(id=my_site.site).brush_free]
     results = pool.map(pt_spider.send_torrent_info_request, queryset)
+    all_torrents = TorrentInfo.objects.filter(state=0)
     for my_site, result in zip(queryset, results):
         logger.debug('获取种子：{}{}'.format(my_site.nickname, result))
         # print(result is tuple[int])
@@ -294,7 +295,8 @@ def auto_get_torrents(self, *site_list: List[int]):
                 logging.info(f'站点Free刷流：{my_site.brush_free}，绑定下载器：{my_site.downloader}')
                 if my_site.downloader:
                     torrents = res.data
-                    if len(res.data) <= 0:
+                    torrents.extend(all_torrents.filter(my_site=my_site))
+                    if len(torrents) <= 0:
                         continue
                     # 解析刷流推送规则,筛选符合条件的种子并推送到下载器
                     torrents = toolbox.filter_torrent_by_rules(my_site, torrents)
@@ -307,6 +309,9 @@ def auto_get_torrents(self, *site_list: List[int]):
                         continue
                     for torrent in torrents:
                         # 限速到站点限速的92%。以防超速
+                        free_space = client.sync_maindata().get('server_state').get('free_space_on_disk')
+                        if free_space >= downloader.reserved_space * 1024 * 1024 * 1024:
+                            break
                         category = f'{site.nickname}-{torrent.tid}' if not torrent.hash_string else site.nickname
                         toolbox.push_torrents_to_downloader(
                             client, downloader_category,
@@ -325,7 +330,7 @@ def auto_get_torrents(self, *site_list: List[int]):
                         # 30秒等待种子下载到下载器
                         time.sleep(30)
                         hash_list = []
-                        for hash_string in [torrent.hash for torrent in torrents]:
+                        for hash_string in [torrent.hash_string for torrent in torrents]:
                             try:
                                 toolbox.package_files(
                                     client=client, hash_string=hash_string,
@@ -516,7 +521,7 @@ def auto_get_rss(self, *site_list: List[int]):
                     # 30秒等待种子下载到下载器
                     time.sleep(30)
                     hash_list = []
-                    for hash_string in [torrent.hash for torrent in torrent_list]:
+                    for hash_string in [torrent.hash_string for torrent in torrent_list]:
                         try:
                             toolbox.package_files(
                                 client=client, hash_string=hash_string,
@@ -927,7 +932,7 @@ def auto_remove_expire_torrent(self):
         torrents = [torrent for torrent in torrent_info_list if
                     torrent.downloader.id == downloader.id and time.strptime(
                         torrent.sale_expire).timestamp() < time.time() - 60 * 3]
-        hashes = [torrent.hash for torrent in torrents]
+        hashes = [torrent.hash_string for torrent in torrents]
         # 如果开启了保留已下载完毕种子选项，则选下载中的种子
         if downloader.keep_completed:
             downloading_torrents = client.torrents_info(

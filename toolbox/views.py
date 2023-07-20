@@ -732,6 +732,9 @@ def remove_torrent_by_site_rules(my_site: MySite):
     count = 0
     hashes = []
     expire_hashes = []
+    torrents = client.torrents_info()
+    hash_torrents = {item.get('hash'): item for item in torrents}
+
     for torrent_info in my_site.torrentinfo_set.filter(state=1):
         try:
             hash_string = torrent_info.hash_string
@@ -741,7 +744,7 @@ def remove_torrent_by_site_rules(my_site: MySite):
                 try:
                     # 完善种子信息
                     category = f'{website.nickname}-{torrent_info.tid}'
-                    t = client.torrents_info(category=category)
+                    t = [item for item in torrents if item["category"] == category]
                     logger.info(f'种子查询结果：{t}')
                     if len(t) == 1:
                         torrent = t[0]
@@ -751,37 +754,37 @@ def remove_torrent_by_site_rules(my_site: MySite):
                     else:
                         logger.error(f'{hash_string} - 出错啦，未找到符合条件的种子')
                         continue
-                    if not torrent_info.hash_string:
-                        logger.debug(f'{torrent_info.title} 未抓取到种子HASH')
-                        continue
-                except qbittorrentapi.exceptions.NotFound404Error:
-                    msg = f'{torrent_info.title}: 完善hash失败!--下载器已删种！'
-                    torrent_info.state = 3
-                    torrent_info.save()
-                    logger.error(msg)
-                    continue
+                    logger.debug(f'{torrent_info.title}种子hash：{torrent_info.hash_string}')
+                    # if not torrent_info.hash_string:
+                    #     logger.debug(f'{torrent_info.title} 未抓取到种子HASH')
+                    #     continue
+                # except qbittorrentapi.exceptions.NotFound404Error:
+                #     msg = f'{torrent_info.title}: 完善hash失败!--下载器已删种！'
+                #     torrent_info.state = 3
+                #     torrent_info.save()
+                #     logger.error(msg)
+                #     continue
                 except Exception as e:
                     msg = f'{torrent_info.title}: 完善hash失败！'
                     logger.error(traceback.format_exc(3))
                     logger.error(msg)
                     continue
             else:
-                torrent = client.torrents_info(torrent_hashes=hash_string)
+                torrent = hash_torrents.get(hash_string)
                 logger.info(f'种子查询结果：{torrent}')
-                if len(torrent) != 1:
+                if not torrent:
                     logger.error(f'{hash_string} - 出错啦，未找到符合条件的种子')
                     continue
-                torrent = torrent[0]
             # 通过qbittorrentapi客户端获取种子的块哈希列表和文件列表，并转换为字符串
             logger.info(f'完善种子信息')
             if not torrent_info.pieces_qb:
                 # 获取种子块HASH列表，并生成种子块HASH列表字符串的sha1值，保存
-                pieces_hash_list = client.torrents_piece_hashes(torrent_hash=torrent_info.hash_string)
+                pieces_hash_list = client.torrents_piece_hashes(torrent_hash=hash_string)
                 pieces_hash_string = ''.join(str(pieces_hash) for pieces_hash in pieces_hash_list)
                 torrent_info.pieces_qb = sha1_hash(pieces_hash_string)
             if not torrent_info.filelist:
                 # 获取文件列表，并生成文件列表字符串的sha1值，保存
-                file_list = client.torrents_files(torrent_hash=torrent_info.hash_string)
+                file_list = client.torrents_files(torrent_hash=hash_string)
                 file_list_hash_string = ''.join(str(item) for item in file_list)
                 torrent_info.filelist = sha1_hash(file_list_hash_string)
                 torrent_info.files_count = len(file_list)

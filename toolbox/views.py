@@ -719,50 +719,6 @@ def sha1_hash(string: str) -> str:
     return hashlib.sha1(string.encode()).hexdigest()
 
 
-def get_hash_by_category(client, torrent_info, category):
-    try:
-        # 如果已经获取到了哈希值则直接计算文件列表哈希值和块哈希值并保存
-        if torrent_info.hash_string and torrent_info.pieces_qb and torrent_info.filelist:
-            return CommonResponse.error(msg=f'{torrent_info.title}: 无需完善！')
-            # 如果没有哈希值，就通过qbittorrentapi客户端获取种子列表
-        if not torrent_info.hash_string:
-            t = client.torrents_info(category=category)
-            if len(t) == 0:
-                return CommonResponse.error(msg=f'{torrent_info.title}: 查看种子列表失败！')
-            # 遍历种子列表，寻找匹配的种子文件
-            torrent_hash = None
-            if len(t) == 1:
-                torrent_hash = t[0]['hash']
-            # 如果没有找到匹配的种子文件，输出错误信息
-            if not torrent_hash:
-                return CommonResponse.error(msg=f'{torrent_info.title}: 查找种子失败！找到 {len(t)} 个种子!')
-            torrent_info.hash_string = torrent_hash
-            torrent_info.save()
-        # 通过qbittorrentapi客户端获取种子的块哈希列表和文件列表，并转换为字符串
-        if not torrent_info.pieces_qb:
-            # 获取种子块HASH列表，并生成种子块HASH列表字符串的sha1值，保存
-            pieces_hash_list = client.torrents_piece_hashes(torrent_hash=torrent_info.hash_string)
-            pieces_hash_string = ''.join(str(pieces_hash) for pieces_hash in pieces_hash_list)
-            torrent_info.pieces_qb = sha1_hash(pieces_hash_string)
-        if not torrent_info.filelist:
-            # 获取文件列表，并生成文件列表字符串的sha1值，保存
-            file_list = client.torrents_files(torrent_hash=torrent_info.hash_string)
-            file_list_hash_string = ''.join(str(item) for item in file_list)
-            torrent_info.filelist = sha1_hash(file_list_hash_string)
-            torrent_info.files_count = len(file_list)
-        torrent_info.save()
-        return CommonResponse.success(msg=f'{torrent_info.title}: 完善种子信息成功！')
-    except qbittorrentapi.exceptions.NotFound404Error:
-        msg = f'{torrent_info.title}: 完善信息失败!--下载器已删种！'
-        torrent_info.state = 3
-        torrent_info.save()
-        return CommonResponse.error(msg=msg)
-    except Exception as e:
-        msg = f'{torrent_info.title}: 完善信息失败！'
-        logger.error(traceback.format_exc(3))
-        return CommonResponse.error(msg=f'{msg}-- {e}')
-
-
 def remove_torrent_by_site_rules(my_site: MySite):
     """
     站点删种
@@ -783,37 +739,66 @@ def remove_torrent_by_site_rules(my_site: MySite):
         try:
             hash_string = torrent_info.hash_string
             if not hash_string:
-                # 完善种子信息
-                category = f'{website.nickname}-{torrent_info.tid}'
-                res = get_hash_by_category(client, torrent_info, category)
-                if res.code == -1:
-                    logger.error(res.msg)
-                logger.debug(res.msg)
-                count += 1
-                if not torrent_info.hash_string:
-                    logger.debug(f'{torrent_info.title} 未抓取到种子HASH')
-                    continue
-            # 删种规则
-            logger.debug(f' {torrent_info.title} -- {hash_string}')
+                try:
+                    # 完善种子信息
+                    category = f'{website.nickname}-{torrent_info.tid}'
+                    t = client.torrents_info(category=category)
+                    logger.info(f'查找到的种子：{t}')
 
-            torrent = client.torrents_info(torrent_hashes=hash_string)
-            logger.info(f'查找到的种子：{torrent}')
-            if len(torrent) != 1:
-                logger.error(f'{hash_string} - 出错啦，未找到符合条件的种子')
-                continue
+                    if len(t) == 1:
+                        torrent = t[0]
+                        torrent_info.hash_string = torrent.get('hash')
+                        torrent_info.save()
+                        count += 1
+                    else:
+                        logger.error(f'{hash_string} - 出错啦，未找到符合条件的种子')
+                        continue
+                    if not torrent_info.hash_string:
+                        logger.debug(f'{torrent_info.title} 未抓取到种子HASH')
+                        continue
+                except qbittorrentapi.exceptions.NotFound404Error:
+                    msg = f'{torrent_info.title}: 完善hash失败!--下载器已删种！'
+                    torrent_info.state = 3
+                    torrent_info.save()
+                    logger.error(msg)
+                    continue
+                except Exception as e:
+                    msg = f'{torrent_info.title}: 完善hash失败！'
+                    logger.error(traceback.format_exc(3))
+                    logger.error(msg)
+                    continue
             else:
+                torrent = client.torrents_info(torrent_hashes=hash_string)
+                if len(torrent) != 1:
+                    logger.error(f'{hash_string} - 出错啦，未找到符合条件的种子')
+                    continue
                 torrent = torrent[0]
-            logger.info(f'开始匹配删种规则: {hash_string}')
+            # 通过qbittorrentapi客户端获取种子的块哈希列表和文件列表，并转换为字符串
+            logger.info(f'完善种子信息')
+            if not torrent_info.pieces_qb:
+                # 获取种子块HASH列表，并生成种子块HASH列表字符串的sha1值，保存
+                pieces_hash_list = client.torrents_piece_hashes(torrent_hash=torrent_info.hash_string)
+                pieces_hash_string = ''.join(str(pieces_hash) for pieces_hash in pieces_hash_list)
+                torrent_info.pieces_qb = sha1_hash(pieces_hash_string)
+            if not torrent_info.filelist:
+                # 获取文件列表，并生成文件列表字符串的sha1值，保存
+                file_list = client.torrents_files(torrent_hash=torrent_info.hash_string)
+                file_list_hash_string = ''.join(str(item) for item in file_list)
+                torrent_info.filelist = sha1_hash(file_list_hash_string)
+                torrent_info.files_count = len(file_list)
+            torrent_info.save()
+            # 删种
+            logger.info(f'{torrent_info.title} - 开始匹配删种规则: {hash_string}')
             prop = client.torrents_properties(torrent_hash=hash_string)
             # 排除关键字命中，
             delete_flag = False
             logger.info(f'排除关键字: {hash_string}')
             if rules.get('exclude'):
                 for rule in rules.get('exclude'):
-                    if torrent.title.find(rule) > 0:
+                    if torrent.get('title').find(rule) > 0:
                         delete_flag = True
                         break
-                logger.info(f"{my_site.nickname} {torrent.tid} 排除关键字命中：{delete_flag}")
+                logger.info(f"{my_site.nickname} {torrent.get('tid')} 排除关键字命中：{delete_flag}")
             if delete_flag:
                 # 遇到要排除的关键字的种子，直接跳过，不再继续执行删种
                 continue

@@ -130,7 +130,8 @@ function upgrade() {
   INFO "前端更新中..."
   cd /ptools/templates
   git reset --hard
-  git pull https://gitee.com/ngfchl/auxi-naive.git
+  git remote set-url origin https://gitee.com/ngfchl/auxi-naive.git
+  git pull https://gitee.com/ngfchl/auxi-naive.git dist
   if [ $? -eq 0 ]; then
     INFO "前端更新成功"
   else

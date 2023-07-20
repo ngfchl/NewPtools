@@ -735,16 +735,17 @@ def remove_torrent_by_site_rules(my_site: MySite):
     count = 0
     hashes = []
     expire_hashes = []
-    for torrent_info in my_site.torrentinfo_set.filter(state__lt=3):
+    for torrent_info in my_site.torrentinfo_set.filter(state=1):
         try:
             hash_string = torrent_info.hash_string
+            logger.info(f'当前种子hash：{hash_string}')
+
             if not hash_string:
                 try:
                     # 完善种子信息
                     category = f'{website.nickname}-{torrent_info.tid}'
                     t = client.torrents_info(category=category)
-                    logger.info(f'查找到的种子：{t}')
-
+                    logger.info(f'种子查询结果：{t}')
                     if len(t) == 1:
                         torrent = t[0]
                         torrent_info.hash_string = torrent.get('hash')
@@ -769,6 +770,7 @@ def remove_torrent_by_site_rules(my_site: MySite):
                     continue
             else:
                 torrent = client.torrents_info(torrent_hashes=hash_string)
+                logger.info(f'种子查询结果：{torrent}')
                 if len(torrent) != 1:
                     logger.error(f'{hash_string} - 出错啦，未找到符合条件的种子')
                     continue

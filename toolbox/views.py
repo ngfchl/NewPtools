@@ -751,9 +751,10 @@ def remove_torrent_by_site_rules(my_site: MySite):
     hashes = []
     expire_hashes = []
     torrents = client.torrents_info()
+    logger.info(f'当前下载器共有种子数量：{len(torrents)}')
     hash_torrents = {item.get('hash'): item for item in torrents}
 
-    for torrent_info in my_site.torrentinfo_set.filter(state=1):
+    for torrent_info in my_site.torrentinfo_set.filter(state__lt=3):
         try:
             hash_string = torrent_info.hash_string
             logger.info(f'当前种子hash：{hash_string}')

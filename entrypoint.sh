@@ -49,7 +49,7 @@ function cloudflarespeedtest_host {
     INFO '存在自定义HOSTS文件，apply'
   fi
   if [ "$CloudFlareSpeedTest" = "true" ]; then
-    counter_file="/ptools/counter.txt"
+    counter_file="/ptools/db/counter.txt"
     current_date=$(date +%Y-%m-%d)
     if [ ! -f "$counter_file" ]; then
       echo "1" >"$counter_file"

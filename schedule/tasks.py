@@ -496,6 +496,7 @@ def auto_get_rss(self, *site_list: List[int]):
                     logger.warning(f'{my_site.downloader.name} 链接出错了')
                     continue
                 push_message = []
+                torrent_list = toolbox.filter_torrent_by_rules(my_site, torrent_list)
                 for torrent in torrent_list:
                     torrent.magnet_url = f'{website.url}{website.page_download.format(torrent.tid)}'
                     res = toolbox.push_torrents_to_downloader(

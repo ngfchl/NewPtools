@@ -6,8 +6,7 @@ import random
 import re
 import subprocess
 import time
-import traceback
-from datetime import datetime, timedelta
+from datetime import timedelta
 from typing import List, Union
 
 import aip
@@ -637,6 +636,10 @@ def package_files(
         return CommonResponse.error(msg=msg)
 
 
+from datetime import datetime
+import traceback
+
+
 def filter_torrent_by_rules(my_site: MySite, torrents: List[TorrentInfo]):
     """
     使用站点选中规则筛选种子
@@ -646,92 +649,70 @@ def filter_torrent_by_rules(my_site: MySite, torrents: List[TorrentInfo]):
     """
     rules = json.loads(my_site.remove_torrent_rules).get('push')
     logger.info(f"当前站点：{my_site.nickname}, 选种规则：{rules}")
-    torrent_list = []
+
+    # 收集不符合规则的种子
+    excluded_torrents = []
+
     for torrent in torrents:
         try:
+            # 初始值设为True，只有任意一项规则不符合时设为False
             push_flag = True
+
             # 发种时间命中
             published = rules.get('published')
             if published:
-                if isinstance(torrent.published, str):
-                    torrent_published = datetime.strptime(torrent.published, "%Y-%m-%d %H:%M:%S").timestamp()
-                else:
-                    torrent_published = torrent.published.timestamp()
-                push_flag = time.time() - torrent_published < published
-            logger.info(f"{my_site.nickname} {torrent.tid} 发种时间命中：{push_flag}")
-            if not push_flag:
-                torrent.state = 5
-                torrent.save()
-                continue
+                torrent_published = datetime.strptime(torrent.published, "%Y-%m-%d %H:%M:%S") if isinstance(
+                    torrent.published, str) else torrent.published
+                push_flag = (datetime.now() - torrent_published).total_seconds() < published
+
             # 做种人数命中
             seeders = rules.get('seeders')
-            if seeders:
+            if push_flag and seeders:
                 push_flag = torrent.seeders < seeders
-            logger.info(f"{my_site.nickname} {torrent.tid} 做种人数命中：{push_flag}")
-            if not push_flag:
-                torrent.state = 5
-                torrent.save()
-                continue
+
             # 下载人数命中
             leechers = rules.get('leechers')
-            if leechers:
+            if push_flag and leechers:
                 push_flag = torrent.leechers > leechers
-            logger.info(f"{my_site.nickname} {torrent.tid} 下载人数命中：{push_flag}")
-            if not push_flag:
-                torrent.state = 5
-                torrent.save()
-                continue
-            # 剩余免费时间
+
+            # 剩余免费时间命中
             sale_expire = rules.get('sale_expire')
-            if sale_expire:
-                if isinstance(torrent.published, str):
-                    torrent_published = datetime.strptime(torrent.published, "%Y-%m-%d %H:%M:%S").timestamp()
-                else:
-                    torrent_published = torrent.published.timestamp()
-                push_flag = time.time() - torrent_published < sale_expire
-            logger.info(f"{my_site.nickname} {torrent.tid} 剩余免费时间命中：{push_flag}")
-            if not push_flag:
-                torrent.state = 5
-                torrent.save()
-                continue
-            # 要刷流的种子大小
+            if push_flag and sale_expire:
+                push_flag = (datetime.now() - torrent.sale_expire).total_seconds() < sale_expire
+
+            # 种子大小命中
             size = rules.get('size')
-            if size:
-                min_size = size.get('min')
-                max_size = size.get('max')
-                push_flag = min_size < torrent.size / 1024 / 1024 / 1024 < max_size
-                logger.info(f"{my_site.nickname} {torrent.tid} 种子大小命中：{push_flag}")
-            if not push_flag:
-                torrent.state = 5
-                torrent.save()
-                continue
+            if push_flag and size:
+                min_size = size.get('min') * 1024 * 1024 * 1024
+                max_size = size.get('max') * 1024 * 1024 * 1024
+                push_flag = min_size < torrent.size < max_size
+
             # 包含关键字命中
-            if rules.get('include'):
-                for rule in rules.get('include'):
-                    if torrent.title.find(rule) > 0:
-                        push_flag = True
-                        break
-                logger.info(f"{my_site.nickname} {torrent.tid} 包含关键字命中：{push_flag}")
-            if not push_flag:
-                torrent.state = 5
-                torrent.save()
-                continue
+            includes = rules.get('include')
+            if push_flag and includes:
+                push_flag = any(rule in torrent.title for rule in includes)
+
             # 排除关键字命中
-            if rules.get('exclude'):
-                for rule in rules.get('exclude'):
-                    if torrent.title.find(rule) > 0:
-                        push_flag = False
-                        break
-                logger.info(f"{my_site.nickname} {torrent.tid} 排除关键字命中：{push_flag}")
+            excludes = rules.get('exclude')
+            if push_flag and excludes:
+                push_flag = all(rule not in torrent.title for rule in excludes)
+
             if not push_flag:
-                torrent.state = 5
-                torrent.save()
+                excluded_torrents.append(torrent)
+                # 跳过该种子的处理，继续下一个种子的判断
                 continue
-            torrent_list.append(torrent)
-        except Exception as e:
+
+        except Exception:
             logger.error(traceback.format_exc(3))
             continue
-    return torrent_list
+
+    # 一次性保存所有不符合规则的种子
+    for excluded_torrent in excluded_torrents:
+        excluded_torrent.state = 5
+        excluded_torrent.save()
+
+    # 返回符合规则的种子列表
+    return [torrent for torrent in torrents if torrent not in excluded_torrents]
 
 
 def sha1_hash(string: str) -> str:

@@ -753,7 +753,7 @@ def remove_torrent_by_site_rules(my_site: MySite):
     torrents = client.torrents_info()
     logger.info(f'当前下载器共有种子数量：{len(torrents)}')
     hash_torrents = {item.get('hash'): item for item in torrents}
-
+    logger.info(f'开始循环处理种子')
     for torrent_info in my_site.torrentinfo_set.filter(state__lt=3):
         try:
             hash_string = torrent_info.hash_string
@@ -992,7 +992,7 @@ def remove_torrent_by_site_rules(my_site: MySite):
         count = 0
         if len(hashes) + len(expire_hashes) > 0:
             client.torrents_reannounce(torrent_hashes=hashes)
-            # 单次最多删种数量, 不填写默认5, 免费到期的不算在内
+            # 单次最多删种数量, 不填写默认所有被筛选的, 免费到期的不算在内
             num_delete = rules.get("num_delete", None)
             random.shuffle(hashes)
             hashes = hashes[:num_delete]

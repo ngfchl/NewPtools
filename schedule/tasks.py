@@ -55,6 +55,7 @@ def auto_sign_in(self):
     start = time.time()
 
     logger.info('开始执行签到任务')
+    message_list = []
 
     aliyundrive_params = toolbox.parse_toml('aliyundrive')
     if len(aliyundrive_params) > 0:
@@ -67,8 +68,7 @@ def auto_sign_in(self):
             else:
                 welfare = aliyundrive_params.get('reward', True)
                 result = aliyundrive.aliyundrive_sign_in(refresh_token_list=refresh_token_list, welfare=welfare)
-                if notice_category_enable.get("aliyundrive_notice", True):
-                    toolbox.send_text(title='阿里云签到', message=result)
+                message_list.append(f'✅ 阿里云 签到成功！{result} \n')
         except Exception as e:
             msg = f'阿里云签到失败！{e}'
             logger.error(msg)
@@ -87,9 +87,9 @@ def auto_sign_in(self):
                     cookie=t98.get('cookie'),
                     user_agent=t98.get('user_agent'),
                 )
-                toolbox.send_text(title='98签到', message=res.msg)
+                message_list.append(f'✅ t98 签到成功！{res.msg} \n')
         except Exception as e:
-            msg = f'98签到失败！{e}'
+            msg = f't98签到失败！{e}'
             logger.error(msg)
             logger.error(traceback.format_exc(5))
             toolbox.send_text(title='98签到', message=msg)
@@ -106,7 +106,7 @@ def auto_sign_in(self):
                     user_agent=cnlang.get('user_agent',
                                           'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/97.0.4692.71 Safari/537.36 Edg/97.0.1072.62'),
                 )
-                toolbox.send_text(title='cnlang签到', message=res.msg)
+                message_list.append(f'✅ 国语视界 签到成功！{res.msg} \n')
         except Exception as e:
             msg = f'cnlang签到失败！{e}'
             logger.error(msg)
@@ -131,14 +131,14 @@ def auto_sign_in(self):
                         'Hello World!',
                     ]))
                 )
-                toolbox.send_text(title='SSDForum签到', message=res.msg)
+                message_list.append(f'✅ SSDForum 签到成功！{res.msg} \n')
         except Exception as e:
             msg = f'SSDForum签到失败！{e}'
             logger.error(msg)
             logger.error(traceback.format_exc(5))
             toolbox.send_text(title='SSDForum签到', message=msg)
     logger.info('筛选需要签到的站点')
-    message_list = []
+
     queryset = [
         my_site for my_site in MySite.objects.filter(sign_in=True) if
         WebSite.objects.get(id=my_site.site).sign_in and
@@ -153,6 +153,7 @@ def auto_sign_in(self):
         logger.info(message_list)
         # toolbox.send_text(title='通知：自动签到', message='\n'.join(message_list))
         return message_list
+    message_list.append(f'=== 开始PT站点签到 === \n')
     # toolbox.send_text(title='通知：正在签到',
     #                   message=f'开始执行签到任务，共有{len(queryset)}站点需要签到，当前时间：{datetime.fromtimestamp(start)}')
     results = pool.map(pt_spider.sign_in, queryset)

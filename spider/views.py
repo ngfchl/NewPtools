@@ -7,7 +7,7 @@ import ssl
 import threading
 import time
 import traceback
-from datetime import datetime
+from datetime import datetime, timedelta
 from urllib.parse import urlparse, parse_qs
 
 import cloudscraper
@@ -2317,6 +2317,52 @@ class PtSpider:
             logger.error(traceback.format_exc(limit=3))
             return CommonResponse.error(msg=msg)
 
+    @staticmethod
+    def calculate_expiry_time_from_string(time_str):
+        """
+        解析mteam免费时间
+        :param time_str:
+        :return:
+        """
+
+        def parse_remaining_time(time_str):
+            # 检查是否是 "X 日 X 時" 格式
+            if "日" in time_str and "時" in time_str:
+                days = int(re.search(r"(\d+)\s*日", time_str).group(1))
+                hours = int(re.search(r"(\d+)\s*時", time_str).group(1))
+                return days, hours, 0
+
+            # 检查是否是 "X 時 X 分" 格式
+            elif "時" in time_str and "分" in time_str:
+                hours = int(re.search(r"(\d+)\s*時", time_str).group(1))
+                minutes = int(re.search(r"(\d+)\s*分", time_str).group(1))
+                return 0, hours, minutes
+
+            # 检查是否是 "X 分" 格式
+            elif "分" in time_str:
+                minutes = int(re.search(r"(\d+)\s*分", time_str).group(1))
+                return 0, 0, minutes
+
+            else:
+                raise ValueError("无法解析时间字符串")
+
+        def calculate_expiry_time(days: int, hours: int, minutes: int):
+            # 获取当前日期和时间
+            current_time = datetime.now()
+
+            # 计算剩余时间的时间差
+            time_difference = timedelta(days=days, hours=hours, minutes=minutes)
+
+            # 计算到期时间
+
+            return current_time + time_difference
+
+        # 解析字符串并计算到期时间
+        days, hours, minutes = parse_remaining_time(time_str)
+        expiry_time = calculate_expiry_time(days, hours, minutes)
+
+        return expiry_time
+
     def get_torrent_info_list(self, my_site: MySite, response: Response):
         count = 0
         new_count = 0
@@ -2350,7 +2396,7 @@ class PtSpider:
                     # sale_status = ''.join(re.split(r'[^\x00-\xff]', sale_status))
                     sale_status = sale_status.replace('tStatus ', '').upper().replace(
                         'FREE', 'Free'
-                    ).replace('免费', 'Free').replace(' ', '')
+                    ).replace('免费', 'Free').replace('免費', 'Free').replace(' ', '')
                     # # 下载链接，下载链接已存在则跳过
                     href = ''.join(tr.xpath(site.torrent_magnet_url_rule))
                     logger.debug('href: {}'.format(href))
@@ -2381,7 +2427,15 @@ class PtSpider:
                         """
                         sale_expire = ''.join(
                             re.findall(r'\d{4}\D\d{2}\D\d{2}\D\d{2}\D\d{2}\D', ''.join(sale_expire)))
-
+                    if site.url in [
+                        'https://kp.m-team.cc/',
+                    ]:
+                        # 限時：1時39分
+                        try:
+                            sale_expire = self.calculate_expiry_time_from_string(sale_expire).strftime(
+                                '%Y-%m-%d %H:%M:%S')
+                        except Exception as e:
+                            sale_expire = None
                     if site.url in [
                         'https://totheglory.im/',
                     ]:

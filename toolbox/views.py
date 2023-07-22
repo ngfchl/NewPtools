@@ -1010,6 +1010,8 @@ def remove_torrent_by_site_rules(mysite: MySite):
         else:
             msg = f'{mysite.nickname}：本次运行没有种子要删除！'
         logger.info(msg)
+        # 启动所有种子
+        client.torrents_resume()
         return CommonResponse.success(msg=msg, data=count)
     except Exception as e:
         logger.error(traceback.format_exc(3))

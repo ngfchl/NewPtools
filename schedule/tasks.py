@@ -311,7 +311,7 @@ def auto_get_torrents(self, *site_list: List[int]):
                     for torrent in torrents:
                         # 限速到站点限速的92%。以防超速
                         free_space = client.sync_maindata().get('server_state').get('free_space_on_disk')
-                        if free_space >= downloader.reserved_space * 1024 * 1024 * 1024:
+                        if free_space <= downloader.reserved_space * 1024 * 1024 * 1024:
                             msg = f'{downloader.name} 磁盘空间已达到临界值！{downloader.reserved_space}GB，当前空间：{free_space}'
                             logger.info(msg)
                             if notice_category_enable.get('free_space', False):
@@ -505,7 +505,7 @@ def auto_get_rss(self, *site_list: List[int]):
                 for torrent in torrent_list:
                     # 限速到站点限速的92%。以防超速
                     free_space = client.sync_maindata().get('server_state').get('free_space_on_disk')
-                    if free_space >= downloader.reserved_space * 1024 * 1024 * 1024:
+                    if free_space <= downloader.reserved_space * 1024 * 1024 * 1024:
                         msg = f'{downloader.name} 磁盘空间已达到临界值！{downloader.reserved_space}GB，当前空间：{free_space}'
                         logger.info(msg)
                         if notice_category_enable.get('free_space', False):

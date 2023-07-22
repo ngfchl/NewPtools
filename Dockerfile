@@ -28,6 +28,21 @@ ENV PYTHONUNBUFFERED=1 \
     TERM="xterm" \
     TZ=Asia/Shanghai
 
+ENV TOKEN='' \
+    DJANGO_SUPERUSER_USERNAME=admin \
+    DJANGO_SUPERUSER_EMAIL=admin@email.com \
+    DJANGO_SUPERUSER_PASSWORD=adminadmin \
+    DJANGO_WEB_PORT=8000 \
+    REDIS_SERVER_PORT=6379 \
+    WEBUI_PORT=80 \
+    FLOWER_UI_PORT=5566 \
+    SUPERVISOR_UI_PORT=9001 \
+    CloudFlareSpeedTest=false \
+    GIT_PROXY='' \
+    AUTO_UPDATE=false \
+    BRANCH="master" \
+    LOGGER_LEVEL="DEBUG"
+
 RUN set -ex && \
     export DEBIAN_FRONTEND="noninteractive" && \
     apt-get update -y && \
@@ -64,24 +79,10 @@ COPY --chmod=600 toolbox/id_rsa /root/.ssh/id_rsa
 RUN ssh-keyscan gitee.com >> /root/.ssh/known_hosts && \
     ssh-keyscan github.com >> /root/.ssh/known_hosts && \
     git config --global pull.ff only && \
-    git clone --depth=1 git@github.com:ngfchl/NewPtools.git /ptools && \
+    git clone -b $BRANCH --depth=1 git@github.com:ngfchl/NewPtools.git /ptools && \
     git clone -b dist --depth=1 https://github.com/ngfchl/auxi-naive.git /ptools/templates && \
     chmod -R 0755 /ptools
 WORKDIR /ptools
-
-ENV TOKEN= \
-    DJANGO_SUPERUSER_USERNAME=admin \
-    DJANGO_SUPERUSER_EMAIL=admin@email.com \
-    DJANGO_SUPERUSER_PASSWORD=adminadmin \
-    DJANGO_WEB_PORT=8000 \
-    REDIS_SERVER_PORT=6379 \
-    WEBUI_PORT=80 \
-    FLOWER_UI_PORT=5566 \
-    SUPERVISOR_UI_PORT=9001 \
-    CloudFlareSpeedTest=false \
-    GIT_PROXY= \
-    AUTO_UPDATE=false \
-    LOGGER_LEVEL="DEBUG"
 
 ENTRYPOINT [ "/ptools/entrypoint.sh" ]
 

@@ -113,7 +113,7 @@ function upgrade() {
   git config --global user.name $DJANGO_SUPERUSER_NAME
   INFO "后端更新中..."
   git reset --hard
-  git pull git@gitee.com:ngfchl/auxiliary.git master
+  git pull git@gitee.com:ngfchl/auxiliary.git "$BRANCH"
   if [ $? -eq 0 ]; then
     INFO "后端更新成功"
   else

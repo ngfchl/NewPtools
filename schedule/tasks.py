@@ -113,7 +113,7 @@ def auto_sign_in(self):
             logger.error(traceback.format_exc(5))
             toolbox.send_text(title='cnlang签到', message=msg)
     ssdforum = toolbox.parse_toml('ssdforum')
-    if ssdforum is not None:
+    if len(ssdforum) > 0:
         try:
             logger.info('检测到SSDForum签到参数，开始签到')
             sign_ssd_forum_state = cache.get(f"sign_ssd_forum_state", False)

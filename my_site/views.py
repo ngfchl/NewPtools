@@ -1,6 +1,8 @@
+import json
 import logging
 import traceback
 
+import demjson3
 from django.core.paginator import Paginator
 from django.db import IntegrityError
 from django.shortcuts import get_object_or_404
@@ -55,7 +57,8 @@ def add_mysite(request, my_site_params: MySiteSchemaIn):
         downloader = get_object_or_404(Downloader,
                                        id=my_site_params.downloader) if my_site_params.downloader else None
         params.update({
-            "downloader": downloader
+            "downloader": downloader,
+            "remove_torrent_rules": json.dumps(demjson3.decode(my_site_params.remove_torrent_rules), indent=2)
         })
         print(params)
         my_site = MySite.objects.create(**params)
@@ -81,7 +84,8 @@ def edit_mysite(request, my_site_params: MySiteSchemaIn):
         params = my_site_params.dict()
         downloader = get_object_or_404(Downloader, id=my_site_params.downloader) if my_site_params.downloader else None
         params.update({
-            "downloader": downloader
+            "downloader": downloader,
+            "remove_torrent_rules": json.dumps(demjson3.decode(my_site_params.remove_torrent_rules), indent=2)
         })
         my_site_res = MySite.objects.filter(id=my_site_params.id).update(**my_site_params.dict())
         if my_site_res > 0:

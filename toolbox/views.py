@@ -408,11 +408,12 @@ def parse_rss(rss_url: str):
     for article in feed.entries:
         # logger.info(article.published).get('enclosure').get('url'))
         # logger.info(time.strftime('%Y-%m-%d %H:%M:%S', article.published_parsed))
+        link = article.links[-1]
         torrents.append({
             'title': article.title,
             'tid': (article.link.split('=')[-1]),
-            'size': article.links[-1].get('length'),
-            'magnet_url': article.href,
+            'size': link.get('length'),
+            'magnet_url': link.get('href'),
             'published': datetime.fromtimestamp(time.mktime(article.published_parsed)),
         })
     return torrents

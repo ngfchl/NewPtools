@@ -522,7 +522,7 @@ def auto_get_rss(self, *site_list: List[int]):
                     logger.info(f'正在推送种子：{torrent.title}')
                     res = toolbox.push_torrents_to_downloader(
                         client, downloader_category,
-                        urls=f'{torrent.magnet_url}&passkey={my_site.passkey}',
+                        urls=torrent.magnet_url,
                         cookie=my_site.cookie,
                         is_paused=my_site.package_file and downloader.package_files,
                         category=f'{website.nickname}-{torrent.tid}',
@@ -855,7 +855,7 @@ def auto_push_to_downloader(self, *site_list: List[int]):
                 logger.info(f'正在推送种子：{torrent.title}')
                 res = toolbox.push_torrents_to_downloader(
                     client, downloader_category,
-                    urls=f'{torrent.magnet_url}&passkey={my_site.passkey}',
+                    urls=torrent.magnet_url,
                     cookie=my_site.cookie,
                     category=f'{site.nickname}-{torrent.tid}',
                     upload_limit=int(site.limit_speed * 0.92)

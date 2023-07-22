@@ -318,7 +318,7 @@ def auto_get_torrents(self, *site_list: List[int]):
                                 toolbox.send_text(msg)
                             break
                         category = f'{site.nickname}-{torrent.tid}' if not torrent.hash_string else site.nickname
-                        toolbox.push_torrents_to_downloader(
+                        res = toolbox.push_torrents_to_downloader(
                             client, downloader_category,
                             urls=f'{torrent.magnet_url}&passkey={my_site.passkey}',
                             cookie=my_site.cookie,
@@ -326,9 +326,12 @@ def auto_get_torrents(self, *site_list: List[int]):
                             is_paused=my_site.package_file and downloader.package_files,
                             upload_limit=int(site.limit_speed * 0.92)
                         )
-                        torrent.downloader = downloader
-                        torrent.state = 1
-                        torrent.save()
+                        if res.code == 0:
+                            torrent.downloader = downloader
+                            torrent.state = 1
+                            torrent.save()
+                        else:
+                            logger.error(res.msg)
                     logging.info(f'ℹ️ 站点拆包状态：{my_site.package_file}，下载器拆包状态：{downloader.package_files}')
                     if my_site.package_file and downloader.package_files:
                         package_start = time.time()
@@ -771,6 +774,8 @@ def auto_get_rss_torrent_detail(self, my_site_id: int = None):
                     cookie=my_site.cookie,
                     upload_limit=int(website.limit_speed * 0.92)
                 )
+                if res.code != 0:
+                    logger.error(res.msg)
                 if downloader.package_files:
                     client, _ = toolbox.get_downloader_instance(downloader.id)
                     if not client:
@@ -840,16 +845,19 @@ def auto_push_to_downloader(self, *site_list: List[int]):
                 continue
             for torrent in torrents:
                 # 限速到站点限速的92%。以防超速
-                toolbox.push_torrents_to_downloader(
+                res = toolbox.push_torrents_to_downloader(
                     client, downloader_category,
                     urls=f'{torrent.magnet_url}&passkey={my_site.passkey}',
                     cookie=my_site.cookie,
                     category=f'{site.nickname}-{torrent.tid}',
                     upload_limit=int(site.limit_speed * 0.92)
                 )
-                torrent.downloader = my_site.downloader
-                torrent.state = 1
-                torrent.save()
+                if res.code == 0:
+                    torrent.downloader = my_site.downloader
+                    torrent.state = 1
+                    torrent.save()
+                else:
+                    logger.error(res.msg)
             msg = f'✅ {my_site.nickname} 站点共有{len(torrents)}条种子未推送,有符合条件的种子：{len(torrents)} 个'
             message_list.append('\n')
             message_list.append(msg)

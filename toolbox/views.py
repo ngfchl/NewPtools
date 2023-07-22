@@ -656,6 +656,25 @@ def filter_torrent_by_rules(my_site: MySite, torrents: List[TorrentInfo]):
         try:
             # 初始值设为True，只有任意一项规则不符合时设为False
             push_flag = True
+            # 包含关键字命中
+            includes = rules.get('include')
+            if includes:
+                push_flag = any(rule in torrent.title for rule in includes)
+            if not push_flag:
+                excluded_torrents.append(torrent)
+                # 跳过该种子的处理，继续下一个种子的判断
+            else:
+                continue
+
+            # 排除关键字命中
+            excludes = rules.get('exclude')
+            if excludes:
+                push_flag = all(rule not in torrent.title for rule in excludes)
+
+            if push_flag:
+                excluded_torrents.append(torrent)
+                # 跳过该种子的处理，继续下一个种子的判断
+                continue
 
             # 发种时间命中
             published = rules.get('published')
@@ -670,6 +689,7 @@ def filter_torrent_by_rules(my_site: MySite, torrents: List[TorrentInfo]):
             # 做种人数命中
             seeders = rules.get('seeders')
             if seeders:
+                logger.debug(f'设定做种数：{seeders}，当前种子做种数：{torrent.seeders}')
                 push_flag = torrent.seeders < seeders
             if not push_flag:
                 excluded_torrents.append(torrent)
@@ -678,6 +698,7 @@ def filter_torrent_by_rules(my_site: MySite, torrents: List[TorrentInfo]):
             # 下载人数命中
             leechers = rules.get('leechers')
             if leechers:
+                logger.debug(f'设定下载人数：{leechers}，当前种子下载人数：{torrent.leechers}')
                 push_flag = torrent.leechers > leechers
             if not push_flag:
                 excluded_torrents.append(torrent)
@@ -686,6 +707,7 @@ def filter_torrent_by_rules(my_site: MySite, torrents: List[TorrentInfo]):
             # 剩余免费时间命中
             sale_expire = rules.get('sale_expire')
             if sale_expire:
+                logger.debug(f'设定剩余免费时间：{sale_expire}，当前种子剩余免费时间：{torrent.sale_expire}')
                 push_flag = (datetime.now() - torrent.sale_expire).total_seconds() < sale_expire
             if not push_flag:
                 excluded_torrents.append(torrent)
@@ -696,28 +718,15 @@ def filter_torrent_by_rules(my_site: MySite, torrents: List[TorrentInfo]):
             if size:
                 min_size = size.get('min') * 1024 * 1024 * 1024
                 max_size = size.get('max') * 1024 * 1024 * 1024
+                logger.info(
+                    f'当前种子大小检测：设定最小：{min_size}GB,'
+                    f'设定最大：{min_size}GB,当前：{int(torrent.size) / 1024 / 1024 / 1024}GB,')
                 push_flag = int(min_size) < int(torrent.size) < int(max_size)
             if not push_flag:
                 excluded_torrents.append(torrent)
                 # 跳过该种子的处理，继续下一个种子的判断
                 continue
-            # 包含关键字命中
-            includes = rules.get('include')
-            if includes:
-                push_flag = any(rule in torrent.title for rule in includes)
-            if not push_flag:
-                excluded_torrents.append(torrent)
-                # 跳过该种子的处理，继续下一个种子的判断
-                continue
-            # 排除关键字命中
-            excludes = rules.get('exclude')
-            if excludes:
-                push_flag = all(rule not in torrent.title for rule in excludes)
 
-            if not push_flag:
-                excluded_torrents.append(torrent)
-                # 跳过该种子的处理，继续下一个种子的判断
-                continue
 
         except Exception:
             logger.error(traceback.format_exc(3))

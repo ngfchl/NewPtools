@@ -1352,7 +1352,7 @@ def sign_ssd_forum(cookie, user_agent, todaysay):
             },
             cookies=cookie2dict(cookie),
         )
-        logger.debug(f'签到页HTML：{sign_response.content.decode("gbk")}')
+        logger.debug(f'签到页HTML：{sign_response.text}')
         if sign_response.status_code != 200:
             return CommonResponse.error(msg=f'SSDForum签到失败:{sign_response.status_code}')
         html_object = etree.HTML(sign_response.content.decode('gbk'))
@@ -1384,7 +1384,7 @@ def sign_ssd_forum(cookie, user_agent, todaysay):
                 data=form_data,
             )
             # 解析签到反馈
-            logger.debug(f'签到反馈：{sign_in_response.content.decode("gbk")}')
+            logger.debug(f'签到反馈：{sign_in_response.text}')
             sign_text = ''.join(etree.HTML(sign_in_response.content.decode('gbk')).xpath('//div[@class="c"]/text()'))
         else:
             sign_text = '今日已签到'
@@ -1404,7 +1404,7 @@ def sign_ssd_forum(cookie, user_agent, todaysay):
             },
             cookies=cookie2dict(cookie),
         )
-        logger.debug(f"签到页：{sign_response.content.decode('gbk')}")
+        logger.debug(f"签到页：{sign_response.text}")
         sign_title_rule = '//div[@class="mn"]/h1[1]/text()'
         sign_content_rule = '//div[@class="mn"]/p//text()'
         title = etree.HTML(sign_response.content.decode('gbk')).xpath(sign_title_rule)

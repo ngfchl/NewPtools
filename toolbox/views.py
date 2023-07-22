@@ -25,6 +25,7 @@ from lxml import etree
 from pypushdeer import PushDeer
 from telebot import apihelper
 
+import my_site
 from auxiliary.base import DownloaderCategory
 from auxiliary.settings import BASE_DIR
 from configuration.models import PushConfig
@@ -733,36 +734,39 @@ def sha1_hash(string: str) -> str:
     return hashlib.sha1(string.encode()).hexdigest()
 
 
-def remove_torrent_by_site_rules(my_site: MySite):
+def remove_torrent_by_site_rules(mysite: MySite):
     """
     站点删种
-    :param my_site:
+    :param mysite:
     :return msg
     """
-    rules = json.loads(my_site.remove_torrent_rules).get('remove')
-    logger.info(f"当前站点：{my_site}, 删种规则：{rules}")
-    logger.info(f"当前下载器：{my_site.downloader_id}")
-    client, _ = get_downloader_instance(my_site.downloader.id)
+    rules = json.loads(mysite.remove_torrent_rules).get('remove')
+    logger.info(f"当前站点：{mysite}, 删种规则：{rules}")
+    logger.info(f"当前下载器：{mysite.downloader_id}")
+    client, _ = get_downloader_instance(mysite.downloader.id)
     if not client:
-        return CommonResponse.error(msg=f'{my_site.nickname} - {my_site.downloader.name} 链接失败!')
-    website = WebSite.objects.get(id=my_site.site)
+        return CommonResponse.error(msg=f'{mysite.nickname} - 下载器 {mysite.downloader.name} 链接失败!')
+    website = WebSite.objects.get(id=mysite.site)
     count = 0
     hashes = []
     expire_hashes = []
-    torrents = [torrent for torrent in client.torrents_info() if torrent.get('category').find(website.nickname)]
+    torrents = [torrent for torrent in client.torrents_info() if torrent.get('category').find(website.nickname) >= 0]
     logger.info(f'当前下载器共有站点 {website.name} 种子数量：{len(torrents)}')
     # hash_torrents = {item.get('hash'): item for item in torrents}
     logger.info(f'开始循环处理种子')
-    torrent_infos = my_site.torrentinfo_set.all()
+    torrent_infos = mysite.torrentinfo_set.all()
     for torrent in torrents:
         category = torrent.get('category')
-        hash_string = torrent.get('hash_string')
+        hash_string = torrent.get('hash')
         if category.find('-'):
             try:
                 _, tid = category.split('-')
                 logger.info(f'当前种子ID：{tid}')
                 torrent_info = torrent_infos.get(tid=tid)
                 torrent_info.hash_string = hash_string
+            except my_site.models.TorrentInfo.DoesNotExist:
+                logger.info(f'未在数据库中找到当前种子')
+                continue
             except Exception as e:
                 logger.error(f'查找当前种子失败：{e}')
                 logger.error(traceback.format_exc(5))
@@ -770,9 +774,7 @@ def remove_torrent_by_site_rules(my_site: MySite):
         else:
             logger.warning(f'非本工具刷流种子，跳过！')
             continue
-        if torrent_info is None:
-            logger.info(f'未在数据库中找到当前种子')
-            continue
+
         try:
             # 通过qbittorrentapi客户端获取种子的块哈希列表和文件列表，并转换为字符串
             logger.info(f'开始完善种子信息')
@@ -813,7 +815,7 @@ def remove_torrent_by_site_rules(my_site: MySite):
                     if torrent.get('title').find(rule) > 0:
                         delete_flag = True
                         break
-                logger.info(f"{my_site.nickname} {torrent.get('tid')} 排除关键字命中：{delete_flag}")
+                logger.info(f"{mysite.nickname} {torrent.get('tid')} 排除关键字命中：{delete_flag}")
             if delete_flag:
                 # 遇到要排除的关键字的种子，直接跳过，不再继续执行删种
                 continue
@@ -968,7 +970,7 @@ def remove_torrent_by_site_rules(my_site: MySite):
             logger.error(msg)
             continue
     logger.info(
-        f'{my_site.nickname}-本次运行完善{count}个种子信息！删种规则命中任务:{len(hashes)}个，免费即将到期命中：{len(expire_hashes)}个')
+        f'{mysite.nickname}-本次运行完善{count}个种子信息！删种规则命中任务:{len(hashes)}个，免费即将到期命中：{len(expire_hashes)}个')
     try:
         count = 0
         if len(hashes) + len(expire_hashes) > 0:
@@ -983,14 +985,14 @@ def remove_torrent_by_site_rules(my_site: MySite):
             count = TorrentInfo.objects.filter(
                 hash_string__in=hashes
             ).update(state=5, downloader=None)
-            msg = f'{my_site.nickname}：本次运行删除种子{count}个！'
+            msg = f'{mysite.nickname}：本次运行删除种子{count}个！'
         else:
-            msg = f'{my_site.nickname}：本次运行没有种子要删除！'
+            msg = f'{mysite.nickname}：本次运行没有种子要删除！'
         logger.info(msg)
         return CommonResponse.success(msg=msg, data=count)
     except Exception as e:
         logger.error(traceback.format_exc(3))
-        return CommonResponse.error(msg=f'{my_site.nickname} - 删种出错啦！')
+        return CommonResponse.error(msg=f'{mysite.nickname} - 删种出错啦！')
 
 
 def torrents_filter_by_percent_completed_rule(client, num_complete_percent, downloaded_percent):

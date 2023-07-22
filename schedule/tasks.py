@@ -503,6 +503,14 @@ def auto_get_rss(self, *site_list: List[int]):
                 push_message = []
                 torrent_list = toolbox.filter_torrent_by_rules(my_site, torrent_list)
                 for torrent in torrent_list:
+                    # 限速到站点限速的92%。以防超速
+                    free_space = client.sync_maindata().get('server_state').get('free_space_on_disk')
+                    if free_space >= downloader.reserved_space * 1024 * 1024 * 1024:
+                        msg = f'{downloader.name} 磁盘空间已达到临界值！{downloader.reserved_space}GB，当前空间：{free_space}'
+                        logger.info(msg)
+                        if notice_category_enable.get('free_space', False):
+                            toolbox.send_text(msg)
+                        break
                     torrent.magnet_url = f'{website.url}{website.page_download.format(torrent.tid)}'
                     res = toolbox.push_torrents_to_downloader(
                         client, downloader_category,
@@ -521,12 +529,14 @@ def auto_get_rss(self, *site_list: List[int]):
                     push_message.append(msg)
                 message = f'> ♻️ RSS 任务运行成功！耗时：{time.time() - start}  \n' \
                           f'当前时间：{time.strftime("%Y-%m-%d %H:%M:%S")} \n 种子推送记录' + '\n'.join(push_message)
+                logger.info(message)
                 logging.info(f'ℹ️ 站点拆包状态：{my_site.package_file}，下载器拆包状态：{downloader.package_files}')
                 # 拆包
                 if my_site.package_file and downloader.package_files:
                     package_start = time.time()
                     # 30秒等待种子下载到下载器
-                    time.sleep(30)
+                    logger.info(f'拆包任务，暂停100秒等待种子推送结束！')
+                    time.sleep(100)
                     hash_list = []
                     for hash_string in [torrent.hash_string for torrent in torrent_list]:
                         try:

@@ -816,8 +816,8 @@ def remove_torrent_by_site_rules(mysite: MySite):
                 for rule in rules.get('exclude'):
                     if torrent.get('title').find(rule) > 0:
                         delete_flag = True
+                        logger.info(f"{mysite.nickname} {torrent.get('tid')} 排除关键字命中：{delete_flag}")
                         break
-                logger.info(f"{mysite.nickname} {torrent.get('tid')} 排除关键字命中：{delete_flag}")
             if delete_flag:
                 # 遇到要排除的关键字的种子，直接跳过，不再继续执行删种
                 continue
@@ -843,7 +843,7 @@ def remove_torrent_by_site_rules(mysite: MySite):
             if upload_speed_avg:
                 time_delta = time.time() - torrent_info.updated_at.timestamp()
                 if time_delta < upload_speed_avg.get("time"):
-                    pass
+                    logger.info(f'当前种子运行时间未达到检测时间：{time_delta} < {upload_speed_avg.get("time")}')
                 else:
                     uploaded_eta = prop.get('total_uploaded') - torrent_info.uploaded
                     uploaded_avg = uploaded_eta / time_delta
@@ -914,7 +914,7 @@ def remove_torrent_by_site_rules(mysite: MySite):
                     continue
                 logger.debug(f'{hash_string} -- {torrent_info.title} 无活动超时 未命中')
             # 进度与平均上传速度达标检测
-            progress = prop.get('pieces_have') / prop.get('pieces_num')
+            progress = torrent.get('progress')
             progress_check = rules.get("progress_check")
             logger.debug(f'进度与平均上传速度达标检测: {progress_check}')
             if progress_check and len(progress_check) > 0:
@@ -922,9 +922,11 @@ def remove_torrent_by_site_rules(mysite: MySite):
                 for key, value in progress_check.items():
                     logger.debug(
                         f'{hash_string}-{torrent_info.title} 指定进度{float(key)},'
-                        f'指定速度{value * 1024},平均上传速度: {prop.get("up_speed_avg")}'
+                        f'指定速度{value / 1024} MB/S,平均上传速度: {prop.get("up_speed_avg") / 1024 / 1024} MB/S'
                     )
-                    if progress >= float(key) and prop.get('up_speed_avg') < value * 1024:
+                    if progress < float(key):
+                        continue
+                    elif prop.get('up_speed_avg') < value * 1024:
                         hashes.append(hash_string)
                         progress_checked = True
                         logger.debug(
@@ -935,13 +937,17 @@ def remove_torrent_by_site_rules(mysite: MySite):
                 logger.debug(f'{hash_string} -- {torrent_info.title} 指定进度与平均上传速度达标检测 高于设定值 未命中')
             # 达到指定分享率
             ratio = prop.get('share_ratio')
-            logger.info(f'分享率检测: {hash_string}')
-            if torrent.get('progress') >= 1 and rules.get("max_ratio") and ratio >= rules.get("max_ratio"):
-                hashes.append(hash_string)
-                logger.debug(f'{hash_string} -- {torrent_info.title} 已达到指定分享率 命中')
-                continue
-            else:
-                logger.debug(f'{hash_string} -- {torrent_info.title} 未达到指定分享率 未命中')
+
+            if rules.get("max_ratio"):
+                logger.info(f'分享率检测: {hash_string}')
+                if progress < 1:
+                    logger.debug(f'{hash_string} -- {torrent_info.title} 尚未下载完毕！ 未命中')
+                elif ratio >= rules.get("max_ratio"):
+                    hashes.append(hash_string)
+                    logger.debug(f'{hash_string} -- {torrent_info.title} 已达到指定分享率 命中')
+                    continue
+                else:
+                    logger.debug(f'{hash_string} -- {torrent_info.title} 未达到指定分享率 未命中')
 
             # 指定时间段内分享率不达标
             ratio_check = rules.get("ratio_check")
@@ -953,7 +959,10 @@ def remove_torrent_by_site_rules(mysite: MySite):
                     logger.debug(
                         f'{hash_string}-{torrent_info.title} 指定时长{float(key)},指定分享率{value}，当前分享率：{ratio}'
                     )
-                    if time_active >= float(key) and ratio < value:
+                    if time_active < float(key):
+                        logger.debug(f'活动时间：{time_active / 60}分钟 尚未达到指定下载时长：{float(key)}')
+                        continue
+                    elif ratio < value:
                         logger.debug(f'{hash_string} -- {torrent_info.title} 指定时间段内分享率不达标 低于设定值 命中')
                         hashes.append(hash_string)
                         ratio_checked = True
@@ -979,8 +988,9 @@ def remove_torrent_by_site_rules(mysite: MySite):
             client.torrents_reannounce(torrent_hashes=hashes)
             # 单次最多删种数量, 不填写默认所有被筛选的, 免费到期的不算在内
             num_delete = rules.get("num_delete", None)
-            random.shuffle(hashes)
-            hashes = hashes[:num_delete]
+            if not num_delete:
+                random.shuffle(hashes)
+                hashes = hashes[:num_delete]
             hashes.extend(expire_hashes)
             client.torrents_delete(torrent_hashes=hashes, delete_files=True)
             # 对已删除的种子信息进行归档

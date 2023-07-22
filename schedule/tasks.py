@@ -320,7 +320,7 @@ def auto_get_torrents(self, *site_list: List[int]):
                         category = f'{site.nickname}-{torrent.tid}' if not torrent.hash_string else site.nickname
                         toolbox.push_torrents_to_downloader(
                             client, downloader_category,
-                            urls=torrent.magnet_url,
+                            urls=f'{torrent.magnet_url}&passkey={my_site.passkey}',
                             cookie=my_site.cookie,
                             category=category,
                             is_paused=my_site.package_file and downloader.package_files,
@@ -514,7 +514,7 @@ def auto_get_rss(self, *site_list: List[int]):
                     torrent.magnet_url = f'{website.url}{website.page_download.format(torrent.tid)}'
                     res = toolbox.push_torrents_to_downloader(
                         client, downloader_category,
-                        urls=torrent.magnet_url,
+                        urls=f'{torrent.magnet_url}&passkey={my_site.passkey}',
                         cookie=my_site.cookie,
                         is_paused=my_site.package_file and downloader.package_files,
                         category=f'{website.nickname}-{torrent.tid}',
@@ -842,7 +842,7 @@ def auto_push_to_downloader(self, *site_list: List[int]):
                 # 限速到站点限速的92%。以防超速
                 toolbox.push_torrents_to_downloader(
                     client, downloader_category,
-                    urls=torrent.magnet_url,
+                    urls=f'{torrent.magnet_url}&passkey={my_site.passkey}',
                     cookie=my_site.cookie,
                     category=f'{site.nickname}-{torrent.tid}',
                     upload_limit=int(site.limit_speed * 0.92)

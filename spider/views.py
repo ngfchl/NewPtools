@@ -2400,10 +2400,7 @@ class PtSpider:
                     # # 下载链接，下载链接已存在则跳过
                     href = ''.join(tr.xpath(site.torrent_magnet_url_rule))
                     logger.debug('href: {}'.format(href))
-                    magnet_url = '{}{}'.format(
-                        mirror,
-                        href.replace('&type=zip', '').replace(mirror, '').lstrip('/')
-                    )
+                    magnet_url = f"{mirror}{href.replace('&type=zip', '').replace(mirror, '').lstrip('/')}"
                     parsed_url = urlparse(magnet_url)
                     tid = parse_qs(parsed_url.query).get("id")[0]
                     logger.info('magnet_url: {}'.format(magnet_url))

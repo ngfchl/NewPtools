@@ -754,8 +754,7 @@ def remove_torrent_by_site_rules(my_site: MySite):
     logger.info(f'当前下载器共有种子数量：{len(torrents)}')
     # hash_torrents = {item.get('hash'): item for item in torrents}
     logger.info(f'开始循环处理种子')
-    torrent_infos = my_site.torrentinfo_set.filter(state__lte=3)
-    logger.info(f'当前站点：{website}')
+    torrent_infos = my_site.torrentinfo_set.all()
     for torrent in torrents:
         category = torrent.get('category')
         hash_string = torrent.get('hash_string')

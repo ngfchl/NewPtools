@@ -318,15 +318,19 @@ def auto_get_torrents(self, *site_list: List[int]):
                                 toolbox.send_text(msg)
                             break
                         category = f'{site.nickname}-{torrent.tid}' if not torrent.hash_string else site.nickname
+                        magnet_url = f'{site.url}{site.page_download.format(torrent.tid)}&passkey={my_site.passkey}'
+                        logger.info(f'正在推送种子：{torrent.title}')
+                        logger.error(f'种子链接：{magnet_url}')
                         res = toolbox.push_torrents_to_downloader(
                             client, downloader_category,
-                            urls=f'{torrent.magnet_url}&passkey={my_site.passkey}',
+                            urls=torrent.magnet_url,
                             cookie=my_site.cookie,
                             category=category,
                             is_paused=my_site.package_file and downloader.package_files,
                             upload_limit=int(site.limit_speed * 0.92)
                         )
                         if res.code == 0:
+                            logger.info(res.msg)
                             torrent.downloader = downloader
                             torrent.state = 1
                             torrent.save()
@@ -377,9 +381,9 @@ def auto_get_torrents(self, *site_list: List[int]):
     if len(message_push) > 1:
         message_list.extend(message_push)
     logger.info(consuming)
-    # toolbox.send_text(title='通知：拉取最新种子', message='\n'.join(message_list))
-    # if len(message_success) > 0:
-    #     toolbox.send_text(title='通知：拉取最新种子-成功', message=''.join(message_success))
+    toolbox.send_text(title='通知：拉取最新种子', message='\n'.join(message_list))
+    if len(message_success) > 0:
+        toolbox.send_text(title='通知：拉取最新种子-成功', message=''.join(message_success))
     # 释放内存
     gc.collect()
     return consuming
@@ -515,6 +519,7 @@ def auto_get_rss(self, *site_list: List[int]):
                             toolbox.send_text(msg)
                         break
                     torrent.magnet_url = f'{website.url}{website.page_download.format(torrent.tid)}'
+                    logger.info(f'正在推送种子：{torrent.title}')
                     res = toolbox.push_torrents_to_downloader(
                         client, downloader_category,
                         urls=f'{torrent.magnet_url}&passkey={my_site.passkey}',
@@ -768,12 +773,14 @@ def auto_get_rss_torrent_detail(self, my_site_id: int = None):
                 if not client:
                     logger.warning(f'{downloader.name} 链接出错了')
                     continue
+                logger.info(f'正在推送种子')
                 res = toolbox.push_torrents_to_downloader(
                     client, downloader_category,
                     urls=urls,
                     cookie=my_site.cookie,
                     upload_limit=int(website.limit_speed * 0.92)
                 )
+                logger.info(res.msg)
                 if res.code != 0:
                     logger.error(res.msg)
                 if downloader.package_files:
@@ -845,6 +852,7 @@ def auto_push_to_downloader(self, *site_list: List[int]):
                 continue
             for torrent in torrents:
                 # 限速到站点限速的92%。以防超速
+                logger.info(f'正在推送种子：{torrent.title}')
                 res = toolbox.push_torrents_to_downloader(
                     client, downloader_category,
                     urls=f'{torrent.magnet_url}&passkey={my_site.passkey}',
@@ -853,6 +861,7 @@ def auto_push_to_downloader(self, *site_list: List[int]):
                     upload_limit=int(site.limit_speed * 0.92)
                 )
                 if res.code == 0:
+                    logger.info(res.msg)
                     torrent.downloader = my_site.downloader
                     torrent.state = 1
                     torrent.save()

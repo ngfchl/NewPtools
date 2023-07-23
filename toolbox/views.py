@@ -827,8 +827,9 @@ def remove_torrent_by_site_rules(mysite: MySite):
             # 删种
             logger.info(f'{torrent_info.title} - 开始匹配删种规则: {hash_string}')
             prop = client.torrents_properties(torrent_hash=hash_string)
-            # 排除关键字命中，
-            keep_free_space = rules.get('exclude')
+            
+            # 磁盘空间检查
+            keep_free_space = rules.get('keep_free_space')
             if keep_free_space and keep_free_space > 0:
                 logger.debug(f'设定不删种空间大小：{keep_free_space} GB')
                 free_space = client.sync_maindata().get('server_state').get('free_space_on_disk')
@@ -837,6 +838,7 @@ def remove_torrent_by_site_rules(mysite: MySite):
                     logger.info(f'下载器剩余空间充足，不执行删种操作！')
                     continue
 
+            # 排除关键字命中，
             delete_flag = False
             logger.info(f'排除关键字: {hash_string}')
             if rules.get('exclude'):

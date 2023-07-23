@@ -659,19 +659,24 @@ def filter_torrent_by_rules(my_site: MySite, torrents: List[TorrentInfo]):
             # 包含关键字命中
             includes = rules.get('include')
             if includes:
+                logger.debug(f'当前包含关键字检查：{includes}')
                 push_flag = any(rule in torrent.title for rule in includes)
             if not push_flag:
+                logger.info(f'关键字未命中，继续')
                 excluded_torrents.append(torrent)
                 # 跳过该种子的处理，继续下一个种子的判断
             else:
+                logger.info(f'关键字命中！')
                 continue
 
             # 排除关键字命中
             excludes = rules.get('exclude')
             if excludes:
+                logger.debug(f'当前排除关键字检查：{includes}')
                 push_flag = all(rule not in torrent.title for rule in excludes)
 
             if push_flag:
+                logger.info(f'排除关键字未命中，跳过')
                 excluded_torrents.append(torrent)
                 # 跳过该种子的处理，继续下一个种子的判断
                 continue
@@ -679,8 +684,10 @@ def filter_torrent_by_rules(my_site: MySite, torrents: List[TorrentInfo]):
             # 发种时间命中
             published = rules.get('published')
             if published:
+                logger.info(f'发种时间检查：{published}')
                 torrent_published = datetime.strptime(torrent.published, "%Y-%m-%d %H:%M:%S") if isinstance(
                     torrent.published, str) else torrent.published
+                logger.info(f'当前种子发种时间检查：{torrent_published}')
                 push_flag = (datetime.now() - torrent_published).total_seconds() < published
             if not push_flag:
                 excluded_torrents.append(torrent)
@@ -689,6 +696,7 @@ def filter_torrent_by_rules(my_site: MySite, torrents: List[TorrentInfo]):
             # 做种人数命中
             seeders = rules.get('seeders')
             if seeders:
+                logger.info(f'做种人数检查：{seeders}')
                 logger.debug(f'设定做种数：{seeders}，当前种子做种数：{torrent.seeders}')
                 push_flag = torrent.seeders < seeders
             if not push_flag:
@@ -719,14 +727,15 @@ def filter_torrent_by_rules(my_site: MySite, torrents: List[TorrentInfo]):
                 min_size = size.get('min') * 1024 * 1024 * 1024
                 max_size = size.get('max') * 1024 * 1024 * 1024
                 logger.info(
-                    f'当前种子大小检测：设定最小：{min_size}GB,'
-                    f'设定最大：{min_size}GB,当前：{int(torrent.size) / 1024 / 1024 / 1024}GB,')
+                    f'当前种子大小检测：设定最小：{size.get("min")} GB,'
+                    f'设定最大：{size.get("max")} GB,'
+                    f'当前：{int(torrent.size) / 1024 / 1024 / 1024} GB'
+                )
                 push_flag = int(min_size) < int(torrent.size) < int(max_size)
             if not push_flag:
                 excluded_torrents.append(torrent)
                 # 跳过该种子的处理，继续下一个种子的判断
                 continue
-
 
         except Exception:
             logger.error(traceback.format_exc(3))

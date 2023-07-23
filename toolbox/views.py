@@ -314,7 +314,7 @@ def send_text(message: str, title: str = '', url: str = None):
 def get_git_log(branch='master', n=5):
     repo = git.Repo(path='.')
     # 拉取仓库更新记录元数据
-    repo.remote().set_url('git@github.com:ngfchl/NewPtools.git')
+    repo.remote().set_url('git@gitee.com:ngfchl/auxiliary.git')
     repo.git.config('core.sshCommand', f'ssh -i /root/.ssh/id_rsa')
     repo.remote().fetch()
     # commits更新记录

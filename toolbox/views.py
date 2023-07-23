@@ -198,7 +198,7 @@ def verify_token():
         "email": os.getenv("DJANGO_SUPERUSER_EMAIL", None)
     })
     if res.status_code == 200 and res.json().get('code') == 0:
-        return res.json().get('msg')
+        return res.json().get('msg').replace('-', '\-')
     else:
         return '您的软件使用授权到期了！如果您喜欢本软件，欢迎付费购买授权或申请临时授权。'
 
@@ -208,7 +208,7 @@ def send_text(message: str, title: str = '', url: str = None):
     notifies = parse_toml("notify")
     res = '你还没有配置通知参数哦！'
     try:
-        message = f'{verify_token()}\n{"*" * 30}\n{message}'
+        message = f'> {verify_token()}  \n\n{message}'
         pass
     except Exception as e:
         msg = f'授权验证失败！'

@@ -310,12 +310,17 @@ def auto_get_torrents(self, *site_list: List[int]):
                         continue
                     for torrent in torrents:
                         # 限速到站点限速的92%。以防超速
-                        free_space = client.sync_maindata().get('server_state').get('free_space_on_disk')
+                        main_data = client.sync_maindata()
+                        free_space = main_data.get('server_state').get('free_space_on_disk')
                         if free_space <= downloader.reserved_space * 1024 * 1024 * 1024:
                             msg = f'{downloader.name} 磁盘空间已达到临界值！{downloader.reserved_space}GB，当前空间：{free_space}'
                             logger.info(msg)
                             if notice_category_enable.get('free_space', False):
                                 toolbox.send_text(msg)
+                            break
+                        count_torrents = len(main_data.get('torrents'))
+                        if count_torrents >= downloader.count_torrents:
+                            logger.warning(f'{my_site.downloader.name} 种子数量已达到设定的上限！')
                             break
                         category = f'{site.nickname}-{torrent.tid}' if not torrent.hash_string else site.nickname
                         magnet_url = f'{site.url}{site.page_download.format(torrent.tid)}&passkey={my_site.passkey}'

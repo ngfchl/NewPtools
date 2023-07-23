@@ -887,23 +887,28 @@ def remove_torrent_by_site_rules(mysite: MySite):
             else:
                 logger.debug(f'{hash_string} -- {torrent_info.title} 站点删种 未命中')
             # 完成人数超标删除
-            logger.info(f'完成人数检测: {hash_string}')
+            logger.info(f'完成人数检测: {torrent_info.title}')
             torrent_num_complete = rules.get("num_completer")
             logger.debug(f'{hash_string} -- {torrent_info.title} 完成人数超标删除: {torrent_num_complete}')
             if torrent_num_complete:
                 completers = torrent_num_complete.get("completers")
                 upspeed = torrent_num_complete.get("upspeed")
                 num_complete = prop.get('seeds_total')
+                logger.debug(f'当前种子已完成人数：{num_complete} -- 设定人数：{completers}')
+                logger.debug(f'当前种子上传速度：{torrent.get("upspeed")} -- 设定速度：{upspeed}')
                 if num_complete > completers and torrent.get("upspeed") < upspeed:
-                    logger.debug(f'{hash_string} -- {torrent_info.title} 完成人数超标,当前速度不达标 命中')
+                    logger.debug(
+                        f'{torrent_info.title} 完成人数 {num_complete} 超标,'
+                        f'当前速度 {torrent.get("upspeed")} 不达标 命中'
+                    )
                     hashes.append(hash_string)
                     continue
                 logger.debug(f'{hash_string} -- {torrent_info.title} 完成人数未超标 未命中')
             # 正在下载人数 低于设定值删除
-            logger.info(f'正在下载人数检测: {hash_string}')
+            logger.info(f'正在下载人数检测: {torrent_info.title}')
             torrent_num_incomplete = rules.get("num_incomplete")
             logger.debug(f'完成人数超标删除: {torrent_num_incomplete}')
-            if torrent_num_incomplete and torrent_num_incomplete > 0:
+            if torrent_num_incomplete and len(torrent_num_incomplete) > 0:
                 num_incomplete = torrent.get('num_incomplete')
                 logger.debug(f'{hash_string} -- {torrent_info.title} 正在下载完成人数不达标: {num_incomplete}')
                 if num_incomplete < torrent_num_incomplete:

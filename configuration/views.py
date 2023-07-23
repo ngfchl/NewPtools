@@ -1,5 +1,6 @@
 import logging
 import os
+import re
 import subprocess
 import traceback
 from datetime import datetime
@@ -204,11 +205,19 @@ def save_config_api(request):
 
 @router.get('/system', response=CommonResponse, )
 def parse_toml(request):
-    file_path = os.path.join(BASE_DIR, 'db/ptools.toml')
-    if not os.path.exists(file_path):
-        subprocess.getoutput('touch db/ptools.toml')
-        logger.info(f'配置文件生成成功!')
-    return CommonResponse.success(data=toml.load(file_path))
+    try:
+        file_path = os.path.join(BASE_DIR, 'db/ptools.toml')
+        if not os.path.exists(file_path):
+            subprocess.getoutput('touch db/ptools.toml')
+            logger.info(f'配置文件生成成功!')
+        return CommonResponse.success(data=toml.load(file_path))
+    except toml.decoder.TomlDecodeError as e:
+        # Key name found without value. Reached end of line. (line 7 column 2 char 77)
+        pattern = r"line (\d+)"  # 匹配 "Line 7: " 后面的数字，并捕获为一个组
+        result = re.search(pattern, str(e))
+        return CommonResponse.error(msg=f'配置文件加载失败！错误出现在第{result.group(1)}行。配置项未设定值！{e}')
+    except Exception as e:
+        return CommonResponse.error(msg=f'配置文件加载失败！{e}')
 
 
 @router.get('/config', response=CommonResponse, )

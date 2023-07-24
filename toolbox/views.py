@@ -296,11 +296,11 @@ def send_text(message: str, title: str = '', url: str = None):
                     apihelper.proxy = proxy
                 max_length = 4096  # 最大消息长度限制
                 if len(message) <= max_length:
-                    bot.send_message(telegram_chat_id, message, parse_mode="MarkdownV2")  # 如果消息长度不超过最大限制，直接发送消息
+                    bot.send_message(telegram_chat_id, message, parse_mode="Markdown")  # 如果消息长度不超过最大限制，直接发送消息
                 else:
                     while message:
                         chunk = message[:max_length]  # 从消息中截取最大长度的部分
-                        bot.send_message(telegram_chat_id, chunk, parse_mode="MarkdownV2")  # 发送消息部分
+                        bot.send_message(telegram_chat_id, chunk, parse_mode="Markdown")  # 发送消息部分
                         message = message[max_length:]  # 剩余部分作为新的消息进行下一轮发送
 
                 msg = 'Telegram通知成功'
@@ -827,7 +827,7 @@ def remove_torrent_by_site_rules(mysite: MySite):
             # 删种
             logger.info(f'{torrent_info.title} - 开始匹配删种规则: {hash_string}')
             prop = client.torrents_properties(torrent_hash=hash_string)
-            
+
             # 磁盘空间检查
             keep_free_space = rules.get('keep_free_space')
             if keep_free_space and keep_free_space > 0:

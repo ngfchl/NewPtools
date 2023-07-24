@@ -11,6 +11,7 @@ from datetime import timedelta, datetime
 from typing import List, Union
 
 import aip
+import demjson3
 import feedparser
 import git
 import jwt
@@ -639,88 +640,45 @@ def package_files(
         return CommonResponse.error(msg=msg)
 
 
-def filter_torrent_by_rules(my_site: MySite, torrents: List[TorrentInfo]):
+def filter_torrent_by_rules(mysite: MySite, torrents: List[TorrentInfo]):
     """
     使用站点选中规则筛选种子
-    :param my_site: 我的站点
+    :param mysite: 我的站点
     :param torrents: 种子列表
     :return: 筛选过后的种子列表
     """
-    rules = json.loads(my_site.remove_torrent_rules).get('push')
-    logger.info(f"当前站点：{my_site.nickname}, 选种规则：{rules}")
+    rules = demjson3.decode(mysite.remove_torrent_rules).get('push')
+    logger.info(f"当前站点：{mysite.nickname}, 选种规则：{rules}")
 
     # 收集不符合规则的种子
     excluded_torrents = []
 
     for torrent in torrents:
         try:
-            # 初始值设为True，只有任意一项规则不符合时设为False
-            push_flag = True
+            logger.info(f'选种开始，当前种子：{torrent.title}')
             # 包含关键字命中
             includes = rules.get('include')
-            if includes:
+            if includes and len(includes) > 0:
                 logger.debug(f'当前包含关键字检查：{includes}')
-                push_flag = any(rule in torrent.title for rule in includes)
-            if not push_flag:
-                logger.info(f'关键字未命中，继续')
-                excluded_torrents.append(torrent)
-                # 跳过该种子的处理，继续下一个种子的判断
-            else:
-                logger.info(f'关键字命中！')
-                continue
+                if not any(rule in torrent.title for rule in includes):
+                    logger.info(f'关键字未命中，继续')
+                    excluded_torrents.append(torrent)
+                    # 跳过该种子的处理，继续下一个种子的判断
+                else:
+                    logger.info(f'关键字命中！')
+                    continue
 
             # 排除关键字命中
             excludes = rules.get('exclude')
-            if excludes:
+            if excludes and len(excludes) > 0:
                 logger.debug(f'当前排除关键字检查：{includes}')
-                push_flag = all(rule not in torrent.title for rule in excludes)
 
-            if push_flag:
-                logger.info(f'排除关键字未命中，跳过')
-                excluded_torrents.append(torrent)
-                # 跳过该种子的处理，继续下一个种子的判断
-                continue
+                if all(rule not in torrent.title for rule in excludes):
+                    logger.info(f'排除关键字未命中，跳过')
+                    excluded_torrents.append(torrent)
+                    # 跳过该种子的处理，继续下一个种子的判断
+                    continue
 
-            # 发种时间命中
-            published = rules.get('published')
-            if published:
-                logger.info(f'发种时间检查：{published}')
-                torrent_published = datetime.strptime(torrent.published, "%Y-%m-%d %H:%M:%S") if isinstance(
-                    torrent.published, str) else torrent.published
-                logger.info(f'当前种子发种时间检查：{torrent_published}')
-                push_flag = (datetime.now() - torrent_published).total_seconds() < published
-            if not push_flag:
-                excluded_torrents.append(torrent)
-                # 跳过该种子的处理，继续下一个种子的判断
-                continue
-            # 做种人数命中
-            seeders = rules.get('seeders')
-            if seeders:
-                logger.info(f'做种人数检查：{seeders}')
-                logger.debug(f'设定做种数：{seeders}，当前种子做种数：{torrent.seeders}')
-                push_flag = torrent.seeders < seeders
-            if not push_flag:
-                excluded_torrents.append(torrent)
-                # 跳过该种子的处理，继续下一个种子的判断
-                continue
-            # 下载人数命中
-            leechers = rules.get('leechers')
-            if leechers:
-                logger.debug(f'设定下载人数：{leechers}，当前种子下载人数：{torrent.leechers}')
-                push_flag = torrent.leechers > leechers
-            if not push_flag:
-                excluded_torrents.append(torrent)
-                # 跳过该种子的处理，继续下一个种子的判断
-                continue
-            # 剩余免费时间命中
-            sale_expire = rules.get('sale_expire')
-            if sale_expire:
-                logger.debug(f'设定剩余免费时间：{sale_expire}，当前种子剩余免费时间：{torrent.sale_expire}')
-                push_flag = (datetime.now() - torrent.sale_expire).total_seconds() < sale_expire
-            if not push_flag:
-                excluded_torrents.append(torrent)
-                # 跳过该种子的处理，继续下一个种子的判断
-                continue
             # 种子大小命中
             size = rules.get('size')
             if size:
@@ -731,11 +689,45 @@ def filter_torrent_by_rules(my_site: MySite, torrents: List[TorrentInfo]):
                     f'设定最大：{size.get("max")} GB,'
                     f'当前：{int(torrent.size) / 1024 / 1024 / 1024} GB'
                 )
-                push_flag = int(min_size) < int(torrent.size) < int(max_size)
-            if not push_flag:
-                excluded_torrents.append(torrent)
-                # 跳过该种子的处理，继续下一个种子的判断
-                continue
+                if not int(min_size) < int(torrent.size) < int(max_size):
+                    excluded_torrents.append(torrent)
+                    # 跳过该种子的处理，继续下一个种子的判断
+                    continue
+            # 剩余免费时间命中
+            sale_expire = rules.get('sale_expire')
+            if sale_expire:
+                logger.debug(f'设定剩余免费时间：{sale_expire}，当前种子剩余免费时间：{torrent.sale_expire}')
+                if (datetime.now() - torrent.sale_expire).total_seconds() > sale_expire:
+                    excluded_torrents.append(torrent)
+                    # 跳过该种子的处理，继续下一个种子的判断
+                    continue
+            # 发种时间命中
+            published = rules.get('published')
+            if published:
+                logger.info(f'发种时间检查：{published}')
+                torrent_published = datetime.strptime(torrent.published, "%Y-%m-%d %H:%M:%S") if isinstance(
+                    torrent.published, str) else torrent.published
+                logger.info(f'当前种子发种时间检查：{torrent_published}')
+                if (datetime.now() - torrent_published).total_seconds() > published:
+                    excluded_torrents.append(torrent)
+                    # 跳过该种子的处理，继续下一个种子的判断
+                    continue
+            # 做种人数命中
+            seeders = rules.get('seeders')
+            if seeders:
+                logger.debug(f'设定做种人数：{seeders}，当前种子做种人数：{torrent.seeders}')
+                if torrent.seeders > seeders:
+                    excluded_torrents.append(torrent)
+                    # 跳过该种子的处理，继续下一个种子的判断
+                    continue
+            # 下载人数命中
+            leechers = rules.get('leechers')
+            if leechers:
+                logger.debug(f'设定下载人数：{leechers}，当前种子下载人数：{torrent.leechers}')
+                if torrent.leechers < leechers:
+                    excluded_torrents.append(torrent)
+                    # 跳过该种子的处理，继续下一个种子的判断
+                    continue
 
         except Exception:
             logger.error(traceback.format_exc(3))
@@ -747,7 +739,7 @@ def filter_torrent_by_rules(my_site: MySite, torrents: List[TorrentInfo]):
         excluded_torrent.save()
 
     # 返回符合规则的种子列表
-    return [torrent for torrent in torrents if torrent not in excluded_torrents]
+    return list(set(torrents) - set(excluded_torrents))
 
 
 def sha1_hash(string: str) -> str:
@@ -760,7 +752,7 @@ def remove_torrent_by_site_rules(mysite: MySite):
     :param mysite:
     :return msg
     """
-    rules = json.loads(mysite.remove_torrent_rules).get('remove')
+    rules = demjson3.decode(mysite.remove_torrent_rules).get('remove')
     logger.info(f"当前站点：{mysite}, 删种规则：{rules}")
     logger.info(f"当前下载器：{mysite.downloader_id}")
     client, _ = get_downloader_instance(mysite.downloader.id)

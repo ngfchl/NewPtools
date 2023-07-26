@@ -58,9 +58,10 @@ def add_mysite(request, my_site_params: MySiteSchemaIn):
                                        id=my_site_params.downloader) if my_site_params.downloader else None
         params.update({
             "downloader": downloader,
-            "remove_torrent_rules": json.dumps(demjson3.decode(my_site_params.remove_torrent_rules), indent=2)
+            "remove_torrent_rules": json.dumps(demjson3.decode(my_site_params.remove_torrent_rules),
+                                               indent=2) if my_site_params.remove_torrent_rules else '{}'
         })
-        print(params)
+        logger.info(params)
         my_site = MySite.objects.create(**params)
         if my_site:
             msg = f'处理完毕：{my_site.nickname}，保存成功！'
@@ -85,8 +86,10 @@ def edit_mysite(request, my_site_params: MySiteSchemaIn):
         downloader = get_object_or_404(Downloader, id=my_site_params.downloader) if my_site_params.downloader else None
         params.update({
             "downloader": downloader,
-            "remove_torrent_rules": json.dumps(demjson3.decode(my_site_params.remove_torrent_rules), indent=2)
+            "remove_torrent_rules": json.dumps(demjson3.decode(my_site_params.remove_torrent_rules),
+                                               indent=2) if my_site_params.remove_torrent_rules else '{}'
         })
+        logger.info(params)
         my_site_res = MySite.objects.filter(id=my_site_params.id).update(**my_site_params.dict())
         if my_site_res > 0:
             logger.info(f'处理完毕：{my_site_params.nickname}，成功处理 {my_site_res} 条数据！')

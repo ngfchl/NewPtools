@@ -1,10 +1,11 @@
 import json
-from typing import Tuple, Optional
+from typing import Tuple
 from urllib import parse
 
 import requests
 
 from toolbox import tools
+from toolbox.schema import CommonResponse
 
 
 class CookieCloudHelper:
@@ -41,13 +42,13 @@ class CookieCloudHelper:
             return ".".join(netloc.split(".")[-3:])
         return ""
 
-    def download(self) -> Tuple[Optional[dict], str]:
+    def download(self) -> CommonResponse:
         """
         从CookieCloud下载数据
         :return: Cookie数据、错误信息
         """
         if not self._server or not self._key or not self._password:
-            return None, "CookieCloud参数不正确"
+            return CommonResponse.error(msg="CookieCloud参数不正确")
         req_url = "%s/get/%s" % (self._server, self._key)
         ret = requests.post(url=req_url, json={"password": self._password}, headers={
             "content_type": "application/json"
@@ -55,7 +56,7 @@ class CookieCloudHelper:
         if ret and ret.status_code == 200:
             result = ret.json()
             if not result:
-                return {}, "未下载到数据"
+                return CommonResponse.error(msg="未下载到数据!")
             if result.get("cookie_data"):
                 contents = result.get("cookie_data")
             else:
@@ -91,17 +92,8 @@ class CookieCloudHelper:
                 )
                 ret_cookies[domain] = cookie_str
             print(json.dumps(ret_cookies, indent=2))
-            return ret_cookies, ""
+            return CommonResponse.success(data=ret_cookies)
         elif ret:
-            return None, f"同步CookieCloud失败，错误码：{ret.status_code}"
+            return CommonResponse.error(msg=f"同步CookieCloud失败，错误码：{ret.status_code}")
         else:
-            return None, "CookieCloud请求失败，请检查服务器地址、用户KEY及加密密码是否正确"
-
-
-if __name__ == "__main__":
-    helper = CookieCloudHelper(
-        server='http://cookie.ptools.fun/cookie',
-        key='mMkNNeMLynmzgmaHJvbAZV',
-        password='aJpcna54RSNvcdvAAPvJN9'
-    )
-    helper.download()
+            return CommonResponse.error(msg=f"CookieCloud请求失败，请检查服务器地址、用户KEY及加密密码是否正确")

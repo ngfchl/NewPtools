@@ -7,6 +7,7 @@ from auxiliary.base import BaseEntity
 class Task(models.TextChoices):
     # 已实现的自动任务
     backend_cleanup = 'celery.backend_cleanup', '清理任务记录'
+    auto_sync_cookie = 'schedule.tasks.auto_sync_cookie', '同步Cookie'
     auto_sign_in = 'schedule.tasks.auto_sign_in', '执行签到'
     auto_get_status = 'schedule.tasks.auto_get_status', '更新个人数据'
     auto_repeat_torrent = 'schedule.tasks.auto_repeat_torrent', '辅种任务'

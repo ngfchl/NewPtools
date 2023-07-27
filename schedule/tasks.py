@@ -63,7 +63,7 @@ def auto_sync_cookie(self):
     )
     if notice_category_enable.get('cookie_sync', True):
         toolbox.send_text(message=result.msg, title='Cookie 同步')
-    return result
+    return result.dict()
 
 
 @shared_task(bind=True, base=BaseTask)

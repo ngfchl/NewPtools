@@ -232,10 +232,21 @@ def send_text(message: str, title: str = '', url: str = None):
                     agent_id=notify.get('agent_id'),
                     server=server,
                 )
-                res = notify_push.send_text(
-                    text=message,
-                    to_uid=notify.get('to_uid', '@all')
-                )
+                max_length = 2000  # 最大消息长度限制
+                if len(message) <= max_length:
+                    res = notify_push.send_text(
+                        text=message,
+                        to_uid=notify.get('to_uid', '@all')
+                    )
+                else:
+                    while message:
+                        chunk = message[:max_length]  # 从消息中截取最大长度的部分
+                        res = notify_push.send_text(
+                            text=chunk,
+                            to_uid=notify.get('to_uid', '@all')
+                        )
+                        message = message[max_length:]  # 剩余部分作为新的消息进行下一轮发送
+
                 msg = '企业微信通知：{}'.format(res)
                 logger.info(msg)
 

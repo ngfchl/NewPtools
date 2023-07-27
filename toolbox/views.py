@@ -1588,6 +1588,6 @@ def sync_cookie_from_cookie_cloud(server: str, key: str, password: str):
             except Exception as e:
                 logger.error(f'尚不支持此站点：{domain} ')
                 continue
-        return CommonResponse.success(data=msg_list)
+        return CommonResponse.success(msg=''.join(msg_list))
     except Exception as e:
         return CommonResponse.error(msg=f'同步 Cookie 出错啦！')

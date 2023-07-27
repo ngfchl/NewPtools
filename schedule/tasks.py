@@ -50,6 +50,23 @@ def auto_reload_supervisor():
 
 
 @shared_task(bind=True, base=BaseTask)
+def auto_sync_cookie(self):
+    """
+    同步 Cookie
+    :return:
+    """
+    cookie_cloud = toolbox.parse_toml('cookie_cloud')
+    result = toolbox.sync_cookie_from_cookie_cloud(
+        server=cookie_cloud.get("server"),
+        key=cookie_cloud.get("key"),
+        password=cookie_cloud.get("password"),
+    )
+    if notice_category_enable.get('cookie_sync', True):
+        toolbox.send_text(message=result.msg, title='Cookie 同步')
+    return result
+
+
+@shared_task(bind=True, base=BaseTask)
 def auto_sign_in(self):
     """执行签到"""
     start = time.time()

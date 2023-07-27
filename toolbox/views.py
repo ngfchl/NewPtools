@@ -210,11 +210,12 @@ def send_text(message: str, title: str = '', url: str = None):
     notifies = parse_toml("notify")
     res = '你还没有配置通知参数哦！'
     try:
-        message = f'\> {verify_token()}  \n\n{message}'
+        message = f'> {verify_token()}  \n\n{message}'
         pass
     except Exception as e:
         msg = f'授权验证失败！'
         logger.error(msg)
+        logger.error(traceback.format_exc(5))
         return msg
     if len(notifies) <= 0:
         return res

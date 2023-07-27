@@ -34,6 +34,7 @@ from download.models import Downloader
 from my_site.models import SiteStatus, TorrentInfo, MySite
 from toolbox.schema import CommonResponse, DotDict
 from website.models import WebSite
+from .cookie_cloud import CookieCloudHelper
 from .wechat_push import WechatPush
 from .wxpusher import WxPusher
 
@@ -1555,3 +1556,38 @@ def cnlang_sign(
         logger.error(msg)
         logger.error(traceback.format_exc(5))
         return CommonResponse.error(msg=msg)
+
+
+def sync_cookie_from_cookie_cloud(server: str, key: str, password: str):
+    """
+    同步 cookie
+    :param server:
+    :param key:
+    :param password:
+    :return:
+    """
+    try:
+        helper = CookieCloudHelper(server=server, key=key, password=password)
+        res = helper.download()
+        if res.code != 0:
+            return res
+        website_list = WebSite.objects.all()
+        msg_list = []
+        for domain, cookie in res.data.items():
+            try:
+                website = website_list.get(url__contains=domain)
+                mysite, created = MySite.objects.update_or_create(site=website.id, defaults={"cookie": cookie})
+                if created:
+                    mysite.nickname = website.name
+                    mysite.save()
+                    msg = f'- {mysite.nickname} 站点添加成功！\n'
+                else:
+                    msg = f'- {mysite.nickname} 站点更成功！\n'
+                logger.info(msg)
+                msg_list.append(msg)
+            except Exception as e:
+                logger.error(f'尚不支持此站点：{domain} ')
+                continue
+        return CommonResponse.success(data=msg_list)
+    except Exception as e:
+        return CommonResponse.error(msg=f'同步 Cookie 出错啦！')

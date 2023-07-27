@@ -50,23 +50,6 @@ def auto_reload_supervisor():
 
 
 @shared_task(bind=True, base=BaseTask)
-def auto_sync_cookie(self):
-    """
-    同步 Cookie
-    :return:
-    """
-    cookie_cloud = toolbox.parse_toml('cookie_cloud')
-    result = toolbox.sync_cookie_from_cookie_cloud(
-        server=cookie_cloud.get("server"),
-        key=cookie_cloud.get("key"),
-        password=cookie_cloud.get("password"),
-    )
-    if notice_category_enable.get('cookie_sync', True):
-        toolbox.send_text(message=result.msg, title='Cookie 同步')
-    return result.dict()
-
-
-@shared_task(bind=True, base=BaseTask)
 def auto_sign_in(self):
     """执行签到"""
     start = time.time()
@@ -104,7 +87,8 @@ def auto_sign_in(self):
                     cookie=t98.get('cookie'),
                     user_agent=t98.get('user_agent'),
                 )
-                message_list.append(f'✅ t98 签到成功！{res.msg} \n')
+                msg = f'✅ t98 签到成功！' if res.code == 0 else '⭕ t98 签到失败！'
+                message_list.append(f'{msg} {res.msg} \n')
         except Exception as e:
             msg = f't98签到失败！{e}'
             logger.error(msg)
@@ -330,8 +314,7 @@ def auto_get_torrents(self, *site_list: List[int]):
                         main_data = client.sync_maindata()
                         free_space = main_data.get('server_state').get('free_space_on_disk')
                         if free_space <= downloader.reserved_space * 1024 * 1024 * 1024:
-                            msg = (f'{downloader.name} 磁盘空间已达到临界值！{downloader.reserved_space} GB，'
-                                   f'当前空间：{free_space} - {free_space / 1024 / 1024 / 1024} GB')
+                            msg = f'{downloader.name} 磁盘空间已达到临界值！{downloader.reserved_space}GB，当前空间：{free_space}'
                             logger.info(msg)
                             if notice_category_enable.get('free_space', False):
                                 toolbox.send_text(msg)

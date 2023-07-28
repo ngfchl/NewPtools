@@ -66,6 +66,8 @@ class CookieCloudHelper:
             for site, cookies in contents.items():
                 for cookie in cookies:
                     domain_key = CookieCloudHelper.get_url_domain(cookie.get("domain"))
+                    if domain_key.startswith('.'):
+                        continue
                     if not domain_groups.get(domain_key):
                         domain_groups[domain_key] = [cookie]
                     else:

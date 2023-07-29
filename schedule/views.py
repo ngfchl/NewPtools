@@ -1,8 +1,8 @@
 import logging
 import traceback
-from json import loads
 from typing import List
 
+import demjson3
 import pytz
 from django.core.exceptions import ValidationError
 from django_celery_beat.models import PeriodicTask, CrontabSchedule
@@ -26,17 +26,27 @@ def get_schedule_list(request):
 
 @router.get('/exec', response=CommonResponse, description='任务列表')
 def exec_task(request, task_id: int):
-    celery_app.loader.import_default_modules()
-    task = PeriodicTask.objects.get(id=task_id)
-    schedule, args, kwargs, queue, periodic_task_name = (celery_app.tasks.get(task.task),
-                                                         loads(task.args),
-                                                         loads(task.kwargs),
-                                                         task.queue,
-                                                         task.name)
-    res = schedule.apply_async(args=args, kwargs=kwargs, periodic_task_name=periodic_task_name)
-    # command_exec = getattr(auto_pt, command)
-    # res = command_exec(args=task.args)
-    return CommonResponse.success(msg=res.id)
+    try:
+        celery_app.loader.import_default_modules()
+        task = PeriodicTask.objects.get(id=task_id)
+        logger.info(f'当前任务：{task.name} - {task.task}')
+        logger.info(f'当前任务：{celery_app.tasks.get(task.task)}')
+        schedule, args, kwargs, queue, periodic_task_name = (
+            celery_app.tasks.get(task.task),
+            demjson3.decode(task.args),
+            demjson3.decode(task.kwargs),
+            task.queue,
+            task.name
+        )
+        res = schedule.apply_async(args=args, kwargs=kwargs, periodic_task_name=periodic_task_name)
+        # command_exec = getattr(auto_pt, command)
+        # res = command_exec(args=task.args)
+        return CommonResponse.success(msg=res.id)
+    except Exception as e:
+        msg = f'任务执行失败！{e}'
+        logger.error(msg)
+        logger.error(traceback.format_exc(5))
+        return CommonResponse.error(msg=msg)
 
 
 @router.get('/schedules', response=CommonResponse[List[PeriodicTaskSchemaOut]], description='自动任务列表')

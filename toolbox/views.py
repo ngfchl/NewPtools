@@ -1658,32 +1658,32 @@ def sync_cookie_from_cookie_cloud(server: str, key: str, password: str):
                 mysite, created = MySite.objects.update_or_create(site=website.id, defaults={"cookie": cookie})
 
                 if created:
-
                     mysite.nickname = website.name
                     mysite.save()
                     msg = f'- {mysite.nickname} 站点添加成功！\n'
+                    logger.info(f'开始获取 UID，PASSKEY，注册时间')
+                    try:
+                        scraper = cloudscraper.create_scraper(browser={
+                            'browser': 'chrome',
+                            'platform': 'darwin',
+                        })
+                        response = scraper.get(
+                            url=website.url + website.page_control_panel,
+                            cookies=cookie2dict(cookie),
+                        )
+                        logger.debug(f'控制面板页面：{response.text}')
+                        html_object = etree.HTML(response.content)
+                        mysite.user_id = ''.join(html_object.xpath(website.my_uid_rule)).split('=')[-1]
+                        mysite.passkey = ''.join(html_object.xpath(website.my_passkey_rule))
+                        get_time_join(mysite, html_object)
+                        mysite.save()
+                        logger.debug(f'uid:{mysite.user_id}')
+                        logger.debug(f'passkey:{mysite.passkey}')
+                    except Exception as e:
+                        msg += f'获取 UID，PASSKEY或注册时间失败！请手动获取！{e}'
                 else:
                     msg = f'- {mysite.nickname} 站点更新成功！\n'
-                logger.info(f'开始获取 UID，PASSKEY，注册时间')
-                try:
-                    scraper = cloudscraper.create_scraper(browser={
-                        'browser': 'chrome',
-                        'platform': 'darwin',
-                    })
-                    response = scraper.get(
-                        url=website.url + website.page_control_panel,
-                        cookies=cookie2dict(mysite.cookie),
-                    )
-                    logger.debug(f'控制面板页面：{response.text}')
-                    html_object = etree.HTML(response.content)
-                    mysite.user_id = ''.join(html_object.xpath(website.my_uid_rule)).split('=')[-1]
-                    mysite.passkey = ''.join(html_object.xpath(website.my_passkey_rule))
-                    get_time_join(mysite, html_object)
-                    mysite.save()
-                    logger.debug(f'uid:{mysite.user_id}')
-                    logger.debug(f'passkey:{mysite.passkey}')
-                except Exception as e:
-                    msg += f'获取 UID，PASSKEY或注册时间失败！请手动获取！{e}'
+
                 logger.info(msg)
                 msg_list.append(msg)
             except Exception as e:

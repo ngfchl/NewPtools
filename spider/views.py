@@ -1459,8 +1459,9 @@ class PtSpider:
                 detail_msg = f'个人主页解析失败!'
                 err_msg.append(detail_msg)
                 logger.warning(f'{my_site.nickname} {detail_msg}')
-            else:
-                self.get_time_join(my_site, details_html.data)
+                return CommonResponse.error(msg=detail_msg)
+            # 解析注册时
+            self.get_time_join(my_site, details_html.data)
             # 发送请求，请求做种信息页面
             seeding_html = self.get_seeding_html(my_site, headers=headers, details_html=details_html.data)
             if seeding_html.code != 0:
@@ -1564,6 +1565,7 @@ class PtSpider:
                     my_site.save()
             except Exception as e:
                 msg = f'🆘 {site.name} 注册时间获取出错啦！'
+                logger.error(msg)
                 logger.error(traceback.format_exc(3))
 
     def parse_userinfo_html(self, my_site, details_html):

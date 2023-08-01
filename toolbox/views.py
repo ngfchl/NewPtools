@@ -1672,7 +1672,7 @@ def sync_cookie_from_cookie_cloud(server: str, key: str, password: str):
                     })
                     response = scraper.get(
                         url=website.url + website.page_control_panel,
-                        cookies=cookie.get('cookies'),
+                        cookies=cookie2dict(mysite.cookie),
                     )
                     logger.debug(f'控制面板页面：{response.text}')
                     html_object = etree.HTML(response.content)
@@ -1683,7 +1683,7 @@ def sync_cookie_from_cookie_cloud(server: str, key: str, password: str):
                     logger.debug(f'uid:{mysite.user_id}')
                     logger.debug(f'passkey:{mysite.passkey}')
                 except Exception as e:
-                    msg += f'获取 UID，PASSKEY或注册时间失败！请手动获取！'
+                    msg += f'获取 UID，PASSKEY或注册时间失败！请手动获取！{e}'
                 logger.info(msg)
                 msg_list.append(msg)
             except Exception as e:

@@ -1652,6 +1652,9 @@ def sync_cookie_from_cookie_cloud(server: str, key: str, password: str):
             return res
         website_list = WebSite.objects.all()
         msg_list = []
+        count_created = 0
+        count_updated = 0
+        count_failed = 0
         for domain, cookie in res.data.items():
             try:
                 website = website_list.get(url__contains=domain)
@@ -1660,6 +1663,7 @@ def sync_cookie_from_cookie_cloud(server: str, key: str, password: str):
                 if created:
                     mysite.nickname = website.name
                     mysite.save()
+                    count_created += 1
                     msg = f'- {mysite.nickname} 站点添加成功！\n'
                     logger.info(f'开始获取 UID，PASSKEY，注册时间')
                     try:
@@ -1683,12 +1687,16 @@ def sync_cookie_from_cookie_cloud(server: str, key: str, password: str):
                         msg += f'获取 UID，PASSKEY或注册时间失败！请手动获取！{e}'
                 else:
                     msg = f'- {mysite.nickname} 站点更新成功！\n'
-
+                    count_updated += 1
                 logger.info(msg)
                 msg_list.append(msg)
             except Exception as e:
                 logger.error(f'尚不支持此站点：{domain} ')
+                count_failed += 1
                 continue
+        msg = f'> 本次同步任务共添加站点：{count_created}, 更新站点：{count_updated}, 失败站点：{count_created}'
+        logger.info(msg)
+        msg_list.insert(0, msg)
         return CommonResponse.success(msg=''.join(msg_list))
     except Exception as e:
         return CommonResponse.error(msg=f'同步 Cookie 出错啦！{e}')

@@ -11,7 +11,6 @@ from datetime import datetime, timedelta
 from urllib.parse import urlparse, parse_qs
 
 import cloudscraper
-import dateutil.parser
 import requests
 import toml
 from channels.db import database_sync_to_async
@@ -1461,7 +1460,7 @@ class PtSpider:
                 logger.warning(f'{my_site.nickname} {detail_msg}')
                 return CommonResponse.error(msg=detail_msg)
             # 解析注册时
-            self.get_time_join(my_site, details_html.data)
+            toolbox.get_time_join(my_site, details_html.data)
             # 发送请求，请求做种信息页面
             seeding_html = self.get_seeding_html(my_site, headers=headers, details_html=details_html.data)
             if seeding_html.code != 0:
@@ -1503,70 +1502,6 @@ class PtSpider:
             logger.error(message)
             logger.error(traceback.format_exc(limit=3))
             return CommonResponse.error(msg=message)
-
-    def get_time_join(self, my_site, details_html):
-        site = get_object_or_404(WebSite, id=my_site.site)
-        with lock:
-            try:
-                if 'greatposterwall' in site.url or 'dicmusic' in site.url:
-                    logger.debug(details_html)
-                    details_response = details_html.get('response')
-                    stats = details_response.get('stats')
-                    my_site.time_join = stats.get('joinedDate')
-                    my_site.latest_active = stats.get('lastAccess')
-                    my_site.save()
-                elif 'zhuque.in' in site.url:
-                    userdata = details_html.get('data')
-                    my_site.time_join = datetime.fromtimestamp(userdata.get(site.my_time_join_rule))
-                    my_site.save()
-                else:
-                    logger.debug(f'注册时间：{details_html.xpath(site.my_time_join_rule)}')
-                    if site.url in [
-                        'https://monikadesign.uk/',
-                        'https://pt.hdpost.top/',
-                        'https://reelflix.xyz/',
-                    ]:
-                        time_str = ''.join(details_html.xpath(site.my_time_join_rule))
-                        time_str = re.sub(u"[\u4e00-\u9fa5]", "", time_str).strip()
-                        time_join = datetime.strptime(time_str, '%b %d %Y')
-                        logger.debug(f'注册时间：{time_join}')
-                        my_site.time_join = time_join
-                    elif site.url in [
-                        'https://hd-torrents.org/',
-                    ]:
-                        my_site.time_join = datetime.strptime(
-                            ''.join(details_html.xpath(site.my_time_join_rule)).replace('\xa0', ''),
-                            '%d/%m/%Y %H:%M:%S'
-                        )
-                    elif site.url in [
-                        'https://hd-space.org/',
-                    ]:
-                        my_site.time_join = datetime.strptime(
-                            ''.join(details_html.xpath(site.my_time_join_rule)).replace('\xa0', ''),
-                            '%B %d, %Y,%H:%M:%S'
-                        )
-                    elif site.url in [
-                        'https://www.torrentleech.org/',
-                    ]:
-                        my_site.time_join = dateutil.parser.parse(''.join(details_html.xpath(site.my_time_join_rule)))
-                    elif site.url in [
-                        'https://exoticaz.to/',
-                        'https://cinemaz.to/',
-                        'https://avistaz.to/',
-                    ]:
-                        time_str = ''.join(details_html.xpath(site.my_time_join_rule)).split('(')[0].strip()
-                        my_site.time_join = datetime.strptime(time_str, '%d %b %Y %I:%M %p')
-                    else:
-                        time_join = re.findall(r'\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}', ''.join(
-                            details_html.xpath(site.my_time_join_rule)
-                        ).strip())
-                        my_site.time_join = ''.join(time_join)
-                    my_site.latest_active = datetime.now()
-                    my_site.save()
-            except Exception as e:
-                msg = f'🆘 {site.name} 注册时间获取出错啦！'
-                logger.error(msg)
-                logger.error(traceback.format_exc(3))
 
     def parse_userinfo_html(self, my_site, details_html):
         """解析个人主页"""

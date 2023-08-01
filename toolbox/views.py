@@ -11,6 +11,8 @@ from datetime import timedelta, datetime
 from typing import List, Union
 
 import aip
+import cloudscraper
+import dateutil.parser
 import demjson3
 import feedparser
 import git
@@ -22,6 +24,7 @@ import toml as toml
 import transmission_rpc
 from django.conf import settings
 from django.core.cache import cache
+from django.shortcuts import get_object_or_404
 from lxml import etree
 from pypushdeer import PushDeer
 from telebot import apihelper
@@ -1570,6 +1573,70 @@ def cnlang_sign(
         return CommonResponse.error(msg=msg)
 
 
+def get_time_join(my_site, details_html):
+    site = get_object_or_404(WebSite, id=my_site.site)
+    try:
+        if 'greatposterwall' in site.url or 'dicmusic' in site.url:
+            logger.debug(details_html)
+            details_response = details_html.get('response')
+            stats = details_response.get('stats')
+            my_site.time_join = stats.get('joinedDate')
+            my_site.latest_active = stats.get('lastAccess')
+            my_site.save()
+        elif 'zhuque.in' in site.url:
+            userdata = details_html.get('data')
+            my_site.time_join = datetime.fromtimestamp(userdata.get(site.my_time_join_rule))
+            my_site.save()
+        else:
+            logger.debug(f'注册时间：{details_html.xpath(site.my_time_join_rule)}')
+            if site.url in [
+                'https://monikadesign.uk/',
+                'https://pt.hdpost.top/',
+                'https://reelflix.xyz/',
+            ]:
+                time_str = ''.join(details_html.xpath(site.my_time_join_rule))
+                time_str = re.sub(u"[\u4e00-\u9fa5]", "", time_str).strip()
+                time_join = datetime.strptime(time_str, '%b %d %Y')
+                logger.debug(f'注册时间：{time_join}')
+                my_site.time_join = time_join
+            elif site.url in [
+                'https://hd-torrents.org/',
+            ]:
+                my_site.time_join = datetime.strptime(
+                    ''.join(details_html.xpath(site.my_time_join_rule)).replace('\xa0', ''),
+                    '%d/%m/%Y %H:%M:%S'
+                )
+            elif site.url in [
+                'https://hd-space.org/',
+            ]:
+                my_site.time_join = datetime.strptime(
+                    ''.join(details_html.xpath(site.my_time_join_rule)).replace('\xa0', ''),
+                    '%B %d, %Y,%H:%M:%S'
+                )
+            elif site.url in [
+                'https://www.torrentleech.org/',
+            ]:
+                my_site.time_join = dateutil.parser.parse(''.join(details_html.xpath(site.my_time_join_rule)))
+            elif site.url in [
+                'https://exoticaz.to/',
+                'https://cinemaz.to/',
+                'https://avistaz.to/',
+            ]:
+                time_str = ''.join(details_html.xpath(site.my_time_join_rule)).split('(')[0].strip()
+                my_site.time_join = datetime.strptime(time_str, '%d %b %Y %I:%M %p')
+            else:
+                time_join = re.findall(r'\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}', ''.join(
+                    details_html.xpath(site.my_time_join_rule)
+                ).strip())
+                my_site.time_join = ''.join(time_join)
+            my_site.latest_active = datetime.now()
+            my_site.save()
+    except Exception as e:
+        msg = f'🆘 {site.name} 注册时间获取出错啦！'
+        logger.error(msg)
+        logger.error(traceback.format_exc(3))
+
+
 def sync_cookie_from_cookie_cloud(server: str, key: str, password: str):
     """
     同步 cookie
@@ -1589,12 +1656,34 @@ def sync_cookie_from_cookie_cloud(server: str, key: str, password: str):
             try:
                 website = website_list.get(url__contains=domain)
                 mysite, created = MySite.objects.update_or_create(site=website.id, defaults={"cookie": cookie})
+
                 if created:
+
                     mysite.nickname = website.name
                     mysite.save()
                     msg = f'- {mysite.nickname} 站点添加成功！\n'
                 else:
-                    msg = f'- {mysite.nickname} 站点更成功！\n'
+                    msg = f'- {mysite.nickname} 站点更新成功！\n'
+                logger.info(f'开始获取 UID，PASSKEY，注册时间')
+                try:
+                    scraper = cloudscraper.create_scraper(browser={
+                        'browser': 'chrome',
+                        'platform': 'darwin',
+                    })
+                    response = scraper.get(
+                        url=website.url + website.page_control_panel,
+                        cookies=cookie.get('cookies'),
+                    )
+                    logger.debug(f'控制面板页面：{response.text}')
+                    html_object = etree.HTML(response.content)
+                    mysite.user_id = ''.join(html_object.xpath(website.my_uid_rule)).split('=')[-1]
+                    mysite.passkey = ''.join(html_object.xpath(website.my_passkey_rule))
+                    get_time_join(mysite, html_object)
+                    mysite.save()
+                    logger.debug(f'uid:{mysite.user_id}')
+                    logger.debug(f'passkey:{mysite.passkey}')
+                except Exception as e:
+                    msg += f'获取 UID，PASSKEY或注册时间失败！请手动获取！'
                 logger.info(msg)
                 msg_list.append(msg)
             except Exception as e:
@@ -1602,4 +1691,4 @@ def sync_cookie_from_cookie_cloud(server: str, key: str, password: str):
                 continue
         return CommonResponse.success(msg=''.join(msg_list))
     except Exception as e:
-        return CommonResponse.error(msg=f'同步 Cookie 出错啦！')
+        return CommonResponse.error(msg=f'同步 Cookie 出错啦！{e}')

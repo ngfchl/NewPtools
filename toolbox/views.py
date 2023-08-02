@@ -211,7 +211,10 @@ def verify_token():
 def send_text(message: str, title: str = '', url: str = None):
     """通知分流"""
     notifies = parse_toml("notify")
-    res = '你还没有配置通知参数哦！'
+    if len(notifies) <= 0:
+        msg = '你还没有配置通知参数哦！'
+        logger.warning(msg)
+        return msg
     try:
         message = f'> {verify_token()}  \n\n{message}'
         pass
@@ -220,8 +223,6 @@ def send_text(message: str, title: str = '', url: str = None):
         logger.error(msg)
         logger.error(traceback.format_exc(5))
         return msg
-    if len(notifies) <= 0:
-        return res
     for key, notify in notifies.items():
         try:
             if key == PushConfig.wechat_work_push:
@@ -242,6 +243,7 @@ def send_text(message: str, title: str = '', url: str = None):
                         to_uid=notify.get('to_uid', '@all')
                     )
                 else:
+                    res = ''
                     while message:
                         chunk = message[:max_length]  # 从消息中截取最大长度的部分
                         res = notify_push.send_text(
@@ -249,8 +251,8 @@ def send_text(message: str, title: str = '', url: str = None):
                             to_uid=notify.get('to_uid', '@all')
                         )
                         message = message[max_length:]  # 剩余部分作为新的消息进行下一轮发送
-
-                msg = '企业微信通知：{}'.format(res)
+                        logger.info(res)
+                msg = f'企业微信通知：{res}'
                 logger.info(msg)
 
             if key == PushConfig.wxpusher_push:

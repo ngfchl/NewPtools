@@ -868,7 +868,7 @@ def remove_torrent_by_site_rules(mysite: MySite):
                 sale_expire = rules.get('sale_expire', {"expire": 300, "delete_on_completed": True})
                 expire_time = sale_expire.get('expire', 300)
                 delete_flag = sale_expire.get('delete_on_completed')
-                if time.time() - torrent_sale_expire <= expire_time and (prop.get('completion_date') < 0 or (
+                if torrent_sale_expire - time.time() <= expire_time and (prop.get('completion_date') < 0 or (
                         prop.get('completion_date') > 0 and delete_flag)):
                     expire_hashes.append(hash_string)
                     logger.debug(f'{torrent_info.title} 免费即将到期 命中')

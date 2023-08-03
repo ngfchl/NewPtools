@@ -1261,8 +1261,11 @@ class PtSpider:
         else:
             user_detail_res = self.send_request(my_site=my_site, url=user_detail_url, header=headers)
         logger.info(f"个人信息页面：{user_detail_res.text}")
+        logger.info(f"个人信息页面：{user_detail_res.status_code}")
         if user_detail_res.status_code != 200:
-            return CommonResponse.error(msg=f'{site.name} 个人主页访问错误，错误码：{user_detail_res.status_code}')
+            msg = f'{site.name} 个人主页访问错误，错误码：{user_detail_res.status_code}'
+            logger.debug(msg)
+            return CommonResponse.error(msg=msg)
         if site.url in [
             'https://greatposterwall.com/', 'https://dicmusic.club/',
         ]:

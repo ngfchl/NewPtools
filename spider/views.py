@@ -1245,6 +1245,7 @@ class PtSpider:
         mirror = my_site.mirror if my_site.mirror_switch else site.url
         user_detail_url = mirror + site.page_user.lstrip('/').format(my_site.user_id)
         logger.info(f'{site.name} 开始抓取站点个人主页信息，网址：{user_detail_url}')
+        logger.info(f'当前站点 URL：{site.url}')
         if site.url in [
             'https://hdchina.org/',
             'https://hudbt.hust.edu.cn/',

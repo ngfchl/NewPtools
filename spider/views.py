@@ -1260,8 +1260,8 @@ class PtSpider:
 
         else:
             user_detail_res = self.send_request(my_site=my_site, url=user_detail_url, header=headers)
-        logger.info(f"个人信息页面：{user_detail_res.text}")
         logger.info(f"个人信息页面：{user_detail_res.status_code}")
+        logger.info(f"个人信息页面：{user_detail_res.text}")
         if site.url in [
             'https://piggo.me/',
         ]:
@@ -1274,6 +1274,8 @@ class PtSpider:
                 logger.debug(html_code)
                 user_detail_url = f'{site.url}{html_code.lstrip("/")}'
                 user_detail_res = self.send_request(my_site=my_site, url=user_detail_url, header=headers)
+                logger.info(f"个人信息页面：{user_detail_res.status_code}")
+                logger.info(f"个人信息页面：{user_detail_res.text}")
         if user_detail_res.status_code != 200:
             msg = f'{site.name} 个人主页访问错误，错误码：{user_detail_res.status_code}'
             logger.debug(msg)

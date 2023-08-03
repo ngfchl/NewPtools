@@ -1286,13 +1286,13 @@ class PtSpider:
         elif site.url in [
             'https://piggo.me/',
         ]:
-            print('猪猪')
+            logger.debug('猪猪')
             html = user_detail_res.text
             if 'window.location.href' in html:
                 pattern = r'href ="(.*?)"; </script>'
                 match = re.search(pattern, html, re.DOTALL)
                 html_code = match.group(1)
-                print(html_code)
+                logger.debug(html_code)
                 user_detail_url = f'{site.url}{html_code.lstrip("/")}'
                 user_detail_res = self.send_request(my_site=my_site, url=user_detail_url, header=headers)
                 html = user_detail_res.text

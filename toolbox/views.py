@@ -1298,11 +1298,13 @@ def sht_sign(host, username, password, cookie, user_agent):
             logger.info(f'签到界面: {sign_response.content.decode("utf8")}')
             # 使用正则表达式提取字段
             match = re.compile(
-                r'signhash=(.+?)".*name="formhash" value="(\w+)".*name="signtoken" value="(\w+)".*secqaa_(.+?)\"',
+                # r'signhash=(.+?)".*name="formhash" value="(\w+)".*name="signtoken" value="(\w+)".*secqaa_(.+?)\"',
+                r'signhash=(.+?)".*name="formhash" value="(\w+)".*secqaa_(.+?)\"',
                 re.S)
-            signhash, formhash, signtoken, idhash = re.findall(match, sign_response.content.decode('utf8'))[0]
+            # signhash, formhash, signtoken, idhash = re.findall(match, sign_response.content.decode('utf8'))[0]
+            signhash, formhash, idhash = re.findall(match, sign_response.content.decode('utf8'))[0]
             logger.info(f'签到界面参数: \n链接: {signhash} \n'
-                        f' formhash: {formhash} \n signtoken:{signtoken}\n idhash: {idhash}\n')
+                        f' formhash: {formhash} \n signtoken:{None} \n idhash: {idhash}\n')
             # 获取计算题
             calc_ui_url = f'{host}/misc.php?mod=secqaa&action=update&idhash={idhash}&{round(random.uniform(0, 1), 16)}'
             calc_response = session.get(
@@ -1336,7 +1338,7 @@ def sht_sign(host, username, password, cookie, user_agent):
                 # 发送签到请求
                 sign_form_data = {
                     "formhash": formhash,
-                    "signtoken": signtoken,
+                    "signtoken": None,
                     "secqaahash": idhash,
                     "secanswer": calc_result,
                 }

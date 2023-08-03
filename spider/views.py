@@ -1262,6 +1262,18 @@ class PtSpider:
             user_detail_res = self.send_request(my_site=my_site, url=user_detail_url, header=headers)
         logger.info(f"个人信息页面：{user_detail_res.text}")
         logger.info(f"个人信息页面：{user_detail_res.status_code}")
+        if site.url in [
+            'https://piggo.me/',
+        ]:
+            logger.debug('猪猪')
+            html = user_detail_res.text
+            if 'window.location.href' in html:
+                pattern = r'href ="(.*?)"; </script>'
+                match = re.search(pattern, html, re.DOTALL)
+                html_code = match.group(1)
+                logger.debug(html_code)
+                user_detail_url = f'{site.url}{html_code.lstrip("/")}'
+                user_detail_res = self.send_request(my_site=my_site, url=user_detail_url, header=headers)
         if user_detail_res.status_code != 200:
             msg = f'{site.name} 个人主页访问错误，错误码：{user_detail_res.status_code}'
             logger.debug(msg)
@@ -1290,16 +1302,7 @@ class PtSpider:
             'https://piggo.me/',
         ]:
             logger.debug('猪猪')
-            html = user_detail_res.text
-            if 'window.location.href' in html:
-                pattern = r'href ="(.*?)"; </script>'
-                match = re.search(pattern, html, re.DOTALL)
-                html_code = match.group(1)
-                logger.debug(html_code)
-                user_detail_url = f'{site.url}{html_code.lstrip("/")}'
-                user_detail_res = self.send_request(my_site=my_site, url=user_detail_url, header=headers)
-                html = user_detail_res.text
-            details_html = etree.HTML(html.encode('utf8'))
+            details_html = etree.HTML(user_detail_res.text.encode('utf8'))
         else:
             details_html = etree.HTML(user_detail_res.text)
         if 'btschool' in site.url:

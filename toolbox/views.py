@@ -326,7 +326,7 @@ def send_text(message: str, title: str = '', url: str = None):
                 logger.info(msg)
 
         except Exception as e:
-            msg = f'通知发送失败，{res} {traceback.format_exc(limit=5)}'
+            msg = f'通知发送失败，{traceback.format_exc(limit=5)}'
             logger.error(msg)
 
 

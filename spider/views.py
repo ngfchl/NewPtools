@@ -2577,7 +2577,7 @@ class PtSpider:
 
                                 repeat_params.setdefault(website_id, []).append({
                                     "urls": self.generate_magnet_url(sid, torrent, my_site, website),
-                                    "category": repeat_torrent.get("category"),
+                                    # "category": repeat_torrent.get("category"),
                                     "save_path": repeat_torrent.get("save_path"),
                                     "cookie": my_site.cookie,
                                     "rename": torrent.get("name"),
@@ -2629,7 +2629,7 @@ class PtSpider:
                             r = client.torrents.add(
                                 urls=torrent['urls'],
                                 save_path=torrent['save_path'],
-                                category=torrent['category'],
+                                # category=torrent['category'],
                                 paused=torrent['is_paused'],
                                 cookie=torrent['cookie'],
                                 upload_limit=torrent['upload_limit'],
@@ -2705,7 +2705,7 @@ class PtSpider:
                                 repeat_params.setdefault(website_id, []).append({
                                     "torrent": self.generate_magnet_url(sid, torrent, my_site, website),
                                     "paused": True,
-                                    "labels": repeat_torrent.labels,
+                                    # "labels": repeat_torrent.labels,
                                     "cookies": my_site.cookie,
                                     "download_dir": repeat_torrent.download_dir,
                                     "info_hash": torrent["info_hash"],
@@ -2748,7 +2748,7 @@ class PtSpider:
                                 torrent=torrent['torrent'],
                                 paused=torrent['paused'],
                                 cookies=torrent['cookies'],
-                                labels=torrent['labels'],
+                                # labels=torrent['labels'],
                                 download_dir=torrent['download_dir'],
                             )
                             push_res.append({torrent['info_hash']: r.name})

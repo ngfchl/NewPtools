@@ -34,3 +34,10 @@ class NotifySchema(Schema):
     agentid: Optional[str]
     touser: Optional[str]
     custom_server: Optional[str]
+
+
+class WechatSignatureSchema(Schema):
+    msg_signature: str
+    timestamp: int
+    nonce: int
+    echostr: str

@@ -52,6 +52,7 @@ outcome==1.2.0
 packaging==23.1
 prometheus-client==0.17.0
 prompt-toolkit==3.0.38
+pycrypto==2.6.1
 pycryptodome==3.18.0
 pydantic==1.10.9
 PyJWT==2.7.0

@@ -15,6 +15,7 @@ class AuthenticateMiddleware(MiddlewareMixin):
         if path in [
             '/',
             '/api/config/login',
+            '/api/config/wechat',
             '/api/docs',
             '/api/openapi.json',
         ] or path.startswith('/api/monkey') or path.startswith('/admin'):

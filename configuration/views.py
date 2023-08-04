@@ -2,6 +2,7 @@ import logging
 import os
 import re
 import subprocess
+import time
 import traceback
 from datetime import datetime
 from typing import Optional
@@ -11,12 +12,13 @@ import toml
 from django.conf import settings
 from django.contrib import auth
 from django.http import FileResponse, HttpResponse
-from ninja import Router
+from ninja import Router, Query
 
 from auxiliary.settings import BASE_DIR
-from configuration.schema import UpdateSchemaOut, UserIn, SettingsIn
+from configuration.schema import UpdateSchemaOut, UserIn, SettingsIn, WechatSignatureSchema
 from monkey.schema import CommonMessage
 from toolbox import views as toolbox
+from toolbox.WXCrypt.WXBizMsgCrypt3 import WXBizMsgCrypt
 from toolbox.schema import CommonResponse
 
 # Create your views here.
@@ -266,61 +268,36 @@ def get_notify(request, title: str, message: str):
         logger.error(msg)
         return CommonResponse.error(msg=msg)
 
-# @router.get("/notifies", response=CommonResponse[List[NotifySchema]])
-# def get_all_notify(request):
-#     notifies = Notify.objects.all()
-#     return CommonResponse.success(data=list(notifies))
-#
-#
-# @router.get("/notify", response=CommonResponse[Optional[NotifySchema]])
-# def get_notify(request, id: int):
-#     try:
-#         notify = Notify.objects.get(id=id)
-#         return CommonResponse.success(data=notify)
-#     except Exception as e:
-#         logger.error(traceback.format_exc(3))
-#         msg = f'通知获取失败:{e}'
-#         logger.error(msg)
-#         return CommonResponse.error(msg=msg)
-#
-#
-# @router.post("/notify", response=CommonResponse[NotifySchema])
-# def create_notify(request, notify: NotifySchema):
-#     try:
-#         notify_obj = Notify.objects.create(**notify.dict())
-#         return CommonResponse.success(data=notify_obj)
-#     except Exception as e:
-#         logger.error(traceback.format_exc(3))
-#         msg = f'通知修改失败:{e}'
-#         logger.error(msg)
-#         return CommonResponse.error(msg=msg)
-#
-#
-# @router.put("/notify", response=CommonResponse[NotifySchema])
-# def update_notify(request, notify: NotifySchema):
-#     try:
-#         notify_obj = Notify.objects.get(id=notify.id)
-#         for attr, value in notify.dict().items():
-#             setattr(notify_obj, attr, value)
-#         notify_obj.save()
-#         return CommonResponse.success(data=notify_obj)
-#     except Exception as e:
-#         logger.error(traceback.format_exc(3))
-#         msg = f'通知修改失败:{e}'
-#         logger.error(msg)
-#         return CommonResponse.error(msg=msg)
-#
-#
-# @router.delete("/notify", response=CommonResponse)
-# def delete_notify(request, id: int):
-#     try:
-#         notify = Notify.objects.get(id=id)
-#         notify.delete()
-#         msg = f'{notify.name} 删除成功！'
-#         logger.info(msg)
-#         return CommonResponse.success(msg=msg)
-#     except Exception as e:
-#         logger.error(traceback.format_exc(3))
-#         msg = f'通知删除失败:{e}'
-#         logger.error(msg)
-#         return CommonResponse.error(msg=msg)
+
+@router.get("/wechat", response=Optional[str])
+def wechat_msg_signature(request, params: WechatSignatureSchema = Query(...)):
+    try:
+        logger.info(params)
+        notify = toolbox.parse_toml('notify')
+        logger.info(notify)
+        wechat_work = notify.get('wechat_work_push')
+        token = wechat_work.get('token')
+        encoding_aes_key = wechat_work.get('encoding_aes_key')
+        corp_id = wechat_work.get('corp_id')
+        wxcpt = WXBizMsgCrypt(token, encoding_aes_key, corp_id)
+        ret, echostr = wxcpt.VerifyURL(
+            sMsgSignature=params.msg_signature,
+            sTimeStamp=params.timestamp,
+            sNonce=params.nonce,
+            sEchoStr=params.echostr
+        )
+        logger.info(echostr)
+        if ret != 0:
+            logger.info(f"企业微信回调验证失败，ret: {ret}")
+            return None
+        logger.info(f'当前时间戳：{time.time()}')
+        return echostr
+    except Exception as e:
+        logger.info(f"企业微信回调验证失败，ERR: {e}")
+        logger.error(traceback.format_exc(5))
+        return None
+
+
+@router.post("/wechat")
+def get_wechat_operate(request, params: WechatSignatureSchema = Query(...), data=''):
+    return params

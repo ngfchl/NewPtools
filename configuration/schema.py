@@ -38,6 +38,6 @@ class NotifySchema(Schema):
 
 class WechatSignatureSchema(Schema):
     msg_signature: str
-    timestamp: int
-    nonce: int
-    echostr: str
+    timestamp: str
+    nonce: str
+    echostr: Optional[str]

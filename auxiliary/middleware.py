@@ -16,6 +16,7 @@ class AuthenticateMiddleware(MiddlewareMixin):
             '/',
             '/api/config/login',
             '/api/config/wechat',
+            '/api/telebot/callback',
             '/api/docs',
             '/api/openapi.json',
         ] or path.startswith('/api/monkey') or path.startswith('/admin'):

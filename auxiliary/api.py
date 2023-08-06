@@ -4,6 +4,7 @@ from django.http import HttpResponse
 from ninja import NinjaAPI
 from ninja.errors import ValidationError
 
+from bot_telegram.views import router as telebot_router
 from configuration.views import router as config_router
 from download.views import router as download_router
 from monkey.views import router as monkey_router
@@ -18,6 +19,7 @@ api_v1.add_router('/config', config_router)
 api_v1.add_router('/download', download_router)
 api_v1.add_router('/monkey', monkey_router)
 api_v1.add_router('/schedule', schedule_router)
+api_v1.add_router('/telebot', telebot_router)
 
 
 @api_v1.exception_handler(ValidationError)

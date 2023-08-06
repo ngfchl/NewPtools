@@ -309,7 +309,7 @@ def send_text(message: str, title: str = '', url: str = None):
                 """Telegram通知"""
                 telegram_token = notify.get('telegram_token')
                 telegram_chat_id = notify.get('telegram_chat_id')
-                bot = telebot.TeleBot(telegram_token)
+                bot = telebot.TeleBot(telegram_token, parse_mode="Markdown")
                 proxy = notify.get('proxy')
                 if proxy:
                     apihelper.proxy = proxy

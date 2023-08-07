@@ -18,6 +18,7 @@ class AuthenticateMiddleware(MiddlewareMixin):
             '/api/config/wechat',
             '/api/docs',
             '/api/openapi.json',
+            '/api/mysite/push_to_server',
         ] or path.startswith('/api/monkey') or path.startswith('/admin'):
             return None
         token = request.META.get("HTTP_AUTHORIZATION")

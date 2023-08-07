@@ -24,6 +24,7 @@ import toml as toml
 import transmission_rpc
 from django.conf import settings
 from django.core.cache import cache
+from django.db.models import Q
 from django.shortcuts import get_object_or_404
 from lxml import etree
 from pypushdeer import PushDeer
@@ -1704,3 +1705,20 @@ def sync_cookie_from_cookie_cloud(server: str, key: str, password: str):
         return CommonResponse.success(msg=''.join(msg_list))
     except Exception as e:
         return CommonResponse.error(msg=f'同步 Cookie 出错啦！{e}')
+
+
+def push_torrents_to_sever():
+    # 从数据库读取一推送到下载器，未推送到服务器，且，hash 等信息已完善的种子
+    torrents = TorrentInfo.objects.filter(state__gte=1, state__lt=6).exclude(
+        Q(hash_string__exact='') & Q(pieces_qb__exact='') & Q(pieces_tr__exact='')
+    )
+    # 推送到服务器
+    res = requests.post(
+        url="http://100.64.118.55:8000/api/website/torrents/multiple",
+        json=[t.to_dict(exclude=['id', 'site']) for t in torrents],
+        headers={"content-type": "application/json"}
+    )
+    # 已存档的种子更新状态为6==已推送到服务器
+    torrents.filter(state__gte=5).update(state=6)
+    logger.info(res.json())
+    return res.json().get('msg')

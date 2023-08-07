@@ -1,6 +1,7 @@
 from datetime import datetime
 
 from django.db import models
+from django.db.models import ManyToManyField, DateTimeField
 
 from auxiliary.base import BaseEntity
 from download.models import Downloader
@@ -140,3 +141,27 @@ class TorrentInfo(BaseEntity):
 
     def __str__(self):
         return self.title
+
+    def to_dict(self, fields=None, exclude=None):
+        data = {}
+        for f in self._meta.fields:
+            value = f.value_from_object(self)
+
+            if fields and f.name not in fields:
+                continue
+
+            if exclude and f.name in exclude:
+                continue
+
+            if isinstance(f, ManyToManyField):
+                value = [i.id for i in value] if self.pk else None
+
+            if isinstance(f, DateTimeField):
+                value = value.strftime('%Y-%m-%d %H:%M:%S') if value else None
+
+            if f.name == 'site':
+                data['site_id'] = self.site_id
+            else:
+                data[f.name] = value
+
+        return data

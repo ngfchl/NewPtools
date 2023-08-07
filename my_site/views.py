@@ -650,3 +650,13 @@ def send_sms_exec(request, mobile: str):
         logger.error(f'数据更新失败：{e}')
         logger.error(traceback.format_exc(limit=3))
         return CommonResponse.error(msg=f'数据更新失败：{e}')
+
+
+@router.get('/push_to_server', response=CommonResponse, description='推送到服务器')
+def push_to_server(request):
+    start = time.time()
+    res = toolbox.push_torrents_to_sever()
+    logger.info(res)
+    end = time.time()
+    print(end - start)
+    return CommonResponse.success(msg=f'{res}，耗时：{end - start}')

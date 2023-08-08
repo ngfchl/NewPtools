@@ -2527,9 +2527,41 @@ class PtSpider:
             if downloader_category == DownloaderCategory.qBittorrent:
                 logger.info(f'从下载器获取所有已完成种子信息')
                 torrents = client.torrents_info(filter='completed')
+                repeat_data = []
 
                 logger.info(f'随机抽取200条数据')
                 torrents = random.sample(torrents, min(len(torrents), 200))
+
+                logger.info(f'开始上传本地种子信息到服务器')
+                try:
+                    for t in torrents:
+                        hash_string = t.get("hash")
+                        # 获取种子块HASH列表，并生成种子块HASH列表字符串的sha1值，保存
+                        pieces_hash_list = client.torrents_piece_hashes(torrent_hash=hash_string)
+                        pieces_hash_string = ''.join(str(pieces_hash) for pieces_hash in pieces_hash_list)
+                        pieces_qb = toolbox.sha1_hash(pieces_hash_string)
+                        # 获取文件列表，并生成文件列表字符串的sha1值，保存
+                        file_list = client.torrents_files(torrent_hash=hash_string)
+                        file_list_hash_string = ''.join(str(item) for item in file_list)
+                        filelist = toolbox.sha1_hash(file_list_hash_string)
+                        files_count = len(file_list)
+                        repeat_data.append({
+                            "hash_string": hash_string,
+                            "filelist": filelist,
+                            "files_count": files_count,
+                            "pieces_qb": pieces_qb,
+                            "size": t.get("size"),
+                        })
+                    res = requests.post(
+                        'http://100.64.118.55:8000/api/website/torrents/repeat',
+                        json=repeat_data,
+                        headers={"content-type": "application/json"}
+                    )
+                    logger.info(res.json().get('msg'))
+                except Exception as e:
+                    msg = f'推送种子信息到服务器失败！'
+                    logger.error(msg)
+                    logger.error(traceback.format_exc(5))
 
                 logger.info(f'获取所有种子hash')
                 hashes = [torrent.get('hash') for torrent in torrents]
@@ -2660,7 +2692,26 @@ class PtSpider:
 
                 logger.info(f'随机抽取200条数据')
                 torrents = random.sample(complete_torrents, min(len(complete_torrents), 200))
-
+                logger.info(f'开始上传本地种子信息到服务器')
+                try:
+                    repeat_data = []
+                    for t in torrents:
+                        repeat_data.append({
+                            "hash_string": t.hashString,
+                            "pieces_tr": toolbox.sha1_hash(t.pieces),
+                            "size": t.size_when_done,
+                            "files_count": len(t.get_files())
+                        })
+                    res = requests.post(
+                        'http://100.64.118.55:8000/api/website/torrents/repeat',
+                        json=repeat_data,
+                        headers={"content-type": "application/json"}
+                    )
+                    logger.info(res.json().get('msg'))
+                except Exception as e:
+                    msg = f'推送种子信息到服务器失败！'
+                    logger.error(msg)
+                    logger.error(traceback.format_exc(5))
                 logger.info(f'获取所有种子hash')
                 hashes = [torrent.hashString for torrent in torrents]
 

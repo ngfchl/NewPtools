@@ -1115,6 +1115,15 @@ def auto_repeat_torrent(self):
     return messages
 
 
+def auto_push_complete_torrents_to_server(request):
+    start = time.time()
+    res = toolbox.push_torrents_to_sever()
+    logger.info(res)
+    end = time.time()
+    print(end - start)
+    return CommonResponse.success(msg=f'{res}，耗时：{end - start}').dict()
+
+
 @shared_task(bind=True, base=BaseTask)
 def test_task(self, *args):
     logger.info(args)

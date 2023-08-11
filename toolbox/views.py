@@ -1712,6 +1712,7 @@ def push_torrents_to_sever():
     torrents = TorrentInfo.objects.filter(state__gte=1, state__lt=6).exclude(hash_string__exact='').exclude(
         Q(pieces_qb__exact='') & Q(pieces_tr__exact='')
     )
+    logger.info(f'当前共有符合条件的种子：{len(torrents)}')
     # 推送到服务器
     res = requests.post(
         url="http://100.64.118.55:8000/api/website/torrents/multiple",

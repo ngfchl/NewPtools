@@ -5,6 +5,13 @@
 // @namespace    http://tampermonkey.net/
 
 
+// @match        https://www.gamegamept.com/*
+// @match        https://www.ptlsp.com/*
+// @match        https://ptcafe.club/*
+// @match        https://shadowflow.org/*
+// @match        https://rousi.zip/*
+// @match        https://www.torrentleech.org/*
+// @match        https://hd-space.org/*
 // @match        https://www.biho.xyz/*
 // @match        https://pt.dhtclub.com/*
 // @match        https://ubits.club/*
@@ -12,6 +19,8 @@
 // @match        https://pandapt.net/*
 // @match        https://www.okpt.net/*
 // @match        https://share.ilolicon.com/*
+// @match        https://hdfun.me/*
+// @match        https://wukongwendao.top/*
 
 // @match        https://1ptba.com/*
 // @match        https://52pt.site/*
@@ -119,7 +128,7 @@
 //// @match        https://zhuque.in/*
 //// @match        https://dicmusic.club/*
 
-// @version      0.1.02
+// @version      v2023.08.15
 // @grant        GM_xmlhttpRequest
 // @grant        GM_getResourceURL
 // @grant        GM_getResourceText
@@ -134,6 +143,9 @@
 
 /*
 日志：
+    2023.08.15  添加站点： LSP, Cafe, Shadow
+    2023.07.26  优化 CSS 代码加载，添加站点： 悟空问道
+    2023.06.24  添加站点：玫瑰，GGPTCOM
     2023.06.19  添加站点：必火，DHTCLUB
     2023.06.18  添加站点：OKPT，PANDAPT，库非,Ubits,ilolicon
     2023.01.28  优化：添加CSS美化代码（其实Copy的bootstrap），优化代码逻辑
@@ -153,8 +165,8 @@ this.$ = this.jQuery = jQuery.noConflict(true);
  * token：ptools.toml中设置的token，获取安全密钥token，可以在ptools.toml中自定义，格式 [token] token="ptools"
  * @type {string}
  */
-// var ptools = "http://192.168.123.5:5173/";
-var ptools = "http://127.0.0.1:8000/";
+var ptools = "http://192.168.123.5:5173/";
+// var ptools = "http://127.0.0.1:8080/";
 var token = "ptools";
 /**
  * 以下内容无需修改
@@ -203,9 +215,11 @@ function getCss() {
             border-radius: 5px;
         }`
     GM_addStyle(css)
+    // var css_url = 'https://cdn.bootcdn.net/ajax/libs/twitter-bootstrap/4.6.2/css/bootstrap.min.css'
+    var css_url = 'https://img.ptools.fun/blog/bootstrap.btn.min.css'
     GM_xmlhttpRequest({
         method: "GET",
-        url: "https://cdn.bootcdn.net/ajax/libs/twitter-bootstrap/4.6.2/css/bootstrap.min.css", // 替换为你的 CSS 文件的 URL
+        url: css_url, // 替换为你的 CSS 文件的 URL
         onload: function (response) {
             GM_addStyle(response.responseText);
         }
@@ -414,8 +428,8 @@ async function main() {
 
     wrap.innerHTML = `<img src="https://api.r10086.com/%E6%A8%B1%E9%81%93%E9%9A%8F%E6%9C%BA%E5%9B%BE%E7%89%87api%E6%8E%A5%E5%8F%A3.php?%E5%9B%BE%E7%89%87%E7%B3%BB%E5%88%97=%E7%8C%AB%E5%A8%981" style="width: 100%;"><br>
     <div class="btn-group-vertical btn-block action">
-                <button type="button" class="btn btn-outline-warning btn-sm btn-block text-nowrap" style="font-size: 12px;" id="sync_cookie">同步Cookie</button>
-                <button type="button" class="btn btn-outline-warning btn-sm btn-block text-nowrap" style="font-size: 12px;" id="copy_link">复制链接</button>
+                <button type="button" class="btn btn-outline-warning btn-sm text-nowrap" style="font-size: 12px;" id="sync_cookie">同步Cookie</button>
+                <button type="button" class="btn btn-outline-warning btn-sm text-nowrap mt-1" style="font-size: 12px;" id="copy_link">复制链接</button>
                 </div>`;
     wrap.className = 'wrap'
     document.body.insertBefore(wrap, first);
@@ -442,35 +456,35 @@ async function main() {
      || location.pathname.includes('/torrent.php')
      || location.pathname.search(/torrents\D*\d+/) > 0
      ) {
-            let downloader_list = await getDownloaders()
-    console.log(downloader_list)
-        console.log('当前为种子详情页')
-        let downloaders = await showDownloaders(downloader_list, true)
-        $('.action').append(downloaders)
-        $('.downloader').on('click', async function (e) {
-            const downloader_id = $(this).attr('data-id')
-            await download_to(downloader_id)
-        })
-    }
+     let downloader_list = await getDownloaders()
+     console.log(downloader_list)
+     console.log('当前为种子详情页')
+     let downloaders = await showDownloaders(downloader_list, true)
+     $('.action').append(downloaders)
+     $('.downloader').on('click', async function (e) {
+     const downloader_id = $(this).attr('data-id')
+     await download_to(downloader_id)
+     })
+     }
 
      if (location.pathname.search(/torrents\D*$/) > 0
      || location.pathname.search(/t$/) > 0
      || location.pathname.includes('/music.php')
      || location.pathname.includes('/torrents.php')) {
-            let downloader_list = await getDownloaders()
-    console.log(downloader_list)
-        console.log('当前为种子列表页')
-        let downloaders = await showDownloaders(downloader_list, false)
-        $('.action').append(downloaders)
-        $('.downloader > button').on('click', async function (e) {
-            const downloader_id = $(this).attr('data-id')
-            await download_all(downloader_id)
-        })
-        $('.downloader-free > button').on('click', async function (e) {
-            const downloader_id = $(this).attr('data-id')
-            await download_free(downloader_id)
-        })
-    }
+     let downloader_list = await getDownloaders()
+     console.log(downloader_list)
+     console.log('当前为种子列表页')
+     let downloaders = await showDownloaders(downloader_list, false)
+     $('.action').append(downloaders)
+     $('.downloader > button').on('click', async function (e) {
+     const downloader_id = $(this).attr('data-id')
+     await download_all(downloader_id)
+     })
+     $('.downloader-free > button').on('click', async function (e) {
+     const downloader_id = $(this).attr('data-id')
+     await download_free(downloader_id)
+     })
+     }
      **/
     $('#sync_cookie').on('click', async function () {
         await sync_cookie()

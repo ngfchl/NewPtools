@@ -458,6 +458,7 @@ def get_downloader_instance(downloader_id):
         else:
             client = transmission_rpc.Client(
                 host=downloader.host, port=downloader.port,
+                protocol=downloader.http,
                 username=downloader.username, password=downloader.password
             )
         return client, downloader.category

@@ -204,7 +204,7 @@ def verify_token():
         "email": os.getenv("DJANGO_SUPERUSER_EMAIL", None)
     })
     if res.status_code == 200 and res.json().get('code') == 0:
-        return res.json().get('msg').replace('-', '\-')
+        return res.json().get('msg')
     else:
         return '您的软件使用授权到期了！如果您喜欢本软件，欢迎付费购买授权或申请临时授权。'
 
@@ -315,12 +315,13 @@ def send_text(message: str, title: str = '', url: str = None):
                 if proxy:
                     apihelper.proxy = proxy
                 max_length = 4096  # 最大消息长度限制
+                parse_mode = notify.get('parse_mode') if notify.get('parse_mode') else "HTML"
                 if len(message) <= max_length:
-                    bot.send_message(telegram_chat_id, message, parse_mode="Markdown")  # 如果消息长度不超过最大限制，直接发送消息
+                    bot.send_message(telegram_chat_id, message, parse_mode=parse_mode)  # 如果消息长度不超过最大限制，直接发送消息
                 else:
                     while message:
                         chunk = message[:max_length]  # 从消息中截取最大长度的部分
-                        bot.send_message(telegram_chat_id, chunk, parse_mode="Markdown")  # 发送消息部分
+                        bot.send_message(telegram_chat_id, chunk, parse_mode=parse_mode)  # 发送消息部分
                         message = message[max_length:]  # 剩余部分作为新的消息进行下一轮发送
 
                 msg = 'Telegram通知成功'

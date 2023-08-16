@@ -2577,9 +2577,10 @@ class PtSpider:
                 else:
                     # 解析辅种数据为我想要的样子
                     logger.info(f'从IYUU获取的数据：{len(iyuu_repeat_infos.data)}')
-
+                    logger.debug(iyuu_repeat_infos.data)
                     logger.info(f'解析辅种数据为我想要的样子')
                     for repeat_info in iyuu_repeat_infos.data:
+                        logger.debug(f'当前信息：{repeat_info}')
                         for torrent in repeat_info['torrent']:
                             info_hash = torrent["info_hash"]
                             if info_hash in hash_lookup:

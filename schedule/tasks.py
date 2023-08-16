@@ -103,6 +103,8 @@ def auto_sign_in(self):
                     password=t98.get('password'),
                     cookie=t98.get('cookie'),
                     user_agent=t98.get('user_agent'),
+                    message=random.choice(t98.get('message')),
+                    fid=t98.get('fid'),
                 )
                 msg = f'✅ t98 签到成功！' if res.code == 0 else '⭕ t98 签到失败！'
                 message_list.append(f'{msg} {res.msg} \n')

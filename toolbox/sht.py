@@ -5,6 +5,9 @@ import traceback
 import requests
 from lxml import etree
 
+# 创建请求对象
+session = requests.Session()
+
 
 def cookie2dict(source_str: str) -> dict:
     """
@@ -21,14 +24,65 @@ def cookie2dict(source_str: str) -> dict:
     return dist_dict
 
 
-def sht_sign(host, username, password, cookie, user_agent):
+def sht_reply(host: str, cookie: dict, user_agent, message: str, fid: int = 95, ):
+    """
+    回帖
+    :param message: 回帖内容
+    :param host:
+    :param cookie:
+    :param user_agent:
+    :param fid: 板块 ID
+    :return:
+    """
+    # 访问综合页面
+    zonghe_url = f'{host}/forum.php?mod=forumdisplay&fid={fid}'
+    response = session.get(
+        url=zonghe_url,
+        headers={
+            "User-Agent": user_agent,
+        },
+        cookies=cookie
+    )
+    tid_pattern = r'normalthread_(\d+)'
+    matches = re.findall(tid_pattern, response.text)
+    tid = random.choice(matches)
+    page_url = f'{host}/forum.php?mod=viewthread&extra=page%3D1&tid={tid}'
+    page_response = session.get(
+        url=page_url,
+        headers={
+            "User-Agent": user_agent,
+        },
+        cookies=cookie
+    )
+    action_pattern = r'action="(.*?)"'
+    action_url = re.search(action_pattern, page_response.text).group(1)
+    submit_data = {
+        "message": message
+    }
+    input_pattern = r'<input type="hidden" name="(.*?)".*.value="(.*?)">'
+    inputs = re.findall(input_pattern, page_response.text)
+    for name, value in inputs:
+        submit_data[name] = value
+
+    action_response = session.get(
+        url=f'{host}/{action_url}',
+        headers={
+            "User-Agent": user_agent,
+        },
+        cookies=cookie
+    )
+    if action_response.status_code == 200:
+        print("回帖完成！")
+    else:
+        print("出错啦！")
+
+
+def sht_sign(host, username, password, cookie, user_agent, message: str, fid: int = 95, ):
     try:
         cookies_dict = cookie2dict(cookie)
         # 登录界面URL
         login_ui_url = f'{host}/member.php?mod=logging&action=login&infloat=yes&handlekey=login&ajaxtarget=fwin_content_login'
         print(login_ui_url)
-        # 创建请求对象
-        session = requests.Session()
         # 打开登录界面
         response = session.get(
             url=login_ui_url,
@@ -38,6 +92,7 @@ def sht_sign(host, username, password, cookie, user_agent):
             },
             cookies=cookies_dict
         )
+
         print(f'打开登录界面：{response.content.decode("utf8")}')
         html_code = response.content.decode('utf8').replace('<?xml version="1.0" encoding="utf-8"?>', '').replace(
             '<root><![CDATA[', '').replace(']]></root>', '')
@@ -107,6 +162,7 @@ def sht_sign(host, username, password, cookie, user_agent):
         check_sign = etree.HTML(check_sign_response.content.decode('utf8')).xpath('//a[contains(text(),"今日已签到")]')
         print(f'签到与否检测 {check_sign}')
         if not check_sign or len(check_sign) <= 0:
+            sht_reply(host, cookies_dict, user_agent, message=message, fid=fid)
             # 打开签到界面
             sign_ui_url = f'{host}/plugin.php?id=dd_sign&mod=sign&infloat=yes&handlekey=pc_click_ddsign&inajax=1&ajaxtarget=fwin_content_pc_click_ddsign'
             # 获取idhash
@@ -210,16 +266,3 @@ def sht_sign(host, username, password, cookie, user_agent):
         msg = f'98签到失败：{e}'
         print(msg)
         print(traceback.format_exc(8))
-
-
-if __name__ == "__main__":
-    host = 'https://jq2t4.com'
-    # host = 'https://www.b9m4w.com'
-    # 设置访问地址
-    # 设置账号密码
-    username = 'ngfchl'
-    password = 'T5!YM6*Y$MQ34P&z'
-    cookie = '_safe=vqd37pjm4p5uodq339yzk6b7jdt6oich; PHPSESSID=gleblmbk3ald93mp00eahrn4bq; cPNj_2132_lastfp=ccbd90c11a5c245b96e894fe47dcf4be; cPNj_2132_saltkey=nzQg9IvR; cPNj_2132_lastvisit=1688177305; cPNj_2132_auth=ad70VV%2FLpk8c8bKFRCEjEcvRzwn9NF4H16V1JKrDYkaiZu6RLA9dAq%2Bv6on%2B37WtGRdyPa4T%2BIIU9RoMzga37EaRx7Q; cPNj_2132_lastcheckfeed=446742%7C1688195593; cPNj_2132_lip=180.98.138.85%2C1688180176; cPNj_2132_nofavfid=1; cPNj_2132_sid=0; cPNj_2132_ulastactivity=1688387106%7C0; cPNj_2132_lastact=1688387110%09misc.php%09patch'
-    user_agent = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36 Edg/114.0.1823.58'
-
-    sht_sign(host=host, username=username, password=password, cookie=cookie, user_agent=user_agent)

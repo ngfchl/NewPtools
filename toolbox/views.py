@@ -1211,7 +1211,62 @@ def generate_notify_content(notice, status: SiteStatus):
     return content
 
 
-def sht_sign(host, username, password, cookie, user_agent):
+def sht_reply(session, host: str, cookie: dict, user_agent, message: str, fid: int = 95):
+    """
+    回帖
+    :param session:
+    :param message: 回帖内容
+    :param host:
+    :param cookie:
+    :param user_agent:
+    :param fid: 板块 ID
+    :return:
+    """
+    # 访问综合页面
+    zonghe_url = f'{host}/forum.php?mod=forumdisplay&fid={fid}'
+    response = session.get(
+        url=zonghe_url,
+        headers={
+            "User-Agent": user_agent,
+        },
+        cookies=cookie
+    )
+    tid_pattern = r'normalthread_(\d+)'
+    matches = re.findall(tid_pattern, response.text)
+    tid = random.choice(matches)
+    page_url = f'{host}/forum.php?mod=viewthread&extra=page%3D1&tid={tid}'
+    page_response = session.get(
+        url=page_url,
+        headers={
+            "User-Agent": user_agent,
+        },
+        cookies=cookie
+    )
+    action_pattern = r'action="(.*?)"'
+    action_url = re.search(action_pattern, page_response.text).group(1)
+    submit_data = {
+        "message": message
+    }
+    input_pattern = r'<input type="hidden" name="(.*?)".*.value="(.*?)">'
+    inputs = re.findall(input_pattern, page_response.text)
+    for name, value in inputs:
+        submit_data[name] = value
+
+    action_response = session.get(
+        url=f'{host}/{action_url}',
+        headers={
+            "User-Agent": user_agent,
+        },
+        cookies=cookie,
+        data=submit_data,
+    )
+    if action_response.status_code == 200:
+        logger.info("回帖完成！")
+    else:
+        logger.info("出错啦！")
+
+
+def sht_sign(host, username, password, cookie, user_agent, message: str, fid: int = 95):
     try:
         cookies_dict = cookie2dict(cookie)
         # 登录界面URL
@@ -1295,6 +1350,9 @@ def sht_sign(host, username, password, cookie, user_agent):
         )
         check_sign = etree.HTML(check_sign_response.content.decode('utf8')).xpath('//a[contains(text(),"今日已签到")]')
         if not check_sign or len(check_sign) <= 0:
+            # 回帖
+            sht_reply(session=session, host=host, cookie=cookies_dict, user_agent=user_agent, message=message, fid=fid)
+
             # 打开签到界面
             sign_ui_url = f'{host}/plugin.php?id=dd_sign&mod=sign&infloat=yes&handlekey=pc_click_ddsign&inajax=1&ajaxtarget=fwin_content_pc_click_ddsign'
             # 获取idhash

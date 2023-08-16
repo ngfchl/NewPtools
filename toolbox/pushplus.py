@@ -24,6 +24,6 @@ def send_text(token: str, title: str, content: str, template: str = "markdown"):
         body = json.dumps(data).encode(encoding='utf-8')
         headers = {'Content-Type': 'application/json'}
         res = requests.post(url, data=body, headers=headers)
-        return res.content
+        return res.json().get("msg")
     except Exception as e:
         return f'pushplus 消息推送失败！{e}'

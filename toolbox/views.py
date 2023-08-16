@@ -1247,14 +1247,16 @@ def sht_reply(session, host: str, cookie: dict, user_agent, message: str, fid: i
         cookies=cookie
     )
     logger.debug(f'帖子详情也：{response.text}')
-
-    action_pattern = r'action="(.*?)"'
+    form_pattern = fr'<form\b[^>]*id="fastpostform"[^>]*>(.*?)<\/form>'
+    matches = re.findall(form_pattern, response.text, re.DOTALL)
+    form_code = matches[0]
+    action_pattern = r'id="fastpostform" action="(.*?)"'
     action_url = re.search(action_pattern, page_response.text).group(1)
     submit_data = {
         "message": message
     }
     input_pattern = r'<input type="hidden" name="(.*?)".*.value="(.*?)">'
-    inputs = re.findall(input_pattern, page_response.text)
+    inputs = re.findall(input_pattern, form_code)
     for name, value in inputs:
         submit_data[name] = value
     logger.info(f"当前网址：{action_url}")

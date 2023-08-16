@@ -37,6 +37,7 @@ from download.models import Downloader
 from my_site.models import SiteStatus, TorrentInfo, MySite
 from toolbox.schema import CommonResponse, DotDict
 from website.models import WebSite
+from . import pushplus
 from .cookie_cloud import CookieCloudHelper
 from .wechat_push import WechatPush
 from .wxpusher import WxPusher
@@ -324,7 +325,11 @@ def send_text(message: str, title: str = '', url: str = None):
 
                 msg = 'Telegram通知成功'
                 logger.info(msg)
-
+            if key == PushConfig.pushplus:
+                token = notify.get('token')
+                template = notify.get('template') if notify.get('template') else "markdown"
+                res = pushplus.send_text(token=token, title=title, content=message, template=template)
+                logger.info(res)
         except Exception as e:
             msg = f'通知发送失败，{traceback.format_exc(limit=5)}'
             logger.error(msg)

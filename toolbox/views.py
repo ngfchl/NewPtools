@@ -1224,6 +1224,7 @@ def sht_reply(session, host: str, cookie: dict, user_agent, message: str, fid: i
     """
     # 访问综合页面
     zonghe_url = f'{host}/forum.php?mod=forumdisplay&fid={fid}'
+    logger.info(f"当前网址：{zonghe_url}")
     response = session.get(
         url=zonghe_url,
         headers={
@@ -1231,10 +1232,13 @@ def sht_reply(session, host: str, cookie: dict, user_agent, message: str, fid: i
         },
         cookies=cookie
     )
+    logger.debug(f'帖子列表：{response.text}')
+
     tid_pattern = r'normalthread_(\d+)'
     matches = re.findall(tid_pattern, response.text)
     tid = random.choice(matches)
     page_url = f'{host}/forum.php?mod=viewthread&extra=page%3D1&tid={tid}'
+    logger.info(f"当前网址：{page_url}")
     page_response = session.get(
         url=page_url,
         headers={
@@ -1242,6 +1246,8 @@ def sht_reply(session, host: str, cookie: dict, user_agent, message: str, fid: i
         },
         cookies=cookie
     )
+    logger.debug(f'帖子详情也：{response.text}')
+
     action_pattern = r'action="(.*?)"'
     action_url = re.search(action_pattern, page_response.text).group(1)
     submit_data = {
@@ -1251,8 +1257,9 @@ def sht_reply(session, host: str, cookie: dict, user_agent, message: str, fid: i
     inputs = re.findall(input_pattern, page_response.text)
     for name, value in inputs:
         submit_data[name] = value
-
-    action_response = session.get(
+    logger.info(f"当前网址：{action_url}")
+    logger.info(f"提交数据：{submit_data}")
+    action_response = session.post(
         url=f'{host}/{action_url}',
         headers={
             "User-Agent": user_agent,
@@ -1260,6 +1267,7 @@ def sht_reply(session, host: str, cookie: dict, user_agent, message: str, fid: i
         cookies=cookie,
         data=submit_data,
     )
+    logger.debug(f'回帖：{action_response.text}')
     if action_response.status_code == 200:
         logger.info("回帖完成！")
     else:

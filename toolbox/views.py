@@ -37,6 +37,7 @@ from download.models import Downloader
 from my_site.models import SiteStatus, TorrentInfo, MySite
 from toolbox.schema import CommonResponse, DotDict
 from website.models import WebSite
+from . import pushplus
 from .cookie_cloud import CookieCloudHelper
 from .wechat_push import WechatPush
 from .wxpusher import WxPusher
@@ -324,7 +325,11 @@ def send_text(message: str, title: str = '', url: str = None):
 
                 msg = 'Telegram通知成功'
                 logger.info(msg)
-
+            if key == PushConfig.pushplus:
+                token = notify.get('token')
+                template = notify.get('template') if notify.get('template') else "markdown"
+                res = pushplus.send_text(token=token, title=title, content=message, template=template)
+                logger.info(res)
         except Exception as e:
             msg = f'通知发送失败，{traceback.format_exc(limit=5)}'
             logger.error(msg)
@@ -457,6 +462,7 @@ def get_downloader_instance(downloader_id):
         else:
             client = transmission_rpc.Client(
                 host=downloader.host, port=downloader.port,
+                protocol=downloader.http,
                 username=downloader.username, password=downloader.password
             )
         return client, downloader.category
@@ -715,7 +721,10 @@ def filter_torrent_by_rules(mysite: MySite, torrents: List[TorrentInfo]):
             sale_expire = rules.get('sale_expire')
             if sale_expire:
                 logger.debug(f'设定剩余免费时间：{sale_expire}，当前种子剩余免费时间：{torrent.sale_expire}')
-                if (datetime.now() - torrent.sale_expire).total_seconds() > sale_expire:
+                exp = torrent.sale_expire
+                if isinstance(exp, str):
+                    exp = datetime.strptime(exp, "%Y-%m-%d %H:%M:%S")
+                if not exp or (datetime.now() - exp).total_seconds() > sale_expire:
                     excluded_torrents.append(torrent)
                     # 跳过该种子的处理，继续下一个种子的判断
                     continue

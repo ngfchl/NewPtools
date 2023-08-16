@@ -203,9 +203,7 @@ def auto_sign_in(self):
     logger.info(f'签到记录{message}')
     logger.debug(f'失败记录{len(failed_message)}')
     logger.debug(f'成功记录{len(success_message)}')
-
-    if notice_category_enable.get('sign_in_info', True):
-        toolbox.send_text(title='通知：自动签到', message='\n'.join(message_list))
+    toolbox.send_text(title='通知：自动签到', message='\n'.join(message_list))
     # toolbox.send_text(title='通知：签到成功', message='\n'.join(success_message))
     # 释放内存
     gc.collect()

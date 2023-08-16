@@ -2879,10 +2879,10 @@ class PtSpider:
                                   torrent.status == 'stopped' and torrent.progress == 0]
                 logger.info(f'等待校验的种子数量: {len(recheck_hashes)}')
                 paused_count = len(torrents)
-
-                logger.info(f'开始校验，等待{verify_timeout}秒')
-                client.verify_torrent(ids=recheck_hashes)
-                time.sleep(verify_timeout)
+                if len(recheck_hashes) > 0:
+                    logger.info(f'开始校验，等待{verify_timeout}秒')
+                    client.verify_torrent(ids=recheck_hashes)
+                    time.sleep(verify_timeout)
                 recheck_count = len(recheck_hashes)
 
                 torrents = client.get_torrents()

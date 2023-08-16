@@ -13,3 +13,4 @@ class PushConfig(models.TextChoices):
     bark_push = 'bark_push', 'Bark通知'
     iyuu_push = 'iyuu_push', '爱语飞飞'
     telegram_push = 'telegram_push', 'Telegram通知'
+    pushplus = 'pushplus', 'pushplus通知'

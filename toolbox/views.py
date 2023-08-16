@@ -1246,25 +1246,34 @@ def sht_reply(session, host: str, cookie: dict, user_agent, message: str, fid: i
         },
         cookies=cookie
     )
-    logger.debug(f'帖子详情也：{response.text}')
-    form_pattern = fr'<form\b[^>]*id="fastpostform"[^>]*>(.*?)<\/form>'
-    matches = re.findall(form_pattern, response.text, re.DOTALL)
-    form_code = matches[0]
+    logger.debug(f'帖子详情页：{response.text}')
+
     action_pattern = r'id="fastpostform" action="(.*?)"'
     action_url = re.search(action_pattern, page_response.text).group(1)
     submit_data = {
-        "message": message
+        "message": message,
+        'usesig': '',
+        'subject': '',
+        'file': '',
     }
-    input_pattern = r'<input type="hidden" name="(.*?)".*.value="(.*?)">'
-    inputs = re.findall(input_pattern, form_code)
-    for name, value in inputs:
-        submit_data[name] = value
-    logger.info(f"当前网址：{action_url}")
+    form_pattern = fr'<form\b[^>]*id="fastpostform"[^>]*>(.*?)<\/form>'
+    matches = re.findall(form_pattern, response.text, re.DOTALL)
+    logger.debug(f'form_matches: {matches}')
+    html_obj = etree.HTML(matches[0])
+    # input_pattern = r'<input type="hidden" name="(.*?)".*.value="(.*?)">'
+    # inputs = re.findall(input_pattern, matches[0])
+    # logger.debug(f'form_表单: {inputs}')
+    for input in html_obj.xpath('.//input[@type="hidden"]'):
+        submit_data[input.xpath('./@name')[0]] = input.xpath('./@value')[0]
+    url = f'{host}/{action_url}&inajax=1'
+    logger.info(f"当前网址：{url}")
     logger.info(f"提交数据：{submit_data}")
     action_response = session.post(
-        url=f'{host}/{action_url}',
+        url=url,
         headers={
             "User-Agent": user_agent,
+            "Referer": page_url,
+            "Content-Type": "application/x-www-form-urlencoded",
         },
         cookies=cookie,
         data=submit_data,
@@ -1362,7 +1371,7 @@ def sht_sign(host, username, password, cookie, user_agent, message: str, fid: in
         if not check_sign or len(check_sign) <= 0:
             # 回帖
             sht_reply(session=session, host=host, cookie=cookies_dict, user_agent=user_agent, message=message, fid=fid)
-
+            return ''
             # 打开签到界面
             sign_ui_url = f'{host}/plugin.php?id=dd_sign&mod=sign&infloat=yes&handlekey=pc_click_ddsign&inajax=1&ajaxtarget=fwin_content_pc_click_ddsign'
             # 获取idhash

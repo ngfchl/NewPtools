@@ -1211,7 +1211,7 @@ def generate_notify_content(notice, status: SiteStatus):
     return content
 
 
-def sht_reply(session, host: str, cookie: dict, user_agent, message: str, fid: int = 95):
+def sht_reply(session, host: str, cookie: str, user_agent, message: str, fid: int = 95):
     """
     回帖
     :param session:
@@ -1229,8 +1229,9 @@ def sht_reply(session, host: str, cookie: dict, user_agent, message: str, fid: i
         url=zonghe_url,
         headers={
             "User-Agent": user_agent,
+            'Cookie': cookie,
         },
-        cookies=cookie
+        # cookies=cookie
     )
     logger.debug(f'帖子列表：{response.text}')
 
@@ -1243,46 +1244,50 @@ def sht_reply(session, host: str, cookie: dict, user_agent, message: str, fid: i
         url=page_url,
         headers={
             "User-Agent": user_agent,
+            'Cookie': cookie,
         },
-        cookies=cookie
+        # cookies=cookie
     )
     logger.debug(f'帖子详情页：{response.text}')
 
     action_pattern = r'id="fastpostform" action="(.*?)"'
-    action_url = re.search(action_pattern, page_response.text).group(1)
+    action_url = re.search(action_pattern, page_response.text).group(1).replace('amp;', '')
     submit_data = {
         "message": message,
         'usesig': '',
         'subject': '',
         'file': '',
     }
-    form_pattern = fr'<form\b[^>]*id="fastpostform"[^>]*>(.*?)<\/form>'
-    matches = re.findall(form_pattern, response.text, re.DOTALL)
-    logger.debug(f'form_matches: {matches}')
-    html_obj = etree.HTML(matches[0])
-    # input_pattern = r'<input type="hidden" name="(.*?)".*.value="(.*?)">'
-    # inputs = re.findall(input_pattern, matches[0])
-    # logger.debug(f'form_表单: {inputs}')
-    for input in html_obj.xpath('.//input[@type="hidden"]'):
+    form_object = etree.HTML(response.content.decode("utf-8")).xpath('//form[@id="fastpostform"]')
+    # print(etree.tostring(form_object[0]).decode("utf-8"))
+
+    for input in form_object[0].xpath('.//input[@type="hidden"]'):
         submit_data[input.xpath('./@name')[0]] = input.xpath('./@value')[0]
+
     url = f'{host}/{action_url}&inajax=1'
-    logger.info(f"当前网址：{url}")
-    logger.info(f"提交数据：{submit_data}")
+    print(f"当前网址：{url}")
+    print(f"提交数据：{submit_data}")
+    headers = {
+        'User-Agent': user_agent,
+        'Referer': page_url,
+        'Cookie': cookie,
+        'Accept': '*/*',
+        'Host': 'jq2t4.com',
+        'Connection': 'keep-alive',
+    }
     action_response = session.post(
         url=url,
-        headers={
-            "User-Agent": user_agent,
-            "Referer": page_url,
-            "Content-Type": "application/x-www-form-urlencoded",
-        },
-        cookies=cookie,
+        headers=headers,
+        # cookies=cookie,
         data=submit_data,
     )
     logger.debug(f'回帖：{action_response.text}')
-    if action_response.status_code == 200:
+    if action_response.status_code == 200 and action_response.text.find("回复发布成功") > 0:
         logger.info("回帖完成！")
+        return CommonResponse.success(msg='回复发布成功')
     else:
-        logger.info("出错啦！")
+        logger.info("回帖出错啦！")
+        return CommonResponse.error(msg='回帖出错啦！')
 
 
 def sht_sign(host, username, password, cookie, user_agent, message: str, fid: int = 95):
@@ -1370,8 +1375,12 @@ def sht_sign(host, username, password, cookie, user_agent, message: str, fid: in
         check_sign = etree.HTML(check_sign_response.content.decode('utf8')).xpath('//a[contains(text(),"今日已签到")]')
         if not check_sign or len(check_sign) <= 0:
             # 回帖
-            sht_reply(session=session, host=host, cookie=cookies_dict, user_agent=user_agent, message=message, fid=fid)
-            return ''
+            reply = sht_reply(session=session, host=host, cookie=cookies_dict, user_agent=user_agent, message=message,
+                              fid=fid)
+            logger.info(reply.msg)
+            if reply.code != 0:
+                return reply
+
             # 打开签到界面
             sign_ui_url = f'{host}/plugin.php?id=dd_sign&mod=sign&infloat=yes&handlekey=pc_click_ddsign&inajax=1&ajaxtarget=fwin_content_pc_click_ddsign'
             # 获取idhash

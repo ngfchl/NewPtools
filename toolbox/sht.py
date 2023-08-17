@@ -1,12 +1,8 @@
 import random
 import re
-import traceback
 
 import requests
 from lxml import etree
-
-# 创建请求对象
-session = requests.Session()
 
 
 def cookie2dict(source_str: str) -> dict:
@@ -24,9 +20,10 @@ def cookie2dict(source_str: str) -> dict:
     return dist_dict
 
 
-def sht_reply(host: str, cookie: dict, user_agent, message: str, fid: int = 95, ):
+def sht_reply(session, host: str, cookie: str, user_agent, message: str, fid: int = 95):
     """
     回帖
+    :param session:
     :param message: 回帖内容
     :param host:
     :param cookie:
@@ -36,53 +33,83 @@ def sht_reply(host: str, cookie: dict, user_agent, message: str, fid: int = 95, 
     """
     # 访问综合页面
     zonghe_url = f'{host}/forum.php?mod=forumdisplay&fid={fid}'
+    print(f"当前网址：{zonghe_url}")
     response = session.get(
         url=zonghe_url,
         headers={
             "User-Agent": user_agent,
+            'Cookie': cookie,
         },
-        cookies=cookie
+        # cookies=cookie
     )
+    # print(f'帖子列表：{response.text}')
+
     tid_pattern = r'normalthread_(\d+)'
     matches = re.findall(tid_pattern, response.text)
     tid = random.choice(matches)
     page_url = f'{host}/forum.php?mod=viewthread&extra=page%3D1&tid={tid}'
+    print(f"当前网址：{page_url}")
     page_response = session.get(
         url=page_url,
         headers={
             "User-Agent": user_agent,
+            'Cookie': cookie,
         },
-        cookies=cookie
+        # cookies=cookie
     )
-    action_pattern = r'action="(.*?)"'
-    action_url = re.search(action_pattern, page_response.text).group(1)
+    # print(f'帖子详情页：{response.text}')
+    action_pattern = r'id="fastpostform" action="(.*?)"'
+    action_url = re.search(action_pattern, page_response.text).group(1).replace('amp;', '')
     submit_data = {
-        "message": message
+        "message": message,
+        'usesig': '',
+        'subject': '',
+        'file': '',
     }
-    input_pattern = r'<input type="hidden" name="(.*?)".*.value="(.*?)">'
-    inputs = re.findall(input_pattern, page_response.text)
-    for name, value in inputs:
-        submit_data[name] = value
 
-    action_response = session.get(
-        url=f'{host}/{action_url}',
-        headers={
-            "User-Agent": user_agent,
-        },
-        cookies=cookie
+    form_object = etree.HTML(response.content.decode("utf-8")).xpath('//form[@id="fastpostform"]')
+    # print(etree.tostring(form_object[0]).decode("utf-8"))
+    # input_pattern = r'<input type="hidden" name="(.*?)".*.value="(.*?)">'
+    # inputs = re.findall(input_pattern, matches[0])
+    # print(f'form_表单: {inputs}')
+    for input in form_object[0].xpath('.//input[@type="hidden"]'):
+        submit_data[input.xpath('./@name')[0]] = input.xpath('./@value')[0]
+    url = f'{host}/{action_url}&inajax=1'
+    print(f"当前网址：{url}")
+    print(f"提交数据：{submit_data}")
+    headers = {
+        'User-Agent': user_agent,
+        'Referer': page_url,
+        'Cookie': cookie,
+        'Accept': '*/*',
+        'Host': 'jq2t4.com',
+        'Connection': 'keep-alive',
+    }
+    action_response = session.post(
+        url=url,
+        headers=headers,
+        # cookies=cookie,
+        data=submit_data,
     )
+
+    print(f'回帖：{action_response.text}')
     if action_response.status_code == 200:
         print("回帖完成！")
     else:
         print("出错啦！")
 
 
-def sht_sign(host, username, password, cookie, user_agent, message: str, fid: int = 95, ):
+def sht_sign(host, username, password, cookie, user_agent, message: str, fid: int = 95):
     try:
         cookies_dict = cookie2dict(cookie)
         # 登录界面URL
         login_ui_url = f'{host}/member.php?mod=logging&action=login&infloat=yes&handlekey=login&ajaxtarget=fwin_content_login'
         print(login_ui_url)
+        # 创建请求对象
+        session = requests.Session()
+        # 回帖
+        sht_reply(session=session, host=host, cookie=cookie, user_agent=user_agent, message=message, fid=fid)
+        return ''
         # 打开登录界面
         response = session.get(
             url=login_ui_url,
@@ -92,14 +119,13 @@ def sht_sign(host, username, password, cookie, user_agent, message: str, fid: in
             },
             cookies=cookies_dict
         )
-
-        print(f'打开登录界面：{response.content.decode("utf8")}')
-        html_code = response.content.decode('utf8').replace('<?xml version="1.0" encoding="utf-8"?>', '').replace(
-            '<root><![CDATA[', '').replace(']]></root>', '')
+        print(response.content.decode('utf8'))
         # 检测到签到链接
         # pattern = r'<!\[CDATA\[(.*?)\]\]>'
         # match = re.search(pattern, response.content.decode('utf8'), re.DOTALL)
         # html_code = match.group(1)
+        html_code = response.content.decode('utf8').replace('<?xml version="1.0" encoding="utf-8"?>', '').replace(
+            '<root><![CDATA[', '').replace(']]></root>', '')
         check_login = etree.HTML(html_code).xpath('//a[@href="plugin.php?id=dd_sign:index"]')
         print(f'Cookie有效检测：签到链接存在数量 {len(check_login)}')
         # 如果检测到签到链接，则直接使用Cookie，否则重新获取Cookie
@@ -147,7 +173,7 @@ def sht_sign(host, username, password, cookie, user_agent, message: str, fid: in
             cookies_dict = session.cookies.get_dict()
             msg = f"新获取的Cookie：{cookies_dict}"
             print(msg)
-            # send_text(message=msg, title='请及时更新98Cookie!')
+            send_text(message=msg, title='请及时更新98Cookie!')
         # 检测签到与否
         check_sign_url = f'{host}/plugin.php?id=dd_sign:index'
         check_sign_response = session.get(
@@ -158,11 +184,11 @@ def sht_sign(host, username, password, cookie, user_agent, message: str, fid: in
             },
             cookies=cookies_dict,
         )
-        print(f"签到检测：{check_sign_response.content.decode('utf8')}")
         check_sign = etree.HTML(check_sign_response.content.decode('utf8')).xpath('//a[contains(text(),"今日已签到")]')
-        print(f'签到与否检测 {check_sign}')
         if not check_sign or len(check_sign) <= 0:
-            sht_reply(host, cookies_dict, user_agent, message=message, fid=fid)
+            # 回帖
+            sht_reply(session=session, host=host, cookie=cookies_dict, user_agent=user_agent, message=message, fid=fid)
+            return ''
             # 打开签到界面
             sign_ui_url = f'{host}/plugin.php?id=dd_sign&mod=sign&infloat=yes&handlekey=pc_click_ddsign&inajax=1&ajaxtarget=fwin_content_pc_click_ddsign'
             # 获取idhash
@@ -177,11 +203,13 @@ def sht_sign(host, username, password, cookie, user_agent, message: str, fid: in
             print(f'签到界面: {sign_response.content.decode("utf8")}')
             # 使用正则表达式提取字段
             match = re.compile(
-                r'signhash=(.+?)".*name="formhash" value="(\w+)".*name="signtoken" value="(\w+)".*secqaa_(.+?)\"',
+                # r'signhash=(.+?)".*name="formhash" value="(\w+)".*name="signtoken" value="(\w+)".*secqaa_(.+?)\"',
+                r'signhash=(.+?)".*name="formhash" value="(\w+)".*secqaa_(.+?)\"',
                 re.S)
-            signhash, formhash, signtoken, idhash = re.findall(match, sign_response.content.decode('utf8'))[0]
+            # signhash, formhash, signtoken, idhash = re.findall(match, sign_response.content.decode('utf8'))[0]
+            signhash, formhash, idhash = re.findall(match, sign_response.content.decode('utf8'))[0]
             print(f'签到界面参数: \n链接: {signhash} \n'
-                  f' formhash: {formhash} \n signtoken:{signtoken}\n idhash: {idhash}\n')
+                  f' formhash: {formhash} \n signtoken:{None} \n idhash: {idhash}\n')
             # 获取计算题
             calc_ui_url = f'{host}/misc.php?mod=secqaa&action=update&idhash={idhash}&{round(random.uniform(0, 1), 16)}'
             calc_response = session.get(
@@ -215,7 +243,7 @@ def sht_sign(host, username, password, cookie, user_agent, message: str, fid: in
                 # 发送签到请求
                 sign_form_data = {
                     "formhash": formhash,
-                    "signtoken": signtoken,
+                    "signtoken": None,
                     "secqaahash": idhash,
                     "secanswer": calc_result,
                 }
@@ -260,9 +288,18 @@ def sht_sign(host, username, password, cookie, user_agent, message: str, fid: in
         info = '，'.join([''.join(match) for match in matches])
         print(f'积分金币详情: {info}')
         msg = f"本次签到:{result}\n积分金币详情: {info}"
-        print(msg)
+
+        # 获取当前时间
+        now = datetime.now()
+        # 计算当天结束的时间
+        end_of_day = now.replace(hour=23, minute=59, second=59)
+        # 计算当前时间到当天结束的时间间隔
+        expiration = end_of_day - now
+        cache.set(f"t98_sign_in_state", True, expiration.seconds)
+        return msg
 
     except Exception as e:
         msg = f'98签到失败：{e}'
-        print(msg)
         print(traceback.format_exc(8))
+        return msg
+

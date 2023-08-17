@@ -1375,7 +1375,7 @@ def sht_sign(host, username, password, cookie, user_agent, message: str, fid: in
         check_sign = etree.HTML(check_sign_response.content.decode('utf8')).xpath('//a[contains(text(),"今日已签到")]')
         if not check_sign or len(check_sign) <= 0:
             # 回帖
-            reply = sht_reply(session=session, host=host, cookie=cookies_dict, user_agent=user_agent, message=message,
+            reply = sht_reply(session=session, host=host, cookie=cookie, user_agent=user_agent, message=message,
                               fid=fid)
             logger.info(reply.msg)
             if reply.code != 0:

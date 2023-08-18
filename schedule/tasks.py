@@ -46,7 +46,12 @@ def auto_reload_supervisor():
     重启所有进程
     :return:
     """
-    subprocess.run(["supervisorctl", "reload"])
+    # 拉取最新代码
+    res = subprocess.run(["git", "pull"])
+    if res.returncode == 0:
+        toolbox.send_text(title="自动更新中", message="代码更新完成，正在重载服务...")
+        # 重载服务
+        subprocess.run(["supervisorctl", "reload"])
 
 
 @shared_task(bind=True, base=BaseTask)

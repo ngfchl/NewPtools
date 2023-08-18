@@ -2230,7 +2230,7 @@ class PtSpider:
                 # logger.debug(type(seeders), type(leechers), type(completers), )
                 # logger.debug(seeders, leechers, completers)
                 # logger.debug(''.join(tr.xpath(site.title_rule)))
-                category = ''.join(tr.xpath(site.torrent_category_rule))
+                category = ''.join(tr.xpath(site.torrent_category_rule)).replace("promotion-tag-", "")
                 file_parse_size = ''.join(tr.xpath(site.torrent_size_rule))
                 # file_parse_size = ''.join(tr.xpath(''))
                 logger.debug(file_parse_size)

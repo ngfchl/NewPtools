@@ -436,7 +436,7 @@ def parse_rss(rss_url: str):
         # logger.info(time.strftime('%Y-%m-%d %H:%M:%S', article.published_parsed))
         link = article.links[-1]
         torrents.append({
-            'title': article.title,
+            'title': article.title[:255],
             'tid': (article.link.split('=')[-1]),
             'size': link.get('length'),
             'magnet_url': link.get('href'),

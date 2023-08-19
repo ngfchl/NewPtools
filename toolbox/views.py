@@ -1265,8 +1265,8 @@ def sht_reply(session, host: str, cookie: str, user_agent, message: str, fid: in
         submit_data[input.xpath('./@name')[0]] = input.xpath('./@value')[0]
 
     url = f'{host}/{action_url}&inajax=1'
-    print(f"当前网址：{url}")
-    print(f"提交数据：{submit_data}")
+    logger.info(f"当前网址：{url}")
+    logger.info(f"提交数据：{submit_data}")
     headers = {
         'User-Agent': user_agent,
         'Referer': page_url,

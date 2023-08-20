@@ -726,7 +726,8 @@ def filter_torrent_by_rules(mysite: MySite, torrents: List[TorrentInfo]):
                 exp = torrent.sale_expire
                 if isinstance(exp, str):
                     exp = datetime.strptime(exp, "%Y-%m-%d %H:%M:%S")
-                if not exp or (datetime.now() - exp).total_seconds() > sale_expire:
+                # 如果种子有到期时间，且到期时间小于设定值，排除
+                if not exp and (datetime.now() - exp).total_seconds() < sale_expire:
                     excluded_torrents.append(torrent)
                     # 跳过该种子的处理，继续下一个种子的判断
                     continue

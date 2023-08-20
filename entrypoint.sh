@@ -24,7 +24,7 @@ function token_verification {
     exit 1
   fi
   # Get authorization response
-  AUTH_RESPONSE=$(curl -s -G -d "token=$TOKEN&email=$DJANGO_SUPERUSER_EMAIL" http://api.ptools.fun/neice/check)
+  AUTH_RESPONSE=$(curl -s -G -d "token=$TOKEN&email=$DJANGO_SUPERUSER_EMAIL" http://repeat.ptools.fun/api/user/verify)
   INFO "$AUTH_RESPONSE"
   # Extract 'code' from the response
   AUTH_CODE=$(echo "$AUTH_RESPONSE" | jq -r '.code')

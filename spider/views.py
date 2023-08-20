@@ -2338,8 +2338,8 @@ class PtSpider:
                     sale_status = ''.join(tr.xpath(site.torrent_sale_rule))
                     logger.debug('sale_status: {}'.format(sale_status))
                     # 打开免费种刷流时，非免费种子跳过
-                    if my_site.brush_free and (not sale_status or sale_status.lower().find('free') < 0):
-                        logger.debug('非免费种子跳过')
+                    # if my_site.brush_free and (not sale_status or sale_status.lower().find('free') < 0):
+                    #     logger.debug('非免费种子跳过')
                     title_list = tr.xpath(site.torrent_subtitle_rule)
                     logger.debug(title_list)
                     subtitle = ''.join(title_list).strip('剩余时间：').strip('剩餘時間：').replace(
@@ -2420,7 +2420,9 @@ class PtSpider:
                     # logger.debug(type(seeders), type(leechers), type(completers), )
                     # logger.debug(seeders, leechers, completers)
                     # logger.debug(''.join(tr.xpath(site.title_rule)))
-                    category = ''.join(tr.xpath(site.torrent_category_rule))
+                    category = ''.join(
+                        tr.xpath(site.torrent_category_rule)
+                    ).replace("styles/HHan/icons/icon-", "").replace(".svg", "")
                     file_parse_size = ''.join(tr.xpath(site.torrent_size_rule))
                     # file_parse_size = ''.join(tr.xpath(''))
                     logger.debug(file_parse_size)
@@ -2553,7 +2555,7 @@ class PtSpider:
                             "size": t.get("size"),
                         })
                     res = requests.post(
-                        'http://100.64.118.55:8000/api/website/torrents/repeat',
+                        url=f"{os.getenv('REPEAT_SERVER', 'http://100.64.118.55:8081')}/api/website/torrents/repeat",
                         json=repeat_data,
                         headers={"content-type": "application/json"}
                     )

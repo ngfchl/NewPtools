@@ -1811,7 +1811,7 @@ def push_torrents_to_sever():
     logger.info(f'当前共有符合条件的种子：{len(torrents)}')
     # 推送到服务器
     res = requests.post(
-        url="http://repeat.ptools.fun/api/website/torrents/multiple",
+        url=f"{os.getenv('REPEAT_SERVER', 'http://100.64.118.55:8081')}/api/website/torrents/multiple",
         json=[t.to_dict(exclude=['id']) for t in torrents],
         headers={
             "content-type": "application/json",
@@ -1820,6 +1820,7 @@ def push_torrents_to_sever():
         }
     )
     # 已存档的种子更新状态为6==已推送到服务器
-    torrents.filter(state__gte=5).update(state=6)
+    if res.status_code == 200:
+        torrents.filter(state__gte=5).update(state=6)
     logger.info(res.json())
     return res.json().get('msg')

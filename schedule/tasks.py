@@ -1080,6 +1080,8 @@ def import_from_ptpp(self, data_list: List):
 # @shared_task
 @shared_task(bind=True, base=BaseTask)
 def auto_repeat_torrent(self):
+    res = toolbox.push_torrents_to_sever()
+    logger.info(f'本地种子数据推送到辅种服务器：{res}')
     # 加载辅种配置项
     repeat = toolbox.parse_toml('repeat')
     logger.debug(f'加载辅种配置项: {repeat}')

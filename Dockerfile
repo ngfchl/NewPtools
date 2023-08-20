@@ -32,6 +32,7 @@ ENV TOKEN='' \
     DJANGO_SUPERUSER_USERNAME=admin \
     DJANGO_SUPERUSER_EMAIL=admin@email.com \
     DJANGO_SUPERUSER_PASSWORD=adminadmin \
+    REPEAT_SERVER=http://repeat.ptools.fun \
     DJANGO_WEB_PORT=8000 \
     REDIS_SERVER_PORT=6379 \
     WEBUI_PORT=80 \

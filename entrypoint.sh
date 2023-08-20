@@ -96,9 +96,14 @@ function init_supervisor() {
   for file in /ptools/supervisor/product/*.ini; do
     sed -i "s/-l INFO/-l $LOGGER_LEVEL/g" "$file"
   done
-  sed -i "s/--port 6379/--port $REDIS_SERVER_PORT/g" /ptools/supervisor/product/redis.ini
-  sed -i "s/--port=5566/--port=$FLOWER_UI_PORT/g" /ptools/supervisor/product/supervisor_celery_flower.ini
 
+  sed -i "s/--port=5566/--port=$FLOWER_UI_PORT/g" /ptools/supervisor/product/supervisor_celery_flower.ini
+  if [ $CACHE_REDIS_CONNECTION ]; then
+    INFO "检测到外部 Redis 设置，屏蔽内部 Redis"
+    mv /ptools/supervisor/product/redis.ini /ptools/supervisor/product/redis.ini.bak
+  else
+    sed -i "s/--port 6379/--port $REDIS_SERVER_PORT/g" /ptools/supervisor/product/redis.ini
+  fi
 }
 
 function upgrade() {

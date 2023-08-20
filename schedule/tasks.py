@@ -47,9 +47,11 @@ def auto_reload_supervisor():
     :return:
     """
     # 拉取最新代码
-    res = subprocess.run(["git", "pull"])
+    res = subprocess.run(["git", "reset", "--hard"], stdout=subprocess.PIPE)
+    logger.debug(res.stdout.decode('utf8'))
+    res = subprocess.run(["git", "pull"], stdout=subprocess.PIPE)
     if res.returncode == 0:
-        toolbox.send_text(title="自动更新中", message="代码更新完成，正在重载服务...")
+        toolbox.send_text(title="自动更新中", message=f"代码更新完成，{res.stdout}  \n正在重载服务...")
         # 重载服务
         subprocess.run(["supervisorctl", "reload"])
 

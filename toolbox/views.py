@@ -200,14 +200,18 @@ def verify_token():
         result = subprocess.run(['supervisorctl', 'shutdown'], check=True, text=True, capture_output=True)
         logger.debug(f'Successfully executed command: {result.stdout}')
         return '您的软件未经授权，如果您喜欢本软件，欢迎付费购买授权或申请临时授权。'
-    res = requests.get('http://api.ptools.fun/neice/check', params={
+    res = requests.get('http://repeat.ptools.fun/api/user/verify', params={
         "token": token,
         "email": os.getenv("DJANGO_SUPERUSER_EMAIL", None)
     })
     if res.status_code == 200 and res.json().get('code') == 0:
         return res.json().get('msg')
     else:
-        return '您的软件使用授权到期了！如果您喜欢本软件，欢迎付费购买授权或申请临时授权。'
+        msg = f'您的软件使用授权到期了！如果您喜欢本软件，欢迎付费购买授权或申请临时授权。{res.json().get("msg")}'
+        logger.error(msg)
+        result = subprocess.run(['supervisorctl', 'shutdown'], check=True, text=True, capture_output=True)
+        logger.error(f'Successfully executed command: {result.stdout}')
+        return msg
 
 
 def send_text(message: str, title: str = '', url: str = None):

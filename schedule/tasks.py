@@ -343,9 +343,9 @@ def auto_get_torrents(self, *site_list: List[int]):
                             if notice_category_enable.get('free_space', False):
                                 toolbox.send_text(msg)
                             break
-                        count_torrents = len(main_data.get('torrents'))
+                        count_torrents = len(client.torrents.info.downloading())
                         if count_torrents >= downloader.count_torrents:
-                            logger.warning(f'{my_site.downloader.name} 种子数量已达到设定的上限！')
+                            logger.warning(f'{my_site.downloader.name} 正在下载的种子数量已达到设定的上限！')
                             break
                         category = f'{site.nickname}-{torrent.tid}' if not torrent.hash_string else site.nickname
                         magnet_url = f'{site.url}{site.page_download.format(torrent.tid)}&passkey={my_site.passkey}'

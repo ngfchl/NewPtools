@@ -31,9 +31,9 @@ from website.models import WebSite
 logger = logging.getLogger('ptools')
 # 引入线程池
 if os.getenv('MYSQL_CONNECTION'):
-    cpu_count = os.cpu_count() if os.cpu_count() <= 16 else 16
+    cpu_count = os.cpu_count() if os.cpu_count() <= 16 else os.getenv("THREAD_COUNT", 16)
 else:
-    cpu_count = os.cpu_count() if os.cpu_count() <= 8 else 8
+    cpu_count = os.cpu_count() if os.cpu_count() <= 8 else os.getenv("THREAD_COUNT", 8)
 pool = ThreadPool(cpu_count)
 pt_spider = PtSpider()
 notice = toolbox.parse_toml("notice")

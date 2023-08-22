@@ -257,8 +257,6 @@ CELERY_RESULT_EXPIRES = 60 * 60 * 24
 CELERY_TIMEZONE = "Asia/Shanghai"
 # 定时任务数据库配置
 CELERY_BEAT_SCHEDULER = 'django_celery_beat.schedulers.DatabaseScheduler'
-# 事实上并不是 worker 数量越多越好，保证任务不堆积，加上一些新增任务的预留就可以了
-CELERYD_CONCURRENCY = 10
 
 # celery worker 每次去 redis 取任务的数量，默认值就是 4
 CELERYD_PREFETCH_MULTIPLIER = 4

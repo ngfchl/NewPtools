@@ -320,7 +320,7 @@ def send_text(message: str, title: str = '', url: str = None):
                 if proxy:
                     apihelper.proxy = proxy
                 max_length = 4096  # 最大消息长度限制
-                parse_mode = notify.get('parse_mode') if notify.get('parse_mode') else "HTML"
+                parse_mode = notify.get('parse_mode') if notify.get('parse_mode') else "Markdown"
                 if len(message) <= max_length:
                     bot.send_message(telegram_chat_id, message, parse_mode=parse_mode)  # 如果消息长度不超过最大限制，直接发送消息
                 else:

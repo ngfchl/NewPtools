@@ -42,6 +42,7 @@ ENV TOKEN='' \
     GIT_PROXY='' \
     AUTO_UPDATE=false \
     BRANCH="master" \
+    DISTRIBUTE_CLIENT=false \
     LOGGER_LEVEL="DEBUG"
 
 RUN set -ex && \

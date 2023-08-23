@@ -97,13 +97,22 @@ function init_supervisor() {
     sed -i "s/-l INFO/-l $LOGGER_LEVEL/g" "$file"
   done
 
-  sed -i "s/--port=5566/--port=$FLOWER_UI_PORT/g" /ptools/supervisor/product/supervisor_celery_flower.ini
-  if [ $CACHE_REDIS_CONNECTION ]; then
-    INFO "检测到外部 Redis 设置，屏蔽内部 Redis"
-    mv /ptools/supervisor/product/redis.ini /ptools/supervisor/product/redis.ini.bak
+  if [ $DISTRIBUTE_CLIENT ]; then
+      INFO "检测到本实例为分布式客户端，不再启动定时任务检测"
+      mv /ptools/supervisor/product/supervisor_celery_beat.ini /ptools/supervisor/product/supervisor_celery_beat.ini.bak
   else
-    sed -i "s/--port 6379/--port $REDIS_SERVER_PORT/g" /ptools/supervisor/product/redis.ini
+    INFO "初始化 Redis 。。。"
+    if [ $CACHE_REDIS_CONNECTION ]; then
+      INFO "检测到外部 Redis 设置，屏蔽内部 Redis"
+      mv /ptools/supervisor/product/redis.ini /ptools/supervisor/product/redis.ini.bak
+    else
+      sed -i "s/--port 6379/--port $REDIS_SERVER_PORT/g" /ptools/supervisor/product/redis.ini
+    fi
   fi
+
+  INFO "初始化 Celery Flower 。。。"
+  sed -i "s/--port=5566/--port=$FLOWER_UI_PORT/g" /ptools/supervisor/product/supervisor_celery_flower.ini
+
 }
 
 function upgrade() {

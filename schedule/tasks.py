@@ -418,7 +418,7 @@ def auto_get_torrents(self, *site_list: List[int]):
     if notice_category_enable.get("brush_free_notice", True):
         toolbox.send_text(title='通知：拉取最新种子', message='\n'.join(message_list))
     else:
-        if len(message_failed) > 0:
+        if len(message_failed) > 1:
             toolbox.send_text(title='通知：拉取最新种子', message='\n'.join(message_failed))
 
     # 释放内存

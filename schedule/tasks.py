@@ -340,7 +340,8 @@ def auto_get_torrents(self, *site_list: List[int]):
                         main_data = client.sync_maindata()
                         free_space = main_data.get('server_state').get('free_space_on_disk')
                         if free_space <= downloader.reserved_space * 1024 * 1024 * 1024:
-                            msg = f'{downloader.name} 磁盘空间已达到临界值！{downloader.reserved_space}GB，当前空间：{free_space}'
+                            msg = (f'{downloader.name} 磁盘空间已达到临界值！{downloader.reserved_space} GB，'
+                                   f'当前空间：{free_space / 1024 / 1024 / 1024} GB ')
                             logger.info(msg)
                             if notice_category_enable.get('free_space', False):
                                 toolbox.send_text(msg)
@@ -415,6 +416,10 @@ def auto_get_torrents(self, *site_list: List[int]):
     logger.info(consuming)
     if notice_category_enable.get("brush_free_notice", True):
         toolbox.send_text(title='通知：拉取最新种子', message='\n'.join(message_list))
+    else:
+        if len(message_failed) > 0:
+            toolbox.send_text(title='通知：拉取最新种子', message='\n'.join(message_failed))
+
     # 释放内存
     gc.collect()
     return consuming

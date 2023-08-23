@@ -556,11 +556,13 @@ def auto_get_rss(self, *site_list: List[int]):
                         break
                     torrent.magnet_url = f'{website.url}{website.page_download.format(torrent.tid)}'
                     logger.info(f'正在推送种子：{torrent.title}')
+                    repeat = toolbox.parse_toml("repeat")
+                    is_paused = repeat.get("repeat_helper", False)
                     res = toolbox.push_torrents_to_downloader(
                         client, downloader_category,
                         urls=torrent.magnet_url,
                         cookie=my_site.cookie,
-                        is_paused=my_site.package_file and downloader.package_files,
+                        is_paused=(my_site.package_file and downloader.package_files) or is_paused,
                         category=f'{website.nickname}-{torrent.tid}',
                         upload_limit=int(website.limit_speed * 0.92)
                     )

@@ -100,6 +100,7 @@ function init_supervisor() {
   if [ $DISTRIBUTE_CLIENT ]; then
       INFO "检测到本实例为分布式客户端，不再启动定时任务检测"
       mv /ptools/supervisor/product/supervisor_celery_beat.ini /ptools/supervisor/product/supervisor_celery_beat.ini.bak
+      mv /ptools/supervisor/product/redis.ini /ptools/supervisor/product/redis.ini.bak
   else
     INFO "初始化 Redis 。。。"
     if [ $CACHE_REDIS_CONNECTION ]; then

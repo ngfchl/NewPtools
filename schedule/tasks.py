@@ -360,7 +360,8 @@ def auto_get_torrents(self, *site_list: List[int]):
                             cookie=my_site.cookie,
                             category=category,
                             is_paused=my_site.package_file and downloader.package_files,
-                            upload_limit=int(site.limit_speed * 0.92)
+                            upload_limit=int(site.limit_speed * 0.92),
+                            use_auto_torrent_management=False,
                         )
                         if res.code == 0:
                             logger.info(res.msg)

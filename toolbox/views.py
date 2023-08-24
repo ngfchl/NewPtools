@@ -207,10 +207,10 @@ def verify_token():
     if res.status_code == 200 and res.json().get('code') == 0:
         return res.json().get('msg')
     else:
-        msg = f'您的软件使用授权到期了！如果您喜欢本软件，欢迎付费购买授权或申请临时授权。{res.json().get("msg")}'
+        msg = f'您的软件使用授权到期，或连接授权服务器失败！{res.json().get("msg")}'
         logger.error(msg)
-        result = subprocess.run(['supervisorctl', 'shutdown'], check=True, text=True, capture_output=True)
-        logger.error(f'Successfully executed command: {result.stdout}')
+        # result = subprocess.run(['supervisorctl', 'shutdown'], check=True, text=True, capture_output=True)
+        # logger.error(f'Successfully executed command: {result.stdout}')
         return msg
 
 

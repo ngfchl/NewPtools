@@ -1816,20 +1816,33 @@ def push_torrents_to_sever():
         )
         logger.info(f'当前共有符合条件的种子：{len(torrents)}')
         # 推送到服务器
-        res = requests.post(
-            url=f"{os.getenv('REPEAT_SERVER', 'http://100.64.118.55:8081')}/api/website/torrents/multiple",
-            json=[t.to_dict(exclude=['id']) for t in torrents],
-            headers={
-                "content-type": "application/json",
-                "AUTHORIZATION": os.getenv("TOKEN"),
-                "EMAIL": os.getenv("DJANGO_SUPERUSER_EMAIL"),
-            }
-        )
-        # 已存档的种子更新状态为6==已推送到服务器
-        if res.status_code == 200:
-            torrents.filter(state__gte=5).update(state=6)
-        logger.info(res.text)
-        return res.json().get('msg')
+        msg = []
+        while torrents:
+            chunks = torrents[:200]  # 从消息中截取最大长度的部分
+            try:
+                res = requests.post(
+                    url=f"{os.getenv('REPEAT_SERVER', 'http://100.64.118.55:8081')}/api/website/torrents/multiple",
+                    json=[t.to_dict(exclude=['id']) for t in chunks],
+                    headers={
+                        "content-type": "application/json",
+                        "AUTHORIZATION": os.getenv("TOKEN"),
+                        "EMAIL": os.getenv("DJANGO_SUPERUSER_EMAIL"),
+                    }
+                )
+
+                # 已存档的种子更新状态为6==已推送到服务器
+                if res.status_code == 200:
+                    torrents.filter(id__in=[t.id for t in chunks]).update(state=6)
+                    msg.append(f"成功上传{len(chunks)} 条种子信息：{res.json().get('msg')}")
+                else:
+                    logger.info(res.text)
+                    msg.append(f"{len(chunks)} 条种子信息上传失败！{res.json().get('msg')}")
+            except Exception as e:
+                err_msg = f'推送种子信息到服务器失败！{e}'
+                logger.error(err_msg)
+                msg.append(msg)
+                logger.error(traceback.format_exc(5))
+        return '\n'.join(msg)
     except Exception as e:
         msg = f'推送种子信息到服务器失败！{e}'
         logger.error(msg)

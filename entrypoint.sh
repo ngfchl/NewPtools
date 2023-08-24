@@ -97,7 +97,7 @@ function init_supervisor() {
     sed -i "s/-l INFO/-l $LOGGER_LEVEL/g" "$file"
   done
 
-  if [ $DISTRIBUTE_CLIENT ]; then
+  if [ $DISTRIBUTE_CLIENT = true ]; then
       INFO "检测到本实例为分布式客户端，不再启动定时任务检测"
       mv /ptools/supervisor/product/supervisor_celery_beat.ini /ptools/supervisor/product/supervisor_celery_beat.ini.bak
       mv /ptools/supervisor/product/redis.ini /ptools/supervisor/product/redis.ini.bak

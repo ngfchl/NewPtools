@@ -2541,6 +2541,7 @@ class PtSpider:
             repeat = toolbox.parse_toml('repeat')
             logger.debug(f'加载辅种配置项: {repeat}')
             limit = repeat.get('limit', 15)
+            iyuu_token = repeat.get('iyuu_token')
             push_once = repeat.get('push_once', 200)
             cache_expire = repeat.get('cache_expire', 604800)
             interval = repeat.get('interval', 0)
@@ -2571,7 +2572,7 @@ class PtSpider:
                         url=f"{os.getenv('REPEAT_SERVER', 'http://100.64.118.55:8081')}/api/website/torrents/repeat",
                         json={
                             "data": repeat_data,
-                            "iyuu_token": "IYUU10227T6942484114699c63a6df9bc30f3c81f1bd1cd9b4"
+                            "iyuu_token": iyuu_token,
                         },
                         headers={
                             "content-type": "application/json",
@@ -2711,7 +2712,7 @@ class PtSpider:
                         url=f"{os.getenv('REPEAT_SERVER', 'http://100.64.118.55:8081')}/api/website/torrents/repeat",
                         json={
                             "data": repeat_data,
-                            "iyuu_token": "IYUU10227T6942484114699c63a6df9bc30f3c81f1bd1cd9b4"
+                            "iyuu_token": iyuu_token,
                         },
                         headers={
                             "content-type": "application/json",

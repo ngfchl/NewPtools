@@ -1809,23 +1809,29 @@ def sync_cookie_from_cookie_cloud(server: str, key: str, password: str):
 
 
 def push_torrents_to_sever():
-    # 从数据库读取一推送到下载器，未推送到服务器，且，hash 等信息已完善的种子
-    torrents = TorrentInfo.objects.filter(state__gte=1, state__lt=6).exclude(hash_string__exact='').exclude(
-        Q(pieces_qb__exact='') & Q(pieces_tr__exact='')
-    )
-    logger.info(f'当前共有符合条件的种子：{len(torrents)}')
-    # 推送到服务器
-    res = requests.post(
-        url=f"{os.getenv('REPEAT_SERVER', 'http://100.64.118.55:8081')}/api/website/torrents/multiple",
-        json=[t.to_dict(exclude=['id']) for t in torrents],
-        headers={
-            "content-type": "application/json",
-            "AUTHORIZATION": os.getenv("TOKEN"),
-            "EMAIL": os.getenv("DJANGO_SUPERUSER_EMAIL"),
-        }
-    )
-    # 已存档的种子更新状态为6==已推送到服务器
-    if res.status_code == 200:
-        torrents.filter(state__gte=5).update(state=6)
-    logger.info(res.json())
-    return res.json().get('msg')
+    try:
+        # 从数据库读取一推送到下载器，未推送到服务器，且，hash 等信息已完善的种子
+        torrents = TorrentInfo.objects.filter(state__gte=1, state__lt=6).exclude(hash_string__exact='').exclude(
+            Q(pieces_qb__exact='') & Q(pieces_tr__exact='')
+        )
+        logger.info(f'当前共有符合条件的种子：{len(torrents)}')
+        # 推送到服务器
+        res = requests.post(
+            url=f"{os.getenv('REPEAT_SERVER', 'http://100.64.118.55:8081')}/api/website/torrents/multiple",
+            json=[t.to_dict(exclude=['id']) for t in torrents],
+            headers={
+                "content-type": "application/json",
+                "AUTHORIZATION": os.getenv("TOKEN"),
+                "EMAIL": os.getenv("DJANGO_SUPERUSER_EMAIL"),
+            }
+        )
+        # 已存档的种子更新状态为6==已推送到服务器
+        if res.status_code == 200:
+            torrents.filter(state__gte=5).update(state=6)
+        logger.info(res.text)
+        return res.json().get('msg')
+    except Exception as e:
+        msg = f'推送种子信息到服务器失败！{e}'
+        logger.error(msg)
+        logger.error(traceback.format_exc(5))
+        return msg

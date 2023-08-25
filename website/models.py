@@ -179,7 +179,7 @@ class WebSite(BaseEntity):
         max_length=128)
     torrent_tags_rule = models.CharField(
         verbose_name='种子标签',
-        default='//a[contains(@href,"detail")]/../span[contains(@style,"background-color")]/text()',
+        default='.//a[contains(@href,"detail")]/../span[contains(@style,"background-color")]/text()',
         max_length=128)
     torrent_detail_url_rule = models.CharField(
         verbose_name='种子详情',

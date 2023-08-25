@@ -173,12 +173,14 @@ class WebSite(BaseEntity):
     torrent_title_rule = models.CharField(verbose_name='种子名称',
                                           default='.//td[@class="embedded"]/a/b/text()',
                                           max_length=128)
-    torrent_subtitle_rule = models.CharField(verbose_name='种子标题',
-                                             default='.//a[contains(@href,"detail")]/parent::td/text()[last()]',
-                                             max_length=128)
-    torrent_tags_rule = models.CharField(verbose_name='种子标签',
-                                         default='.//a[contains(@href,"detail")]/parent::td/br/following::span/@title',
-                                         max_length=128)
+    torrent_subtitle_rule = models.CharField(
+        verbose_name='种子标题',
+        default='.//a[contains(@href,"detail")]/parent::td/text()[last()]',
+        max_length=128)
+    torrent_tags_rule = models.CharField(
+        verbose_name='种子标签',
+        default='//a[contains(@href,"detail")]/../span[contains(@style,"background-color")]/text()',
+        max_length=128)
     torrent_detail_url_rule = models.CharField(
         verbose_name='种子详情',
         default='.//td[@class="embedded"]/a[contains(@href,"detail")]/@href',

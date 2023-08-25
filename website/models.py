@@ -4,12 +4,6 @@ from auxiliary.base import BaseEntity
 
 
 # Create your models here.
-def get_search_params():
-    return {"免费": "spstate=2",
-            "2X": "spstate=3",
-            "2X免费": "spstate=4",
-            "50%": "spstate=5",
-            "2X 50%": "spstate=6", }
 
 
 class WebSite(BaseEntity):
@@ -79,13 +73,6 @@ class WebSite(BaseEntity):
     hr_rate = models.IntegerField(verbose_name='HR分享率', default=2, help_text='站点要求HR种子的分享率，最小：1')
     hr_time = models.IntegerField(verbose_name='HR时间', default=10, help_text='站点要求HR种子最短做种时间，单位：小时')
 
-    # 搜索
-    search_params = models.CharField(
-        verbose_name='促销参数',
-        default=get_search_params,
-        help_text='字典格式：{"accept":"application/json","c":"d"}',
-        max_length=256
-    )
     # 状态信息XPath
     my_invitation_rule = models.CharField(
         verbose_name='邀请资格',
@@ -189,6 +176,9 @@ class WebSite(BaseEntity):
     torrent_subtitle_rule = models.CharField(verbose_name='种子标题',
                                              default='.//a[contains(@href,"detail")]/parent::td/text()[last()]',
                                              max_length=128)
+    torrent_tags_rule = models.CharField(verbose_name='种子标签',
+                                         default='.//a[contains(@href,"detail")]/parent::td/br/following::span/@title',
+                                         max_length=128)
     torrent_detail_url_rule = models.CharField(
         verbose_name='种子详情',
         default='.//td[@class="embedded"]/a[contains(@href,"detail")]/@href',
@@ -248,7 +238,11 @@ class WebSite(BaseEntity):
         max_length=128)
     detail_download_url_rule = models.CharField(
         verbose_name='详情页种子链接',
-        default='//a[@class="index" and contains(@href,"download.php")]/@href',
+        default='//td[contains(text(),"种子链接")]/following-sibling::td/a/@href',
+        max_length=128)
+    detail_tags_rule = models.CharField(
+        verbose_name='详情页标签',
+        default='//td[contains(text(),"标签")]/following-sibling::td//text()',
         max_length=128)
     detail_size_rule = models.CharField(
         verbose_name='详情页种子大小',
@@ -258,9 +252,9 @@ class WebSite(BaseEntity):
         verbose_name='详情页种子类型',
         default='//td/b[contains(text(),"类型")]/following-sibling::text()[1]',
         max_length=128)
-    detail_area_rule = models.CharField(
-        verbose_name='详情页种子地区',
-        default='//h1/following::td/b[contains(text(),"地区")]/text()',
+    detail_poster_rule = models.CharField(
+        verbose_name='详情页海报',
+        default='//td/a/span[contains(text(),"简介")]/parent::a/parent::td/following-sibling::td//img[1]',
         max_length=128)
     detail_count_files_rule = models.CharField(
         verbose_name='详情页文件数',
@@ -273,20 +267,19 @@ class WebSite(BaseEntity):
         max_length=128)
     detail_free_rule = models.CharField(
         verbose_name='详情页促销标记',
-        default='//td//b[contains(text(),"大小")]/following::text()[1]',
+        default='//h1/b/font/@class',
         max_length=128)
     detail_free_expire_rule = models.CharField(
         verbose_name='详情页促销时间',
-        default='//h1/b/font[contains(@class,"free")]/parent::b/following-sibling::b/span/@title',
+        default='//h1/font/span/@title',
         max_length=128)
     detail_douban_rule = models.CharField(
         verbose_name='详情页豆瓣信息',
-        help_text='提取做种列表中文件大小计算总量',
         default='//td/a[starts-with(@href,"https://movie.douban.com/subject/")][1]',
         max_length=128)
-    detail_year_publish_rule = models.CharField(
-        verbose_name='发行年份',
-        default='//td/b[contains(text(),"发行版年份")]/text()',
+    detail_imdb_rule = models.CharField(
+        verbose_name='IMDB',
+        default='//a[@class="faqlink" and starts-with(@href,"https://www.imdb.com/title/")]/@href',
         max_length=128)
 
     class Meta:

@@ -2441,7 +2441,7 @@ class PtSpider:
                     logger.debug(f'title：{site}\n size: {file_size}\n category：{category}\n '
                                  f'magnet_url：{magnet_url}\n subtitle：{subtitle}\n sale_status：{sale_status}\n '
                                  f'sale_expire：{sale_expire}\n seeders：{seeders}\n leechers：{leechers}\n'
-                                 f'H&R：{hr}\n completers：{completers}')
+                                 f'H&R：{hr}\n poster_url：{poster_url}\n tags：{tags}')
                     result = TorrentInfo.objects.update_or_create(
                         site=my_site,
                         tid=tid,

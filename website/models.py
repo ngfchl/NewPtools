@@ -281,6 +281,10 @@ class WebSite(BaseEntity):
         verbose_name='IMDB',
         default='//a[@class="faqlink" and starts-with(@href,"https://www.imdb.com/title/")]/@href',
         max_length=128)
+    detail_hr_rule = models.CharField(
+        verbose_name='H&R',
+        default='//h1/img[@class="hitandrun"]/@title',
+        max_length=128)
 
     class Meta:
         verbose_name = '站点信息'

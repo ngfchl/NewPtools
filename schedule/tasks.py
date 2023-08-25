@@ -53,7 +53,12 @@ def auto_reload_supervisor():
     if res.returncode == 0:
         logger.info(f'开始修复权限')
         res = subprocess.run(["chmod", "-R", "755", "."], stdout=subprocess.PIPE)
+        logger.info(res.stdout.decode('utf8'))
         toolbox.send_text(title="自动更新中", message=f"代码更新完成，{res.stdout.decode('utf8')}  \n正在重载服务...")
+        logger.info(f'开始同步数据库')
+        res = subprocess.run(["python", "manage.py", "migrate"], stdout=subprocess.PIPE)
+        logger.info(res.stdout.decode('utf8'))
+
         # 重载服务
         subprocess.run(["supervisorctl", "reload"])
 

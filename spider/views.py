@@ -1958,18 +1958,20 @@ class PtSpider:
             size = ''.join(self.parse(website, torrent_detail, website.detail_size_rule))
             files_count = ''.join(self.parse(website, torrent_detail, website.detail_count_files_rule))
             return CommonResponse.success(data={
+                'title': ''.join(self.parse(website, torrent_detail, website.detail_title_rule)),
                 'subtitle': ''.join(self.parse(website, torrent_detail, website.detail_subtitle_rule)),
                 'magnet_url': download_url if download_url.startswith(
                     'http') else f'{mirror}{download_url.lstrip("/")}',
                 'size': toolbox.FileSizeConvert.parse_2_byte(size.replace('\xa0', '')),
                 'category': ''.join(self.parse(website, torrent_detail, website.detail_category_rule)).strip(),
-                'area': ''.join(self.parse(website, torrent_detail, website.detail_area_rule)),
+                'tags': ''.join(self.parse(website, torrent_detail, website.detail_tags_rule)),
                 'files_count': toolbox.get_decimals(files_count),
                 'hash_string': ''.join(self.parse(website, torrent_detail, website.detail_hash_rule)),
                 'sale_status': ''.join(self.parse(website, torrent_detail, website.detail_free_rule)),
                 'sale_expire': ''.join(self.parse(website, torrent_detail, website.detail_free_expire_rule)),
                 'douban_url': ''.join(self.parse(website, torrent_detail, website.detail_douban_rule)),
-                'year_publish': ''.join(self.parse(website, torrent_detail, website.detail_year_publish_rule)),
+                'imdb_url': ''.join(self.parse(website, torrent_detail, website.detail_imdb_rule)),
+                'poster': ''.join(self.parse(website, torrent_detail, website.detail_poster_rule)),
             })
         except Exception as e:
             logger.error(traceback.format_exc(3))
@@ -2434,7 +2436,8 @@ class PtSpider:
                     logger.debug(file_parse_size)
                     file_size = toolbox.FileSizeConvert.parse_2_byte(file_parse_size)
                     # subtitle = subtitle if subtitle else title
-                    # poster_url = ''.join(tr.xpath(site.torrent_poster_rule))  # 海报链接
+                    poster_url = ''.join(tr.xpath(site.torrent_poster_rule))  # 海报链接
+                    tags = ','.join(tr.xpath(site.torrent_tags_rule))  # 标签
                     logger.debug(f'title：{site}\n size: {file_size}\n category：{category}\n '
                                  f'magnet_url：{magnet_url}\n subtitle：{subtitle}\n sale_status：{sale_status}\n '
                                  f'sale_expire：{sale_expire}\n seeders：{seeders}\n leechers：{leechers}\n'
@@ -2447,7 +2450,8 @@ class PtSpider:
                             'magnet_url': magnet_url,
                             'title': title,
                             'subtitle': subtitle,
-                            # 'detail_url': detail_url,
+                            'tags': tags,
+                            'poster': poster_url,
                             'sale_status': sale_status,
                             'sale_expire': sale_expire,
                             'hr': hr,

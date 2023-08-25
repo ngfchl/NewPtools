@@ -20,7 +20,7 @@ class WebSiteMonkeySchemaOut(ModelSchema):
             'page_message', 'page_hr', 'page_leeching', 'page_uploaded',
             'page_seeding', 'page_completed', 'page_mybonus', 'page_viewfilelist',
             'sign_info_title', 'sign_info_content', 'hr', 'hr_rate',
-            'hr_time', 'search_params', 'created_at', 'updated_at'
+            'hr_time', 'created_at', 'updated_at'
         ]
 
 

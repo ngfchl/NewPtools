@@ -3,6 +3,8 @@ import time
 import traceback
 import urllib.parse
 
+import qbittorrentapi
+import transmission_rpc
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404
 from ninja import Router
@@ -25,6 +27,37 @@ router = Router(tags=['download'])
 def get_downloaders(request):
     downloaders = Downloader.objects.all()
     return CommonResponse.success(data=list(downloaders))
+
+
+@router.get('/downloader/test', response=CommonResponse)
+def test_connect(request, downloader_id):
+    try:
+        downloader = Downloader.objects.filter(id=downloader_id).first()
+        if downloader.category == DownloaderCategory.qBittorrent:
+            client = qbittorrentapi.Client(
+                host=downloader.host,
+                port=downloader.port,
+                username=downloader.username,
+                password=downloader.password,
+                SIMPLE_RESPONSES=True,
+                REQUESTS_ARGS={
+                    'timeout': (3.1, 30)
+                }
+            )
+            client.auth_log_in()
+        else:
+            client = transmission_rpc.Client(
+                host=downloader.host, port=downloader.port,
+                protocol=downloader.http,
+                username=downloader.username, password=downloader.password
+            )
+        msg = f'下载器：{downloader.name} 连接成功！'
+        logger.info(msg=msg)
+        return CommonResponse.success(msg=msg)
+    except Exception as e:
+        msg = f"下载器：{downloader_id} 连接失败！"
+        logger.error(msg)
+        return CommonResponse.error(msg=msg)
 
 
 @router.get('/downloader', response=CommonResponse[DownloaderSchemaIn])

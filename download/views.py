@@ -31,6 +31,10 @@ def get_downloaders(request):
 def test_connect(request, downloader_id):
     try:
         downloader = Downloader.objects.filter(id=downloader_id).first()
+        if not downloader:
+            msg = f"请确认当前所选下载器是否存在！"
+            logger.error(msg)
+            return CommonResponse.error(msg=msg)
         client, category = toolbox.get_downloader_instance(downloader_id)
         msg = f'下载器：{downloader.name} 连接成功！'
         logger.info(msg=msg)

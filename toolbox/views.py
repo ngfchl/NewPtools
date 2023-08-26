@@ -461,7 +461,7 @@ def get_downloader_instance(downloader_id):
                 password=downloader.password,
                 SIMPLE_RESPONSES=True,
                 REQUESTS_ARGS={
-                    'timeout': (3.1, 30)
+                    'timeout': (5, 30)
                 }
             )
             client.auth_log_in()
@@ -469,7 +469,9 @@ def get_downloader_instance(downloader_id):
             client = transmission_rpc.Client(
                 host=downloader.host, port=downloader.port,
                 protocol=downloader.http,
-                username=downloader.username, password=downloader.password
+                username=downloader.username,
+                password=downloader.password,
+                timeout=30,
             )
         return client, downloader.category
     except Exception as e:

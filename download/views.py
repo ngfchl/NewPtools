@@ -36,6 +36,11 @@ def test_connect(request, downloader_id):
             logger.error(msg)
             return CommonResponse.error(msg=msg)
         client, category = toolbox.get_downloader_instance(downloader_id)
+        if not client:
+            # category在 client 为 None 时，为错误消息
+            msg = f"下载器：{downloader.name} 连接失败！{category}"
+            logger.error(msg)
+            return CommonResponse.error(msg=msg)
         msg = f'下载器：{downloader.name} 连接成功！'
         logger.info(msg=msg)
         return CommonResponse.success(msg=msg)

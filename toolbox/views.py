@@ -476,8 +476,9 @@ def get_downloader_instance(downloader_id):
         return client, downloader.category
     except Exception as e:
         logger.error(traceback.format_exc(3))
-        logger.exception(f'下载器连接失败：{e}')
-        return None, None
+        msg = f'下载器连接失败：{e}'
+        logger.exception(msg)
+        return None, msg
 
 
 def get_downloader_speed(downloader: Downloader):

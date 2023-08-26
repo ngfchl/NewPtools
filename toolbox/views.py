@@ -1848,3 +1848,49 @@ def push_torrents_to_sever():
         logger.error(msg)
         logger.error(traceback.format_exc(5))
         return msg
+
+
+def calculate_expiry_time_from_string(time_str):
+    """
+    解析mteam免费时间
+    :param time_str:
+    :return:
+    """
+
+    def parse_remaining_time(time_str):
+        # 检查是否是 "X 日 X 時" 格式
+        if "日" in time_str and "時" in time_str:
+            days = int(re.search(r"(\d+)\s*日", time_str).group(1))
+            hours = int(re.search(r"(\d+)\s*時", time_str).group(1))
+            return days, hours, 0
+
+        # 检查是否是 "X 時 X 分" 格式
+        elif "時" in time_str and "分" in time_str:
+            hours = int(re.search(r"(\d+)\s*時", time_str).group(1))
+            minutes = int(re.search(r"(\d+)\s*分", time_str).group(1))
+            return 0, hours, minutes
+
+        # 检查是否是 "X 分" 格式
+        elif "分" in time_str:
+            minutes = int(re.search(r"(\d+)\s*分", time_str).group(1))
+            return 0, 0, minutes
+
+        else:
+            raise ValueError("无法解析时间字符串")
+
+    def calculate_expiry_time(days: int, hours: int, minutes: int):
+        # 获取当前日期和时间
+        current_time = datetime.now()
+
+        # 计算剩余时间的时间差
+        time_difference = timedelta(days=days, hours=hours, minutes=minutes)
+
+        # 计算到期时间
+
+        return current_time + time_difference
+
+    # 解析字符串并计算到期时间
+    days, hours, minutes = parse_remaining_time(time_str)
+    expiry_time = calculate_expiry_time(days, hours, minutes)
+
+    return expiry_time

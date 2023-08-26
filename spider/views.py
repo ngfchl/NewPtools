@@ -7,7 +7,7 @@ import ssl
 import threading
 import time
 import traceback
-from datetime import datetime, timedelta
+from datetime import datetime
 from multiprocessing.dummy import Pool as ThreadPool
 from urllib.parse import urlparse, parse_qs
 
@@ -2281,50 +2281,137 @@ class PtSpider:
             return CommonResponse.error(msg=msg)
 
     @staticmethod
-    def calculate_expiry_time_from_string(time_str):
-        """
-        解析mteam免费时间
-        :param time_str:
-        :return:
-        """
+    def parse_torrent_list(tr, site, my_site):
+        sale_status = ''.join(tr.xpath(site.torrent_sale_rule))
+        logger.debug('sale_status: {}'.format(sale_status))
 
-        def parse_remaining_time(time_str):
-            # 检查是否是 "X 日 X 時" 格式
-            if "日" in time_str and "時" in time_str:
-                days = int(re.search(r"(\d+)\s*日", time_str).group(1))
-                hours = int(re.search(r"(\d+)\s*時", time_str).group(1))
-                return days, hours, 0
+        title_list = tr.xpath(site.torrent_subtitle_rule)
+        logger.debug(title_list)
+        subtitle = ''.join(title_list).strip('剩余时间：').strip('剩餘時間：').replace(
+            '&nbsp;', '').strip('()').strip()
+        title = ''.join(tr.xpath(site.torrent_title_rule)).replace('&nbsp;', '').strip()
+        if not title and not subtitle:
+            msg = f'未获取到标题与副标题，跳过本条消息！'
+            logger.error(msg)
+            return CommonResponse.error(msg=msg)
+        # sale_status = ''.join(re.split(r'[^\x00-\xff]', sale_status))
+        sale_status = sale_status.replace('tStatus ', '').upper().replace(
+            'FREE', 'Free'
+        ).replace('免费', 'Free').replace(' ', '')
+        # # 下载链接，下载链接已存在则跳过
+        href = ''.join(tr.xpath(site.torrent_magnet_url_rule))
+        logger.debug('href: {}'.format(href))
+        magnet_url = '{}{}'.format(
+            site.url,
+            href.replace('&type=zip', '').replace(site.url, '').lstrip('/')
+        )
+        logger.info('magnet_url: {}'.format(magnet_url))
+        if site.url in [
+            'https://totheglory.im/',
+        ]:
+            id_pattern = r'/dl/(\d+)/'
+            tid = re.search(id_pattern, href).group(1)
+        else:
+            parsed_url = urlparse(magnet_url)
+            tid = parse_qs(parsed_url.query).get("id")[0]
+        # 如果种子有HR，则为否 HR绿色表示无需，红色表示未通过HR考核
+        hr = False if tr.xpath(site.torrent_hr_rule) else True
+        # H&R 种子有HR且站点设置不下载HR种子,跳过，
+        if not hr and not my_site.hr_discern:
+            logger.debug('hr种子，未开启HR跳过')
+        # # 促销到期时间
+        sale_expire = ''.join(tr.xpath(site.torrent_sale_expire_rule))
+        if site.url in [
+            'https://www.beitai.pt/',
+            'http://www.oshen.win/',
+            'https://www.hitpt.com/',
+            'https://hdsky.me/',
+            'https://pt.keepfrds.com/',
+            # 'https://totheglory.im/',
+        ]:
+            """
+            由于备胎等站优惠结束日期格式特殊，所以做特殊处理,使用正则表达式获取字符串中的时间
+            """
+            sale_expire = ''.join(
+                re.findall(r'\d{4}\D\d{2}\D\d{2}\D\d{2}\D\d{2}\D', ''.join(sale_expire)))
 
-            # 检查是否是 "X 時 X 分" 格式
-            elif "時" in time_str and "分" in time_str:
-                hours = int(re.search(r"(\d+)\s*時", time_str).group(1))
-                minutes = int(re.search(r"(\d+)\s*分", time_str).group(1))
-                return 0, hours, minutes
-
-            # 检查是否是 "X 分" 格式
-            elif "分" in time_str:
-                minutes = int(re.search(r"(\d+)\s*分", time_str).group(1))
-                return 0, 0, minutes
-
+        if site.url in [
+            'https://totheglory.im/',
+        ]:
+            # javascript: alert('Freeleech将持续到2022年09月20日13点46分,加油呀~')
+            # 获取时间数据
+            time_array = re.findall(r'\d+', ''.join(sale_expire))
+            # 补足9位
+            logger.info(f'促销时间字符串：{time_array}')
+            if len(time_array) == 5:
+                time_array.extend([0, 0, 0, 0])
+                # 转化为标准时间字符串
+                sale_expire = time.strftime(
+                    "%Y-%m-%d %H:%M:%S",
+                    time.struct_time(tuple([int(x) for x in time_array]))
+                )
             else:
-                raise ValueError("无法解析时间字符串")
-
-        def calculate_expiry_time(days: int, hours: int, minutes: int):
-            # 获取当前日期和时间
-            current_time = datetime.now()
-
-            # 计算剩余时间的时间差
-            time_difference = timedelta(days=days, hours=hours, minutes=minutes)
-
-            # 计算到期时间
-
-            return current_time + time_difference
-
-        # 解析字符串并计算到期时间
-        days, hours, minutes = parse_remaining_time(time_str)
-        expiry_time = calculate_expiry_time(days, hours, minutes)
-
-        return expiry_time
+                sale_expire = None
+        if site.url in [
+            'https://kp.m-team.cc/',
+        ]:
+            # 限時：1時39分
+            try:
+                sale_expire = toolbox.calculate_expiry_time_from_string(sale_expire).strftime(
+                    '%Y-%m-%d %H:%M:%S')
+            except Exception as e:
+                sale_expire = ''
+        logger.debug(sale_expire)
+        if sale_expire.endswith(':'):
+            sale_expire = sale_expire + '00'
+        # 如果促销结束时间为空，则为无限期
+        sale_expire = None if not sale_expire else sale_expire
+        # logger.debug(torrent_info.sale_expire)
+        # 发布时间
+        on_release = ''.join(tr.xpath(site.torrent_release_rule))
+        # 做种人数
+        seeders = ''.join(tr.xpath(site.torrent_seeders_rule)).replace(',', '')
+        # 下载人数
+        leechers = ''.join(tr.xpath(site.torrent_leechers_rule)).replace(',', '')
+        # 完成人数
+        completers = ''.join(tr.xpath(site.torrent_completers_rule)).replace(',', '')
+        # 存在则更新，不存在就创建
+        # logger.debug(type(seeders), type(leechers), type(completers), )
+        # logger.debug(seeders, leechers, completers)
+        # logger.debug(''.join(tr.xpath(site.title_rule)))
+        category = ''.join(
+            tr.xpath(site.torrent_category_rule)
+        ).replace("styles/HHan/icons/icon-", "").replace(".svg", "")
+        file_parse_size = ''.join(tr.xpath(site.torrent_size_rule))
+        # file_parse_size = ''.join(tr.xpath(''))
+        logger.debug(file_parse_size)
+        file_size = toolbox.FileSizeConvert.parse_2_byte(file_parse_size)
+        # subtitle = subtitle if subtitle else title
+        poster_url = ''.join(tr.xpath(site.torrent_poster_rule))  # 海报链接
+        tags = ','.join(tr.xpath(site.torrent_tags_rule))  # 标签
+        logger.debug(f'title：{site}\n size: {file_size}\n category：{category}\n '
+                     f'magnet_url：{magnet_url}\n subtitle：{subtitle}\n sale_status：{sale_status}\n '
+                     f'sale_expire：{sale_expire}\n seeders：{seeders}\n leechers：{leechers}\n'
+                     f'H&R：{hr}\n poster_url：{poster_url}\n tags：{tags}')
+        torrent = {
+            'site': my_site.site,
+            'tid': tid,
+            'poster_url': poster_url,
+            'category': category,
+            'magnet_url': magnet_url,
+            'detail_url': f'{site.url}{site.page_detail.format(tid)}',
+            'title': title,
+            'subtitle': subtitle,
+            'sale_status': sale_status,
+            'sale_expire': sale_expire,
+            'hr': hr,
+            'published': on_release,
+            'size': file_size,
+            'seeders': int(seeders) if seeders else 0,
+            'leechers': int(leechers) if leechers else 0,
+            'completers': int(completers) if completers else 0,
+        }
+        return CommonResponse.success(data=torrent)
 
     def get_torrent_info_list(self, my_site: MySite, response: Response):
         count = 0
@@ -2341,137 +2428,31 @@ class PtSpider:
                 logger.info(f'{my_site.nickname} 共发现{len(trs)}条种子记录')
                 logger.info('=' * 50)
                 for tr in trs:
-                    logger.debug(tr)
-                    # logger.debug(etree.tostring(tr))
-                    sale_status = ''.join(tr.xpath(site.torrent_sale_rule))
-                    logger.debug('sale_status: {}'.format(sale_status))
-                    # 打开免费种刷流时，非免费种子跳过
-                    # if my_site.brush_free and (not sale_status or sale_status.lower().find('free') < 0):
-                    #     logger.debug('非免费种子跳过')
-                    title_list = tr.xpath(site.torrent_subtitle_rule)
-                    logger.debug(title_list)
-                    subtitle = ''.join(title_list).strip('剩余时间：').strip('剩餘時間：').replace(
-                        '&nbsp;', '').strip('()').strip()
-                    title = ''.join(tr.xpath(site.torrent_title_rule)).replace('&nbsp;', '').strip()
-                    if not title and not subtitle:
-                        logger.error('无名无姓？跳过')
+                    try:
+                        res = self.parse_torrent_list(tr, site, my_site)
+                        if res.code != 0:
+                            logger.error(res.msg)
+                            continue
+                        torrent_info = res.data
+                        result = TorrentInfo.objects.update_or_create(
+                            site=my_site,
+                            tid=torrent_info.get("tid"),
+                            defaults=torrent_info)
+                        logger.info('拉取种子：{} {}'.format(site.name, result[0].title))
+                        # time.sleep(0.5)
+                        if not result[1]:
+                            count += 1
+                        else:
+                            new_count += 1
+                            # logger.debug(torrent_info)
+                        # HR 与种子推送状态筛选
+                        torrent = result[0]
+                        if torrent.sale_status.find('Free') >= 0 and torrent.hr and torrent.state == 0:
+                            torrents.append(result[0])
+                    except Exception as e:
+                        err_msg = '当前种子解析出错啦！'
+                        logger.info(err_msg)
                         continue
-                    # sale_status = ''.join(re.split(r'[^\x00-\xff]', sale_status))
-                    sale_status = sale_status.replace('tStatus ', '').upper().replace(
-                        'FREE', 'Free'
-                    ).replace('免费', 'Free').replace('免費', 'Free').replace(' ', '')
-                    # # 下载链接，下载链接已存在则跳过
-                    href = ''.join(tr.xpath(site.torrent_magnet_url_rule))
-                    logger.debug('href: {}'.format(href))
-                    magnet_url = f"{mirror}{href.replace('&type=zip', '').replace(mirror, '').lstrip('/')}"
-                    parsed_url = urlparse(magnet_url)
-                    tid = parse_qs(parsed_url.query).get("id")[0]
-                    logger.info('magnet_url: {}'.format(magnet_url))
-                    # 如果种子有HR，则为否 HR绿色表示无需，红色表示未通过HR考核
-                    hr = False if tr.xpath(site.torrent_hr_rule) else True
-                    # H&R 种子有HR且站点设置不下载HR种子,跳过，
-                    if not hr and not my_site.hr_discern:
-                        logger.debug('hr种子，未开启HR跳过')
-                    # # 促销到期时间
-                    sale_expire = ''.join(tr.xpath(site.torrent_sale_expire_rule))
-                    if site.url in [
-                        'https://www.beitai.pt/',
-                        'http://www.oshen.win/',
-                        'https://www.hitpt.com/',
-                        'https://hdsky.me/',
-                        'https://pt.keepfrds.com/',
-                        # 'https://totheglory.im/',
-                    ]:
-                        """
-                        由于备胎等站优惠结束日期格式特殊，所以做特殊处理,使用正则表达式获取字符串中的时间
-                        """
-                        sale_expire = ''.join(
-                            re.findall(r'\d{4}\D\d{2}\D\d{2}\D\d{2}\D\d{2}\D', ''.join(sale_expire)))
-
-                    if site.url in [
-                        'https://totheglory.im/',
-                    ]:
-                        # javascript: alert('Freeleech将持续到2022年09月20日13点46分,加油呀~')
-                        # 获取时间数据
-                        time_array = re.findall(r'\d+', ''.join(sale_expire))
-                        # 不组9位
-                        time_array.extend([0, 0, 0, 0])
-                        # 转化为标准时间字符串
-                        sale_expire = time.strftime(
-                            "%Y-%m-%d %H:%M:%S",
-                            time.struct_time(tuple([int(x) for x in time_array]))
-                        )
-                    if site.url in [
-                        'https://kp.m-team.cc/',
-                    ]:
-                        # 限時：1時39分
-                        try:
-                            sale_expire = self.calculate_expiry_time_from_string(sale_expire).strftime(
-                                '%Y-%m-%d %H:%M:%S')
-                        except Exception as e:
-                            sale_expire = ''
-                    logger.debug(sale_expire)
-                    if sale_expire is not None and sale_expire.endswith(':'):
-                        sale_expire = sale_expire + '00'
-                    # 如果促销结束时间为空，则为无限期
-                    sale_expire = None if not sale_expire else sale_expire
-                    # logger.debug(torrent_info.sale_expire)
-                    # 发布时间
-                    on_release = ''.join(tr.xpath(site.torrent_release_rule))
-                    # 做种人数
-                    seeders = ''.join(tr.xpath(site.torrent_seeders_rule)).replace(',', '')
-                    # 下载人数
-                    leechers = ''.join(tr.xpath(site.torrent_leechers_rule)).replace(',', '')
-                    # 完成人数
-                    completers = ''.join(tr.xpath(site.torrent_completers_rule)).replace(',', '')
-                    # 存在则更新，不存在就创建
-                    # logger.debug(type(seeders), type(leechers), type(completers), )
-                    # logger.debug(seeders, leechers, completers)
-                    # logger.debug(''.join(tr.xpath(site.title_rule)))
-                    category = ''.join(
-                        tr.xpath(site.torrent_category_rule)
-                    ).replace("styles/HHan/icons/icon-", "").replace(".svg", "")
-                    file_parse_size = ''.join(tr.xpath(site.torrent_size_rule))
-                    # file_parse_size = ''.join(tr.xpath(''))
-                    logger.debug(file_parse_size)
-                    file_size = toolbox.FileSizeConvert.parse_2_byte(file_parse_size)
-                    # subtitle = subtitle if subtitle else title
-                    poster_url = ''.join(tr.xpath(site.torrent_poster_rule))  # 海报链接
-                    tags = ','.join(tr.xpath(site.torrent_tags_rule))  # 标签
-                    logger.debug(f'title：{site}\n size: {file_size}\n category：{category}\n '
-                                 f'magnet_url：{magnet_url}\n subtitle：{subtitle}\n sale_status：{sale_status}\n '
-                                 f'sale_expire：{sale_expire}\n seeders：{seeders}\n leechers：{leechers}\n'
-                                 f'H&R：{hr}\n poster_url：{poster_url}\n tags：{tags}')
-                    result = TorrentInfo.objects.update_or_create(
-                        site=my_site,
-                        tid=tid,
-                        defaults={
-                            'category': category,
-                            'magnet_url': magnet_url,
-                            'title': title,
-                            'subtitle': subtitle,
-                            'tags': tags,
-                            'poster': poster_url,
-                            'sale_status': sale_status,
-                            'sale_expire': sale_expire,
-                            'hr': hr,
-                            'published': on_release,
-                            'size': file_size,
-                            'seeders': int(seeders) if seeders else 0,
-                            'leechers': int(leechers) if leechers else 0,
-                            'completers': int(completers) if completers else 0,
-                        })
-                    logger.info('拉取种子：{} {}'.format(site.name, result[0].title))
-                    # time.sleep(0.5)
-                    if not result[1]:
-                        count += 1
-                    else:
-                        new_count += 1
-                        # logger.debug(torrent_info)
-                    # HR 与种子推送状态筛选
-                    torrent = result[0]
-                    if torrent.sale_status.find('Free') >= 0 and torrent.hr and torrent.state == 0:
-                        torrents.append(result[0])
                 if count + new_count <= 0:
                     return CommonResponse.error(msg='抓取失败或无促销种子！')
                 return CommonResponse.success(

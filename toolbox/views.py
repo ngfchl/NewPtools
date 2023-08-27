@@ -1834,11 +1834,11 @@ def push_torrents_to_sever():
                 )
 
                 # 已存档的种子更新状态为6==已推送到服务器
+                logger.info(res.text)
                 if res.status_code == 200:
                     torrents.filter(id__in=[t.id for t in chunks]).update(state=6)
-                    msg.append(f"成功上传{len(chunks)} 条种子信息：{res.json().get('msg')}")
+                    msg.append(f"成功上传{len(chunks)} 条种子信息")
                 else:
-                    logger.info(res.text)
                     msg.append(f"{len(chunks)} 条种子信息上传失败！{res.json().get('msg')}")
             except Exception as e:
                 err_msg = f'推送种子信息到服务器失败！{e}'

@@ -2450,8 +2450,9 @@ class PtSpider:
                         if torrent.sale_status.find('Free') >= 0 and torrent.hr and torrent.state == 0:
                             torrents.append(result[0])
                     except Exception as e:
-                        err_msg = '当前种子解析出错啦！'
-                        logger.info(err_msg)
+                        logger.exception(traceback.format_exc(5))
+                        err_msg = f'当前种子解析出错啦！{e}'
+                        logger.error(err_msg)
                         continue
                 if count + new_count <= 0:
                     return CommonResponse.error(msg='抓取失败或无促销种子！')

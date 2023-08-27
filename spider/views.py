@@ -2394,7 +2394,7 @@ class PtSpider:
                      f'sale_expire：{sale_expire}\n seeders：{seeders}\n leechers：{leechers}\n'
                      f'H&R：{hr}\n poster_url：{poster_url}\n tags：{tags}')
         torrent = {
-            'site': my_site.site,
+            'site_id': my_site.site,
             'tid': tid,
             'poster_url': poster_url,
             'category': category,

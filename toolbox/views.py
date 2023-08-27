@@ -1821,11 +1821,13 @@ def push_torrents_to_sever():
         # 推送到服务器
         msg = []
         while torrents:
-            chunks = torrents[:200]  # 从消息中截取最大长度的部分
+            chunks = torrents[:500]  # 从消息中截取最大长度的部分
             try:
+                torrent_list = [t.to_dict(exclude=['id']) for t in chunks]
+                logger.debug(torrent_list[0])
                 res = requests.post(
                     url=f"{os.getenv('REPEAT_SERVER', 'http://100.64.118.55:8081')}/api/website/torrents/multiple",
-                    json=[t.to_dict(exclude=['id']) for t in chunks],
+                    json=torrent_list,
                     headers={
                         "content-type": "application/json",
                         "AUTHORIZATION": os.getenv("TOKEN"),
@@ -1845,6 +1847,7 @@ def push_torrents_to_sever():
                 logger.error(err_msg)
                 msg.append(msg)
                 logger.error(traceback.format_exc(5))
+        logger.info(msg)
         return '\n'.join(msg)
     except Exception as e:
         msg = f'推送种子信息到服务器失败！{e}'

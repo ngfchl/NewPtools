@@ -1871,16 +1871,17 @@ def calculate_expiry_time_from_string(time_str):
     :return:
     """
 
-    def parse_remaining_time(time_str):
+    def parse_remaining_time(time_str: str):
+        time_str.replace("時", "时").replace("天", "日")
         # 检查是否是 "X 日 X 時" 格式
-        if "日" in time_str and "時" in time_str:
+        if "日" in time_str and "时" in time_str:
             days = int(re.search(r"(\d+)\s*日", time_str).group(1))
-            hours = int(re.search(r"(\d+)\s*時", time_str).group(1))
+            hours = int(re.search(r"(\d+)\s*时", time_str).group(1))
             return days, hours, 0
 
         # 检查是否是 "X 時 X 分" 格式
-        elif "時" in time_str and "分" in time_str:
-            hours = int(re.search(r"(\d+)\s*時", time_str).group(1))
+        elif "时" in time_str and "分" in time_str:
+            hours = int(re.search(r"(\d+)\s*时", time_str).group(1))
             minutes = int(re.search(r"(\d+)\s*分", time_str).group(1))
             return 0, hours, minutes
 

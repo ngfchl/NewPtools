@@ -9,7 +9,7 @@ import time
 import traceback
 from datetime import datetime
 from multiprocessing.dummy import Pool as ThreadPool
-from urllib.parse import urlparse, parse_qs
+from urllib.parse import urlparse, parse_qs, urlencode, urlunparse
 
 import cloudscraper
 import requests
@@ -1287,7 +1287,7 @@ class PtSpider:
             logger.debug(msg)
             return CommonResponse.error(msg=msg)
         if site.url in [
-            'https://greatposterwall.com/', 'https://dicmusic.club/',
+            'https://greatposterwall.com/', 'https://dicmusic.com/',
         ]:
             user_detail = user_detail_res.json()
             if user_detail.get('status') != 'success':
@@ -1347,7 +1347,7 @@ class PtSpider:
         seeding_detail_url = mirror + site.page_seeding.lstrip('/').format(my_site.user_id)
         logger.info(f'{site.name} 开始抓取站点做种信息，网址：{seeding_detail_url}')
         if site.url in [
-            'https://greatposterwall.com/', 'https://dicmusic.club/'
+            'https://greatposterwall.com/', 'https://dicmusic.com/'
         ]:
             seeding_detail_res = self.send_request(my_site=my_site, url=mirror + site.page_mybonus).json()
             if seeding_detail_res.get('status') != 'success':
@@ -1499,7 +1499,7 @@ class PtSpider:
                 logger.warning(f'{my_site.nickname} {bonus_msg}')
             # 请求邮件页面，直接推送通知到手机
             if site.url not in [
-                'https://dicmusic.club/',
+                'https://dicmusic.com/',
                 'https://greatposterwall.com/',
                 'https://zhuque.in/',
             ]:
@@ -2054,7 +2054,7 @@ class PtSpider:
                     bonus_hour = response.json().get('data').get('E')
                 elif site.url in [
                     'https://greatposterwall.com/',
-                    'https://dicmusic.club/'
+                    'https://dicmusic.com/'
                 ]:
                     # 获取朱雀时魔
                     bonus_hour = response.json().get('response').get('userstats').get('seedingBonusPointsPerHour')
@@ -2313,7 +2313,18 @@ class PtSpider:
             tid = re.search(id_pattern, href).group(1)
         else:
             parsed_url = urlparse(magnet_url)
-            tid = parse_qs(parsed_url.query).get("id")[0]
+            query_params = parse_qs(parsed_url.query)
+            if site.url in [
+                'https://greatposterwall.com/',
+                'https://dicmusic.com/',
+            ]:
+                query_params.pop('authkey', None)
+                query_params.pop('torrent_pass', None)
+                tid = query_params.get("id")[0]
+                parsed_url = parsed_url._replace(query=urlencode(query_params, doseq=True))
+                magnet_url = urlunparse(parsed_url)
+            else:
+                tid = query_params.get("id")[0]
         # 如果种子有HR，则为否 HR绿色表示无需，红色表示未通过HR考核
         hr = False if tr.xpath(site.torrent_hr_rule) else True
         # H&R 种子有HR且站点设置不下载HR种子,跳过，
@@ -2482,6 +2493,10 @@ class PtSpider:
         torrent_id = torrent.get("tid")
         if "totheglory.im" in website.url:
             return f'{website.url}{website.page_download.format(torrent_id, random.randint(100, 10000))}'
+        if '海豹':
+            pass
+        if '海豚':
+            pass
         if "hdchina.org" in website.url:
             # 如果是瓷器，就从种子详情页获取下载链接
             torrent_details = self.get_torrent_detail(torrent_id, my_site, website)

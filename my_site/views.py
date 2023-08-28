@@ -655,7 +655,7 @@ def send_sms_exec(request, mobile: str):
 @router.get('/push_to_server', response=CommonResponse, description='推送到服务器')
 def push_to_server(request):
     start = time.time()
-    res = toolbox.push_torrents_to_sever()
+    res = toolbox.push_torrents_to_sever(10)
     logger.info(res)
     end = time.time()
     print(end - start)

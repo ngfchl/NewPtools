@@ -1097,12 +1097,15 @@ def import_from_ptpp(self, data_list: List):
 # @shared_task
 @shared_task(bind=True, base=BaseTask)
 def auto_repeat_torrent(self):
-    res = toolbox.push_torrents_to_sever()
-    logger.info(f'本地种子数据推送到辅种服务器：{res}')
     # 加载辅种配置项
     repeat = toolbox.parse_toml('repeat')
     logger.debug(f'加载辅种配置项: {repeat}')
     push_timeout = repeat.get('push_timeout', 150)
+    push_once = repeat.get('push_once', 150)
+
+    res = toolbox.push_torrents_to_sever(push_once)
+    logger.info(f'本地种子数据推送到辅种服务器：{res}')
+
     logger.info('筛选开启辅种的下载器')
     downloaders = Downloader.objects.filter(repeat=True).all()
     downloader_ids = [downloader.id for downloader in downloaders]
@@ -1141,7 +1144,12 @@ def auto_repeat_torrent(self):
 
 def auto_push_complete_torrents_to_server(request):
     start = time.time()
-    res = toolbox.push_torrents_to_sever()
+    # 加载辅种配置项
+    repeat = toolbox.parse_toml('repeat')
+    logger.debug(f'加载辅种配置项: {repeat}')
+    push_timeout = repeat.get('push_timeout', 150)
+    push_once = repeat.get('push_once', 150)
+    res = toolbox.push_torrents_to_sever(push_once)
     logger.info(res)
     end = time.time()
     print(end - start)

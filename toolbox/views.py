@@ -1811,13 +1811,20 @@ def sync_cookie_from_cookie_cloud(server: str, key: str, password: str):
         return CommonResponse.error(msg=f'同步 Cookie 出错啦！{e}')
 
 
-def push_torrents_to_sever():
+def push_torrents_to_sever(push_once: int):
+    """
+    上传本地种子到服务器
+    :param push_once: 单词上传数据量
+    :return:
+    """
     try:
         # 从数据库读取一推送到下载器，未推送到服务器，且，hash 等信息已完善的种子
         torrents = TorrentInfo.objects.filter(state__gte=1, state__lt=6).exclude(hash_string__exact='').exclude(
             Q(pieces_qb__exact='') & Q(pieces_tr__exact='')
         )
         logger.info(f'当前共有符合条件的种子：{len(torrents)}')
+        if len(torrents) <= 0:
+            return f"当前没有需要推送的种子！"
         # 推送到服务器
         msg = []
         while torrents:
@@ -1838,8 +1845,9 @@ def push_torrents_to_sever():
                 # 已存档的种子更新状态为6==已推送到服务器
                 logger.info(res.text)
                 if res.status_code == 200:
+                    torrents = torrents[500:]
                     torrents.filter(id__in=[t.id for t in chunks]).update(state=6)
-                    msg.append(f"成功上传{len(chunks)} 条种子信息")
+                    msg.append(f"成功上传 {len(chunks)} 条种子信息")
                 else:
                     msg.append(f"{len(chunks)} 条种子信息上传失败！{res.json().get('msg')}")
             except Exception as e:

@@ -2738,7 +2738,7 @@ class PtSpider:
                                     "download_dir": repeat_torrent.download_dir,
                                     "info_hash": torrent["hash_string"],
                                 })
-                            logger.info(f'本次辅种数据，共有：{len(repeat_params)}个站点的辅种数据')
+                        logger.info(f'本次辅种数据，共有：{len(repeat_params)}个站点的辅种数据')
                     repeat_count = sum(len(values) for values in repeat_params.values())
                     logger.info(f'本次辅种，共有：{repeat_count}条辅种数据')
                     # 从缓存中获取旧的params数据
@@ -2785,6 +2785,7 @@ class PtSpider:
                             except TransmissionError as e:
                                 logger.error(f'推送种子到下载器失败:{e.message}')
                                 logger.error(f'推送失败的种子信息：{torrent}')
+                                logger.error(traceback.format_exc(5))
 
                                 if 'http error 404: Not Found' in e.message:
                                     logger.error(f'当前种子已被删除，正在向服务器报告！')

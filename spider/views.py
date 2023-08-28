@@ -2407,10 +2407,10 @@ class PtSpider:
         torrent = {
             'site_id': my_site.site,
             'tid': tid,
-            'poster_url': poster_url,
+            'poster': poster_url,
             'category': category,
             'magnet_url': magnet_url,
-            'detail_url': f'{site.url}{site.page_detail.format(tid)}',
+            # 'detail_url': f'{site.url}{site.page_detail.format(tid)}',
             'title': title,
             'subtitle': subtitle,
             'sale_status': sale_status,

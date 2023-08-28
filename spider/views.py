@@ -1226,8 +1226,9 @@ class PtSpider:
                             site.my_notice_content,
                         )
                         logger.debug(f'公告信息：{notice_list}')
-                        notice_list = [notice.xpath("string(.)", encoding="utf-8").strip("\n").strip("\r").strip()
-                                       for notice in notice_list]
+                        notice_list = [n.xpath(
+                            "string(.)", encoding="utf-8"
+                        ).strip("\n").strip("\r").strip() for n in notice_list]
                         logger.debug(f'公告信息：{notice_list}')
                         logger.debug(content_list)
                         if len(content_list) > 0:

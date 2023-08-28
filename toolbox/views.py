@@ -731,13 +731,16 @@ def filter_torrent_by_rules(mysite: MySite, torrents: List[TorrentInfo]):
             if sale_expire:
                 logger.debug(f'设定剩余免费时间：{sale_expire}，当前种子剩余免费时间：{torrent.sale_expire}')
                 exp = torrent.sale_expire
-                if isinstance(exp, str):
-                    exp = datetime.strptime(exp, "%Y-%m-%d %H:%M:%S")
-                # 如果种子有到期时间，且到期时间小于设定值，排除
-                if not exp and (datetime.now() - exp).total_seconds() < sale_expire:
-                    excluded_torrents.append(torrent)
-                    # 跳过该种子的处理，继续下一个种子的判断
-                    continue
+                if not exp:
+                    logger.warning(f'当前种子优惠到期时间：{exp}, 跳过')
+                else:
+                    if isinstance(exp, str):
+                        exp = datetime.strptime(exp, "%Y-%m-%d %H:%M:%S")
+                    # 如果种子有到期时间，且到期时间小于设定值，排除
+                    if isinstance(exp, datetime) and (datetime.now() - exp).total_seconds() < sale_expire:
+                        excluded_torrents.append(torrent)
+                        # 跳过该种子的处理，继续下一个种子的判断
+                        continue
             # 发种时间命中
             published = rules.get('published')
             if published:

@@ -2684,7 +2684,7 @@ class PtSpider:
                     # 把剩余的数据继续放入缓存
                     logger.debug(f'剩余未推送站点：{len(new_params)} 个')
                     # cache.set(f"params_data_{downloader_id}", json.dumps(new_params))
-                    cache.set(f"params_data_{downloader_id}", new_params)
+                    cache.set(f"params_data_{downloader_id}", new_params, cache_expire)
 
                 except Exception as e:
                     msg = f'推送种子信息到服务器失败！'
@@ -2827,7 +2827,7 @@ class PtSpider:
                     logger.error(msg)
                     logger.error(traceback.format_exc(5))
             # 把剩余的数据继续放入缓存
-            cache.set(f"params_data_{downloader_id}", new_params, 3600 * 24 * 15)
+            cache.set(f"params_data_{downloader_id}", new_params, cache_expire)
             return CommonResponse.success(data=(repeat_count, cached_count, push_count))
         except Exception as e:
             msg = f'下载器 {downloader_id} 辅种失败：{e}'

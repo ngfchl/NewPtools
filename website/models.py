@@ -167,14 +167,14 @@ class WebSite(BaseEntity):
                                          help_text='获取公告内容',
                                          max_length=128)
     # 列表页XPATH
-    torrents_rule = models.CharField(verbose_name='种子行信息',
+    torrents_rule = models.CharField(verbose_name='种子列表',
                                      default='//table[@class="torrents"]/tr',
                                      max_length=128)
     torrent_title_rule = models.CharField(verbose_name='种子名称',
                                           default='.//td[@class="embedded"]/a/b/text()',
                                           max_length=128)
     torrent_subtitle_rule = models.CharField(
-        verbose_name='种子标题',
+        verbose_name='小标题',
         default='.//a[contains(@href,"detail")]/parent::td/text()[last()]',
         max_length=128)
     torrent_tags_rule = models.CharField(

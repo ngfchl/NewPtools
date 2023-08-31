@@ -6,6 +6,7 @@ from django.utils.deprecation import MiddlewareMixin
 from jwt import exceptions
 
 from toolbox.schema import CommonResponse
+from toolbox.views import check_token
 
 
 class AuthenticateMiddleware(MiddlewareMixin):
@@ -26,6 +27,8 @@ class AuthenticateMiddleware(MiddlewareMixin):
             return JsonResponse(data=CommonResponse.error(msg='未登录，等先登录后重试！').dict(), safe=False)
         salt = settings.SECRET_KEY
         try:
+            if check_token(token):
+                return None
             res = jwt.decode(token.replace('Bearer ', ''), salt, algorithms=["HS256"])
             user = User.objects.get(id=res.get('id'), username=res.get('username'))
             request.user = user

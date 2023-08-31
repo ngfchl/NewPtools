@@ -1831,10 +1831,11 @@ def push_torrents_to_sever(push_once: int):
         # 推送到服务器
         msg = []
         while torrents:
-            chunks = torrents[:500]  # 从消息中截取最大长度的部分
+            chunks = torrents[:push_once]  # 从消息中截取最大长度的部分
             try:
                 torrent_list = [t.to_dict(exclude=['id']) for t in chunks]
                 logger.debug(torrent_list[0])
+                logger.debug(torrents)
                 res = requests.post(
                     url=f"{os.getenv('REPEAT_SERVER', 'http://100.64.118.55:8081')}/api/website/torrents/multiple",
                     json=torrent_list,
@@ -1848,11 +1849,11 @@ def push_torrents_to_sever(push_once: int):
                 # 已存档的种子更新状态为6==已推送到服务器
                 logger.info(res.text)
                 if res.status_code == 200:
-                    torrents = torrents[500:]
-                    torrents.filter(id__in=[t.id for t in chunks]).update(state=6)
+                    torrents = torrents[push_once:]
+                    TorrentInfo.objects.filter(id__in=[t.id for t in chunks]).update(state=6)
                     msg.append(f"成功上传 {len(chunks)} 条种子信息")
                 else:
-                    msg.append(f"{len(chunks)} 条种子信息上传失败！{res.json().get('msg')}")
+                    msg.append(f"{len(chunks)} 条种子信息上传失败！")
             except Exception as e:
                 err_msg = f'推送种子信息到服务器失败！{e}'
                 logger.error(err_msg)

@@ -209,13 +209,15 @@ def get_downloader_categories(request, downloader_id: int):
             return CommonResponse.success(data=categories)
         if category == DownloaderCategory.Transmission:
             torrents = client.get_torrents(arguments=['id', 'name', 'downloadDir'])
-            save_paths = set()
+            save_paths = {client.get_session().download_dir}
             for torrent in torrents:
-                save_paths.add(torrent.fields.get('downloadDir'))
+                save_paths.add(torrent.fields.get('downloadDir').rstrip('/'))
+            logger.info(save_paths)
             categories = [{
-                'name': download_dir.rstrip('/').split('/')[-1],
+                'name': download_dir.rstrip('/'),
                 'savePath': download_dir
-            } for download_dir in list(save_paths)]
+            } for download_dir in list(set(save_paths))]
+            logger.info(categories)
             return CommonResponse.success(data=categories)
     except Exception as e:
         logger.warning(e)

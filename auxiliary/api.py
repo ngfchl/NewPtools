@@ -1,3 +1,4 @@
+import logging
 from http.client import HTTPException
 
 from django.http import HttpResponse
@@ -11,6 +12,8 @@ from my_site.views import router as mysite_router
 from schedule.views import router as schedule_router
 from website.views import router as website_router
 
+logger = logging.getLogger('ptools')
+
 api_v1 = NinjaAPI(version='1.0.0')
 api_v1.add_router('/website', website_router)
 api_v1.add_router('/mysite', mysite_router)
@@ -22,6 +25,7 @@ api_v1.add_router('/schedule', schedule_router)
 
 @api_v1.exception_handler(ValidationError)
 def validation_errors(request, exc):
+    logger.error(request.body)
     return HttpResponse("Invalid input", status=422)
 
 

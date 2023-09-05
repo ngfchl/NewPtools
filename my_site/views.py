@@ -621,7 +621,7 @@ def search(request, params: SearchParamsSchema):
         return CommonResponse.error(msg=msg)
 
 
-@router.get('/push_torrent', response=CommonResponse[Optional[SearchResultSchema]], description='聚合搜索')
+@router.get('/push_torrent', response=CommonResponse, description='聚合搜索')
 def push_torrent(request, site: int, downloader_id: int, url: str, category: str):
     mysite = get_object_or_404(MySite, site=site)
     website = get_object_or_404(WebSite, id=site)

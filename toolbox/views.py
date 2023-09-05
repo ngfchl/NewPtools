@@ -565,7 +565,7 @@ def push_torrents_to_downloader(
     # 验证校验结果，不为百分百的，暂停任务
     if downloader_category == DownloaderCategory.qBittorrent:
         res = client.torrents.add(
-            urls=urls,
+            urls=urls.split('|'),
             category=category,
             save_path=save_path,
             is_skip_checking=is_skip_checking,
@@ -573,21 +573,32 @@ def push_torrents_to_downloader(
             upload_limit=upload_limit * 1024 * 1024,
             download_limit=download_limit * 1024 * 1024,
             use_auto_torrent_management=use_auto_torrent_management,
-            cookie=cookie
+            cookie=cookie,
         )
         if res == 'Ok.':
             return CommonResponse.success(msg=f'种子已添加，请检查下载器！{res}')
         return CommonResponse.error(msg=f'种子添加失败！{res}')
     if downloader_category == DownloaderCategory.Transmission:
-        # res = client.add_torrent(
-        #     torrent=urls,
-        #     labels=category,
-        #     paused=is_paused,
-        #     cookies=cookie
-        # )
-        # if res.hashString and len(res.hashString) >= 0:
-        #     return CommonResponse.success(msg=f'种子已添加，请检查下载器！{res.name}')
-        return CommonResponse.error(msg=f'种子添加失败！暂不支持Transmission！')
+        msg_list = []
+        for url in urls.split('|'):
+            try:
+                res = client.add_torrent(
+                    torrent=url,
+                    download_dir=category,
+                    paused=is_paused,
+                    cookies=cookie
+                )
+                if res.hashString and len(res.hashString) >= 0:
+                    msg = f'种子已添加，请检查下载器！{res.name}'
+                    logger.info(msg)
+                else:
+                    msg = f'种子添加失败：{url}'
+                    logger.warning(msg)
+            except Exception as e:
+                msg = f'种子添加失败：{url}  {e}'
+                logger.error(msg)
+            msg_list.append(msg)
+        return CommonResponse.success(msg='，'.join(msg_list))
 
 
 def package_files(

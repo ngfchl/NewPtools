@@ -1,3 +1,6 @@
+import datetime
+from typing import Optional
+
 from ninja import ModelSchema, Schema
 
 from website.models import *
@@ -30,6 +33,8 @@ class MySiteSchemaIn(Schema):
     cookie: str
     user_agent: str
     nickname: str
+    passkey: Optional[str]
+    time_join: Optional[datetime.datetime]
     # token: str
 
 

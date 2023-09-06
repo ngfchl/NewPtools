@@ -1,5 +1,5 @@
 import datetime
-from typing import Optional
+from typing import Optional, List
 
 from ninja import ModelSchema, Schema
 
@@ -46,3 +46,31 @@ class SiteAndTokenSchemaIn(Schema):
 class CommonMessage(Schema):
     msg: str = ''
     code: int = 0
+
+
+class TorrentInfoSchemaIn(Schema):
+    tid: int
+    site: int
+    title: str
+    subtitle: Optional[str]
+    category: str
+    size: str
+    tags: Optional[str]
+    hr: Optional[str]
+    poster: Optional[str]
+    magnet_url: str
+    douban_url: Optional[str]
+    imdb_url: Optional[str]
+    release: Optional[datetime.datetime]
+    sale_expire: Optional[str]
+    sale_status: Optional[str]
+    seeders: Optional[int]
+    leechers: Optional[int]
+    completers: Optional[int]
+    hash_string: Optional[str]
+    files_count: Optional[int]
+
+
+class MonkeyTorrentsSchemaIn(Schema):
+    site: int
+    torrents: List[TorrentInfoSchemaIn]

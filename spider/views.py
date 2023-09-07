@@ -2546,7 +2546,7 @@ class PtSpider:
             iyuu_token = repeat.get('iyuu_token')
             push_once = repeat.get('push_once', 200)
             cache_expire = repeat.get('cache_expire', 604800)
-            interval = repeat.get('interval', 0)
+            interval = repeat.get('interval', 1)
             auto_torrent_management = repeat.get('auto_torrent_management', False)
             content_layout = repeat.get('content_layout', "Original")
 
@@ -2570,8 +2570,9 @@ class PtSpider:
                 try:
                     new_func = functools.partial(self.get_qb_repeat_info, client=client)
                     repeat_data = pool.map(new_func, torrents)
+                    logger.debug(f'本次需要辅种的数据：{repeat_data}')
                     res = requests.post(
-                        url=f"{os.getenv('REPEAT_SERVER', 'http://100.64.118.55:8081')}/api/website/torrents/repeat",
+                        url=f"{os.getenv('REPEAT_SERVER')}/api/website/torrents/repeat",
                         json={
                             "data": repeat_data,
                             "iyuu_token": iyuu_token,
@@ -2711,7 +2712,7 @@ class PtSpider:
                             "files_count": len(t.get_files())
                         })
                     res = requests.post(
-                        url=f"{os.getenv('REPEAT_SERVER', 'http://100.64.118.55:8081')}/api/website/torrents/repeat",
+                        url=f"{os.getenv('REPEAT_SERVER')}/api/website/torrents/repeat",
                         json={
                             "data": repeat_data,
                             "iyuu_token": iyuu_token,
@@ -2848,7 +2849,7 @@ class PtSpider:
             resume_count = 0
             if downloader_category == DownloaderCategory.qBittorrent:
                 logger.info('获取暂停状态的种子')
-                torrents = client.torrents_info(filter='paused')
+                torrents = client.torrents.info.paused()
                 logger.info(f'当前待处理种子数量: {len(torrents)}')
                 paused_count = len(torrents)
 
@@ -2857,12 +2858,15 @@ class PtSpider:
                 logger.info(f'等待校验的种子数量: {len(recheck_hashes)}')
                 recheck_count = len(recheck_hashes)
 
-                logger.info(f'开始校验，等待等待{verify_timeout}秒')
-                client.torrents.recheck(torrent_hashes=recheck_hashes)
-                time.sleep(verify_timeout)
+                if len(recheck_hashes) > 0:
+                    logger.info(f'开始校验，等待等待{verify_timeout}秒')
+                    client.torrents.recheck(torrent_hashes=recheck_hashes)
+                    time.sleep(verify_timeout)
+                else:
+                    logger.info(f'当前下载器没有需要校验的种子！')
 
                 logger.info('获取校验完成的种子')
-                torrents = client.torrents_info(filter='paused')
+                torrents = client.torrents.info.paused()
                 completed_hashes = [torrent['hash'] for torrent in torrents if torrent['progress'] == 1]
                 logger.info(f'校验完成的种子数量: {len(completed_hashes)}')
                 resume_count = len(completed_hashes)
@@ -2877,7 +2881,7 @@ class PtSpider:
                 recheck_hashes = [torrent.hashString for torrent in torrents if
                                   torrent.status == 'stopped' and torrent.progress == 0]
                 logger.info(f'等待校验的种子数量: {len(recheck_hashes)}')
-                paused_count = len(torrents)
+                paused_count = len(recheck_hashes)
                 if len(recheck_hashes) > 0:
                     logger.info(f'开始校验，等待{verify_timeout}秒')
                     client.verify_torrent(ids=recheck_hashes)
@@ -2887,7 +2891,7 @@ class PtSpider:
                 torrents = client.get_torrents()
                 logger.info('获取校验完成的种子')
                 completed_hashes = [torrent.hashString for torrent in torrents if
-                                    torrent.status == 'stopped' and torrent.progress == 1]
+                                    torrent.status == 'stopped' and torrent.progress == 100]
                 logger.info(f'开始已完成的种子')
                 resume_count = len(completed_hashes)
                 if resume_count > 0:

@@ -453,6 +453,10 @@ def get_downloader_instance(downloader_id):
     """根据id获取下载实例"""
     try:
         downloader = Downloader.objects.filter(id=downloader_id).first()
+        if not downloader:
+            msg = f"请确认当前所选下载器是否存在！"
+            logger.error(msg)
+            return None, msg, None
         if downloader.category == DownloaderCategory.qBittorrent:
             client = qbittorrentapi.Client(
                 host=downloader.host,
@@ -473,18 +477,18 @@ def get_downloader_instance(downloader_id):
                 password=downloader.password,
                 timeout=30,
             )
-        return client, downloader.category
+        return client, downloader.category, downloader.name
     except Exception as e:
         logger.error(traceback.format_exc(3))
         msg = f'下载器连接失败：{e}'
         logger.exception(msg)
-        return None, msg
+        return None, msg, None
 
 
 def get_downloader_speed(downloader: Downloader):
     """获取单个下载器速度信息"""
     try:
-        client, _ = get_downloader_instance(downloader.id)
+        client, _, _ = get_downloader_instance(downloader.id)
         if not client:
             return {
                 'category': downloader.category,
@@ -806,7 +810,7 @@ def remove_torrent_by_site_rules(mysite: MySite):
     rules = demjson3.decode(mysite.remove_torrent_rules).get('remove')
     logger.info(f"当前站点：{mysite}, 删种规则：{rules}")
     logger.info(f"当前下载器：{mysite.downloader_id}")
-    client, _ = get_downloader_instance(mysite.downloader.id)
+    client, _, _ = get_downloader_instance(mysite.downloader.id)
     if not client:
         return CommonResponse.error(msg=f'{mysite.nickname} - 下载器 {mysite.downloader.name} 链接失败!')
     website = WebSite.objects.get(id=mysite.site)

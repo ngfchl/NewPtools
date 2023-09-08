@@ -46,9 +46,9 @@ async def send_request(my_site: MySite,
     async with aiohttp.ClientSession(headers=headers, timeout=timeout,
                                      cookies=toolbox.cookie2dict(my_site.cookie)) as session:
         if method.lower() == "get":
-            response = await session.get(url, params=params, ssl=ssl_context)
+            response = await session.get(url, params=params, ssl=ssl_context, proxies=proxies)
         elif method.lower() == "post":
-            response = await session.post(url, data=data, json=json, ssl=ssl_context)
+            response = await session.post(url, data=data, json=json, ssl=ssl_context, proxies=proxies)
         else:
             # Handle other HTTP methods if necessary
             pass
@@ -91,7 +91,7 @@ async def search_and_parse_torrents(my_site: MySite, key: str):
                             continue
                         torrents.append(res.data)
                     except Exception as e:
-                        err_msg = '当前种子解析出错啦！'
+                        err_msg = f'当前种子解析出错啦！{e}'
                         logger.info(err_msg)
                         continue
                 msg = f"{site.name} 共{len(torrents)}个结果！"
@@ -105,7 +105,7 @@ async def search_and_parse_torrents(my_site: MySite, key: str):
             except Exception as e:
                 # raise
                 title = f'{site.name} 解析种子信息：失败！'
-                msg = f'{site.name} 解析种子页面失败！{e}'
+                msg = f'{title} {e}'
                 # toolbox.send_text(title=title, message=msg)
                 logger.error(msg)
                 logger.error(traceback.format_exc(limit=3))
@@ -116,8 +116,8 @@ async def search_and_parse_torrents(my_site: MySite, key: str):
             return CommonResponse.error(msg=f"{site.name} 网站访问失败")
     except Exception as e:
         # raise
-        title = f'{site.name} 网站访问失败'
-        msg = f'{site.name} 网站访问失败！原因：{e}'
+        title = f'{site.name} 网站访问失败！'
+        msg = f'{title} 原因：{e}'
         # 打印异常详细信息
         logger.error(msg)
         logger.error(traceback.format_exc(limit=3))

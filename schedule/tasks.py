@@ -336,7 +336,7 @@ def auto_get_torrents(self, *site_list: List[int]):
                     msg = f'> ✅ {my_site.nickname} 站点共有{len(res.data)}条种子未推送,有符合条件的种子：{len(torrents)} 个！  \n\n'
                     logger.debug(msg)
                     downloader = my_site.downloader
-                    client, downloader_category = toolbox.get_downloader_instance(my_site.downloader_id)
+                    client, downloader_category, _ = toolbox.get_downloader_instance(my_site.downloader_id)
                     if not client:
                         logger.warning(f'{my_site.downloader.name} 链接出错了')
                         continue
@@ -469,7 +469,7 @@ def auto_get_torrents(self, *site_list: List[int]):
 #     for torrent_info in torrent_info_list:
 #         logger.info('种子名称：{}'.format(torrent_info.title))
 #         try:
-#             client, _ = toolbox.get_downloader_instance(torrent_info.downloader_id)
+#             client, _ , _= toolbox.get_downloader_instance(torrent_info.downloader_id)
 #             if not torrent_info.hash_string:
 #                 # 种子信息未填写hash的，组装分类信息，到下载器查询种子信息
 #                 site = website_list.get(id=torrent_info.site.site)
@@ -545,7 +545,7 @@ def auto_get_rss(self, *site_list: List[int]):
             logging.info(f'✅ 站点RSS刷流：{my_site.brush_rss}，绑定下载器：{my_site.downloader}')
             if my_site.brush_rss and my_site.downloader:
                 downloader = my_site.downloader
-                client, downloader_category = toolbox.get_downloader_instance(downloader.id)
+                client, downloader_category, _ = toolbox.get_downloader_instance(downloader.id)
                 if not client:
                     logger.warning(f'{my_site.downloader.name} 链接出错了')
                     continue
@@ -657,7 +657,7 @@ def auto_torrents_package_files(self):
             try:
                 downloader_id = package.get("downloader_id")
                 downloader = Downloader.objects.get(id=downloader_id)
-                client, _ = toolbox.get_downloader_instance(downloader_id)
+                client, _, _ = toolbox.get_downloader_instance(downloader_id)
                 if not client:
                     logger.warning(f'{downloader.name} 链接出错了')
                     continue
@@ -716,7 +716,7 @@ def auto_cleanup_not_registered(self):
     ]
     for downloader in downloaders:
         hashes = []
-        client, _ = toolbox.get_downloader_instance(downloader.id)
+        client, _, _ = toolbox.get_downloader_instance(downloader.id)
         if not client:
             logger.warning(f'{downloader.name} 链接出错了')
             continue
@@ -814,7 +814,7 @@ def auto_get_rss_torrent_detail(self, my_site_id: int = None):
                 hash_list.append(res[0].hash_string)
             if website.brush_rss and my_site.brush_rss and my_site.downloader:
                 downloader = my_site.downloader
-                client, downloader_category = toolbox.get_downloader_instance(downloader.id)
+                client, downloader_category, _ = toolbox.get_downloader_instance(downloader.id)
                 if not client:
                     logger.warning(f'{downloader.name} 链接出错了')
                     continue
@@ -829,7 +829,7 @@ def auto_get_rss_torrent_detail(self, my_site_id: int = None):
                 if res.code != 0:
                     logger.error(res.msg)
                 if downloader.package_files:
-                    client, _ = toolbox.get_downloader_instance(downloader.id)
+                    client, _, _ = toolbox.get_downloader_instance(downloader.id)
                     if not client:
                         logger.warning(f'{downloader.name} 链接出错了')
                         continue
@@ -891,7 +891,7 @@ def auto_push_to_downloader(self, *site_list: List[int]):
             # 解析刷流推送规则,筛选符合条件的种子并推送到下载器
             torrents = toolbox.filter_torrent_by_rules(my_site, torrents)
             logger.info(f'ℹ️ 共有符合条件的种子：{len(torrents)} 个')
-            client, downloader_category = toolbox.get_downloader_instance(my_site.downloader_id)
+            client, downloader_category, _ = toolbox.get_downloader_instance(my_site.downloader_id)
             if not client:
                 logger.warning(f'{my_site.downloader.name} 链接出错了')
                 continue
@@ -1004,7 +1004,7 @@ def auto_remove_expire_torrent(self):
     # 筛选已推送到下载器的种子
     torrent_info_list = TorrentInfo.objects.filter(state=1, downloader__in=downloaders).all()
     for downloader in downloaders:
-        client, _ = toolbox.get_downloader_instance(downloader.id)
+        client, _, _ = toolbox.get_downloader_instance(downloader.id)
         if not client:
             logger.warning(f'{downloader.name} 链接出错了')
             continue

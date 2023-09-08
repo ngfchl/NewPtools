@@ -2526,9 +2526,9 @@ class PtSpider:
         }
 
     def repeat_torrents(self, downloader_id: int):
+        # 1. 获取下载器实例与分类
+        client, downloader_category, downloader_name = toolbox.get_downloader_instance(downloader_id)
         try:
-            # 1. 获取下载器实例与分类
-            client, downloader_category = toolbox.get_downloader_instance(downloader_id)
             if not client:
                 msg = f'下载器： {downloader_id} 不可用？！'
                 logger.error(msg)
@@ -2558,7 +2558,7 @@ class PtSpider:
             repeat_params = {}
 
             if downloader_category == DownloaderCategory.qBittorrent:
-                logger.info(f'从下载器获取所有已完成种子信息')
+                logger.info(f'从下载器 {downloader_name} 获取所有已完成种子信息')
                 torrents = client.torrents_info(filter='completed')
                 repeat_data = []
                 hash_lookup = {item["hash"]: item for item in torrents}
@@ -2634,7 +2634,7 @@ class PtSpider:
                                                                         params.get(website_id, []) + torrents])]
                     else:
                         if len(repeat_params) <= 0:
-                            msg = f'下载器： {downloader_id} 没有可以辅种的数据？！'
+                            msg = f'下载器： {downloader_name} 没有可以辅种的数据？！'
                             logger.error(msg)
                             return CommonResponse.error(msg=msg)
                         params = repeat_params
@@ -2654,7 +2654,7 @@ class PtSpider:
                         if remaining_torrents:
                             new_params[website_id] = remaining_torrents
 
-                        logger.info(f'开始推送种子到下载器')
+                        logger.info(f'开始推送种子到下载器 {downloader_name}')
                         push_res = []
                         for torrent in top_limit_torrents:
                             time.sleep(interval)
@@ -2675,12 +2675,12 @@ class PtSpider:
                                 push_res.append({torrent['info_hash']: r})
                                 push_count += 1
                             except Exception as e:
-                                logger.error(f'推送种子到下载器失败:{e}')
+                                logger.error(f'推送种子到下载器 {downloader_name} 失败:{e}')
                                 remaining_torrents.append(torrent)
                                 continue
 
-                        logger.debug(f'推送到下载器结果：{push_res}')
-                    logger.info(f'推送种子到下载器,共推送:{push_count}条种子')
+                        logger.debug(f'推送到下载器 {downloader_name} 结果：{push_res}')
+                    logger.info(f'推送种子到下载器 {downloader_name} ,共推送:{push_count}条种子')
 
                     # 把剩余的数据继续放入缓存
                     logger.debug(f'剩余未推送站点：{len(new_params)} 个')
@@ -2693,7 +2693,7 @@ class PtSpider:
                     logger.error(traceback.format_exc(5))
 
             if downloader_category == DownloaderCategory.Transmission:
-                logger.info(f'从下载器获取所有已完成种子信息')
+                logger.info(f'从下载器 {downloader_name} 获取所有已完成种子信息')
                 all_torrents = client.get_torrents()
                 complete_torrents = [torrent for torrent in all_torrents if int(torrent.progress) == 100]
                 hash_lookup = {item.hashString: item for item in complete_torrents}
@@ -2800,7 +2800,7 @@ class PtSpider:
                                 push_res.append({torrent['info_hash']: r.name})
                                 push_count += 1
                             except TransmissionError as e:
-                                logger.error(f'推送种子到下载器失败:{e.message}')
+                                logger.error(f'推送种子到下载器 {downloader_name} 失败:{e.message}')
                                 logger.error(f'推送失败的种子信息：{torrent}')
                                 logger.error(traceback.format_exc(5))
 
@@ -2811,39 +2811,39 @@ class PtSpider:
                                 remaining_torrents.append(torrent)
                                 continue
                             except Exception as e:
-                                logger.error(f'推送种子到下载器失败: {e}')
+                                logger.error(f'推送种子到下载器 {downloader_name} 失败: {e}')
                                 logger.error(f'推送失败的种子信息：{torrent}')
                                 remaining_torrents.append(torrent)
                                 continue
                         if remaining_torrents:
                             new_params[website_id] = remaining_torrents
 
-                        logger.info(f'推送到下载器结果：{push_res}')
-                        logger.info(f'推送种子到下载器,共推送:{push_count}条种子')
+                        logger.info(f'推送到下载器 {downloader_name} 结果：{push_res}')
+                        logger.info(f'推送种子到下载器 {downloader_name} ,共推送:{push_count}条种子')
 
                         logger.debug(f'剩余未推送站点：{len(new_params)} 个')
 
                 except Exception as e:
-                    msg = f'推送种子信息到服务器失败！'
+                    msg = f'{downloader_name} 推送种子信息到服务器失败！'
                     logger.error(msg)
                     logger.error(traceback.format_exc(5))
             # 把剩余的数据继续放入缓存
             cache.set(f"params_data_{downloader_id}", new_params, cache_expire)
             return CommonResponse.success(data=(repeat_count, cached_count, push_count))
         except Exception as e:
-            msg = f'下载器 {downloader_id} 辅种失败：{e}'
+            msg = f'下载器 {downloader_name} 辅种失败：{e}'
             logger.error(msg)
             logger.error(traceback.format_exc(5))
             return CommonResponse.error(msg=msg)
 
     def start_torrent(self, downloader_id: int):
         logger.debug(f'当前下载器: {downloader_id}')
+        client, downloader_category, downloader_name = toolbox.get_downloader_instance(downloader_id)
         # 加载辅种配置项
         try:
             repeat = toolbox.parse_toml('repeat')
             verify_timeout = repeat.get('verify_timeout', 300)
 
-            client, downloader_category = toolbox.get_downloader_instance(downloader_id)
             paused_count = 0
             recheck_count = 0
             resume_count = 0
@@ -2863,7 +2863,7 @@ class PtSpider:
                     client.torrents.recheck(torrent_hashes=recheck_hashes)
                     time.sleep(verify_timeout)
                 else:
-                    logger.info(f'当前下载器没有需要校验的种子！')
+                    logger.info(f'当前下载器 {downloader_name} 没有需要校验的种子！')
 
                 logger.info('获取校验完成的种子')
                 torrents = client.torrents.info.paused()
@@ -2898,7 +2898,7 @@ class PtSpider:
                     client.start_torrent(ids=completed_hashes)
             return CommonResponse.success(data=(paused_count, recheck_count, resume_count))
         except Exception as e:
-            msg = f'下载器 {downloader_id} 辅种失败：{e}'
+            msg = f'下载器  {downloader_name}  辅种失败：{e}'
             logger.error(msg)
             logger.error(traceback.format_exc(5))
             return CommonResponse.error(msg=msg)

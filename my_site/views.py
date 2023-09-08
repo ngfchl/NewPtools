@@ -625,7 +625,7 @@ def search(request, params: SearchParamsSchema):
 def push_torrent(request, site: int, downloader_id: int, url: str, category: str):
     mysite = get_object_or_404(MySite, site=site)
     website = get_object_or_404(WebSite, id=site)
-    client, downloader_category = toolbox.get_downloader_instance(downloader_id)
+    client, downloader_category, _ = toolbox.get_downloader_instance(downloader_id)
     return toolbox.push_torrents_to_downloader(
         client=client,
         downloader_category=downloader_category,

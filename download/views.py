@@ -30,18 +30,13 @@ def get_downloaders(request):
 @router.get('/downloader/test', response=CommonResponse)
 def test_connect(request, downloader_id):
     try:
-        downloader = Downloader.objects.filter(id=downloader_id).first()
-        if not downloader:
-            msg = f"请确认当前所选下载器是否存在！"
-            logger.error(msg)
-            return CommonResponse.error(msg=msg)
-        client, category = toolbox.get_downloader_instance(downloader_id)
+        client, category, downloader_name = toolbox.get_downloader_instance(downloader_id)
         if not client:
             # category在 client 为 None 时，为错误消息
-            msg = f"下载器：{downloader.name} 连接失败！{category}"
+            msg = f"下载器：{downloader_name} 连接失败！{category}"
             logger.error(msg)
             return CommonResponse.error(msg=msg)
-        msg = f'下载器：{downloader.name} 连接成功！'
+        msg = f'下载器：{downloader_name} 连接成功！'
         logger.info(msg=msg)
         return CommonResponse.success(msg=msg)
     except Exception as e:
@@ -109,7 +104,11 @@ def get_downloading(request, downloader_id: int, prop: bool = False, torrent_has
     if prop:
         website_list = WebSite.objects.all()
     logger.info('当前下载器id：{}'.format(downloader_id))
-    client, category = toolbox.get_downloader_instance(downloader_id)
+    client, category, downloader_name = toolbox.get_downloader_instance(downloader_id)
+    if not client:
+        msg = f"下载器：{downloader_id} 连接失败！{category}"
+        logger.error(msg)
+        return CommonResponse.error(msg=msg)
     try:
         if category == DownloaderCategory.qBittorrent:
             torrent_list = client.torrents_info(torrent_hashes=torrent_hashes)
@@ -161,7 +160,7 @@ def get_downloading(request, downloader_id: int, prop: bool = False, torrent_has
 
 @router.get('/downloaders/torrent/props', response=CommonResponse, description='当前种子属性')
 def get_torrent_properties_api(request, downloader_id: int, torrent_hash: str):
-    client, category = toolbox.get_downloader_instance(downloader_id)
+    client, category, downloader_name = toolbox.get_downloader_instance(downloader_id)
     try:
         if category == DownloaderCategory.qBittorrent:
             torrent_list = client.torrents.info(torrent_hashes=torrent_hash)
@@ -193,7 +192,7 @@ def get_torrent_properties_api(request, downloader_id: int, torrent_hash: str):
     except Exception as e:
         logger.error(traceback.format_exc(limit=3))
         return JsonResponse(CommonResponse.error(
-            msg='获取种子详情出错咯！'
+            msg=f'{downloader_name} 获取种子详情出错咯！'
         ).to_dict(), safe=False)
 
 
@@ -201,7 +200,7 @@ def get_torrent_properties_api(request, downloader_id: int, torrent_hash: str):
             response=CommonResponse[List[Optional[CategorySchema]]],
             description='获取下载器分类（QB）、常用文件夹（TR）')
 def get_downloader_categories(request, downloader_id: int):
-    client, category = toolbox.get_downloader_instance(downloader_id)
+    client, category, _ = toolbox.get_downloader_instance(downloader_id)
     try:
         if category == DownloaderCategory.qBittorrent:
             # client.auth_log_in()
@@ -234,7 +233,7 @@ def control_torrent(request, control_command: ControlTorrentCommandIn):
     delete_files = control_command.delete_files
     category = control_command.category
     enable = control_command.enable
-    client, downloader_category = toolbox.get_downloader_instance(control_command.downloader_id)
+    client, downloader_category, _ = toolbox.get_downloader_instance(control_command.downloader_id)
     try:
         if downloader_category == DownloaderCategory.qBittorrent:
             # client.auth_log_in()
@@ -271,7 +270,7 @@ def control_torrent(request, control_command: ControlTorrentCommandIn):
 def add_torrent(request, new_torrent: AddTorrentCommandIn):
     torrent = new_torrent.new_torrent
     try:
-        client, downloader_category = toolbox.get_downloader_instance(new_torrent.downloader_id)
+        client, downloader_category, downloader_name = toolbox.get_downloader_instance(new_torrent.downloader_id)
         return toolbox.push_torrents_to_downloader(
             client, downloader_category,
             urls=torrent.urls,
@@ -285,17 +284,17 @@ def add_torrent(request, new_torrent: AddTorrentCommandIn):
         )
     except Exception as e:
         logger.info(traceback.format_exc(3))
-        return CommonResponse.error(msg='添加失败！')
+        return CommonResponse.error(msg='下载器：{downloader_name} 添加种子失败！')
 
 
 @router.get('/brush_remove', response=CommonResponse, description='删种脚本')
 def brush_remove_torrent(request, downloader_id: int):
-    client, downloader_category = toolbox.get_downloader_instance(downloader_id)
+    client, downloader_category, downloader_name = toolbox.get_downloader_instance(downloader_id)
     if downloader_category == DownloaderCategory.Transmission:
         return CommonResponse.error(msg='不支持Transmission!')
     hashes = toolbox.torrents_filter_by_percent_completed_rule(client, num_complete_percent=0.5, downloaded_percent=0.9)
     client.torrents_delete(delete_files=True, torrent_hashes=hashes)
-    return CommonResponse.success(msg=f'指令发送成功!删除{len(hashes)}个种子！')
+    return CommonResponse.success(msg=f'指令发送成功!下载器 {downloader_name} 删除{len(hashes)}个种子！')
 
 
 @router.get('/repeat_torrent', response=CommonResponse, description='获取种子辅种信息')

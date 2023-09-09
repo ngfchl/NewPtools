@@ -2597,48 +2597,54 @@ class PtSpider:
                         res = res.json()
                         if res.get("code") != 0:
                             logger.info(res.get("msg"))
-                        logger.info(res.get("data"))
+                        else:
+                            logger.info(res.get("data"))
+                            for info_hash, repeat_info in res.get("data").items():
+                                logger.info(f'当前信息：{repeat_info}')
+                            for torrent in repeat_info:
+                                torrent_hash = torrent["hash_string"]
+                                if torrent_hash in hash_lookup:
+                                    logger.info(f'种子 {info_hash} 已存在，跳过')
+                                    continue
+                                sid = torrent.get('site_id')
+                                website = website_list.filter(id=sid).first()
+                                logger.debug(f'当前站点：{website} - 站点ID: {sid}')
+                                if not website:
+                                    logger.warning(f'还未支持此站点，站点ID：{sid}')
+                                    continue
+                                website_id = website.id
+                                my_site = my_site_list.filter(site=website_id).first()
+                                logger.info(f'对应 我的站点：{my_site} - 站点ID: {sid}')
+                                if not my_site:
+                                    logger.warning(f'你尚未添加站点：{website.name}')
+                                    continue
+                                logger.info(f'生成辅种数据')
+                                if info_hash in hash_lookup:
+                                    repeat_torrent = hash_lookup[info_hash]
+                                    try:
+                                        repeat_params.setdefault(website_id, []).append({
+                                            "urls": self.generate_magnet_url(sid, torrent, my_site, website),
+                                            # "category": repeat_torrent.get("category"),
+                                            "save_path": repeat_torrent.get("save_path"),
+                                            "cookie": my_site.cookie,
+                                            "rename": torrent.get("name"),
+                                            "upload_limit": website.limit_speed * 1024,
+                                            "download_limit": 150 * 1024,
+                                            "is_skip_checking": False,
+                                            "is_paused": True,
+                                            "info_hash": info_hash,
+                                        })
+                                    except Exception as e:
+                                        msg = f'{info_hash} {sid} - {torrent["tid"]}生成辅种数据失败：{e}'
+                                        logger.error(msg)
+                            logger.info(f'本次辅种数据，共有：{len(repeat_params)}个站点的辅种数据')
+                            repeat_count = sum(len(values) for values in repeat_params.values())
+                            logger.info(f'本次辅种，共有：{repeat_count}条辅种数据')
                     except Exception as e:
                         msg = f'{downloader_name} 上传辅种数据失败：{e}'
                         logger.error(msg)
                         return CommonResponse.error(msg=msg)
-                    for info_hash, repeat_info in res.get("data").items():
-                        logger.info(f'当前信息：{repeat_info}')
-                        for torrent in repeat_info:
-                            torrent_hash = torrent["hash_string"]
-                            if torrent_hash in hash_lookup:
-                                logger.info(f'种子 {info_hash} 已存在，跳过')
-                                continue
-                            sid = torrent.get('site_id')
-                            website = website_list.filter(id=sid).first()
-                            logger.debug(f'当前站点：{website} - 站点ID: {sid}')
-                            if not website:
-                                logger.warning(f'还未支持此站点，站点ID：{sid}')
-                                continue
-                            website_id = website.id
-                            my_site = my_site_list.filter(site=website_id).first()
-                            logger.info(f'对应 我的站点：{my_site} - 站点ID: {sid}')
-                            if not my_site:
-                                logger.warning(f'你尚未添加站点：{website.name}')
-                                continue
-                            logger.info(f'生成辅种数据')
-                            if info_hash in hash_lookup:
-                                repeat_torrent = hash_lookup[info_hash]
-                                repeat_params.setdefault(website_id, []).append({
-                                    "urls": self.generate_magnet_url(sid, torrent, my_site, website),
-                                    # "category": repeat_torrent.get("category"),
-                                    "save_path": repeat_torrent.get("save_path"),
-                                    "cookie": my_site.cookie,
-                                    "rename": torrent.get("name"),
-                                    "upload_limit": website.limit_speed * 1024,
-                                    "download_limit": 150 * 1024,
-                                    "is_skip_checking": False,
-                                    "is_paused": True,
-                                    "info_hash": info_hash,
-                                })
-                    logger.info(f'本次辅种数据，共有：{len(repeat_params)}个站点的辅种数据')
-                    repeat_count = sum(len(values) for values in repeat_params.values())
-                    logger.info(f'本次辅种，共有：{repeat_count}条辅种数据')
+
                     # 从缓存中获取旧的辅种数据
                     params = cache.get(f"params_data_{downloader_id}")
                     logger.info(f'当前缓存数据：{params}')
@@ -2746,44 +2752,50 @@ class PtSpider:
                         res = res.json()
                         if res.get("code") != 0:
                             logger.error(res.get("msg"))
-                        logger.info(res.get("data"))
+                        else:
+                            logger.info(res.get("data"))
+                            for info_hash, repeat_info in res.get("data").items():
+                                logger.info(f'当前信息：{repeat_info}')
+                                for torrent in repeat_info:
+                                    torrent_hash = torrent["hash_string"]
+                                    if torrent_hash in hash_lookup:
+                                        logger.info(f'种子 {info_hash} 已存在，跳过')
+                                        continue
+                                    sid = torrent.get('site_id')
+                                    website = website_list.filter(id=sid).first()
+                                    logger.debug(f'当前站点：{website}')
+                                    if not website:
+                                        logger.warning(f'还未支持此站点，站点ID：{sid}')
+                                        continue
+                                    website_id = website.id
+                                    my_site = my_site_list.filter(site=website_id).first()
+                                    logger.info(f'对应 我的站点：{my_site}')
+                                    if not my_site:
+                                        logger.warning(f'你尚未添加站点：{website.name}')
+                                        continue
+                                    logger.info(f'生成辅种数据')
+                                    if info_hash in hash_lookup:
+                                        repeat_torrent = hash_lookup[info_hash]
+                                        try:
+                                            repeat_params.setdefault(website_id, []).append({
+                                                "torrent": self.generate_magnet_url(sid, torrent, my_site, website),
+                                                "paused": True,
+                                                # "labels": repeat_torrent.labels,
+                                                "cookies": my_site.cookie,
+                                                "download_dir": repeat_torrent.download_dir,
+                                                "info_hash": torrent["hash_string"],
+                                            })
+                                        except Exception as e:
+                                            msg = f'{info_hash} {sid} - {torrent["tid"]}生成辅种数据失败：{e}'
+                                            logger.error(msg)
+                                logger.info(f'本次辅种数据，共有：{len(repeat_params)}个站点的辅种数据')
+                            repeat_count = sum(len(values) for values in repeat_params.values())
+                            logger.info(f'本次辅种，共有：{repeat_count}条辅种数据')
                     except Exception as e:
                         msg = f'{downloader_name} 上传辅种数据失败：{e}'
                         logger.error(msg)
                         return CommonResponse.error(msg=msg)
-                    for info_hash, repeat_info in res.get("data").items():
-                        logger.info(f'当前信息：{repeat_info}')
-                        for torrent in repeat_info:
-                            torrent_hash = torrent["hash_string"]
-                            if torrent_hash in hash_lookup:
-                                logger.info(f'种子 {info_hash} 已存在，跳过')
-                                continue
-                            sid = torrent.get('site_id')
-                            website = website_list.filter(id=sid).first()
-                            logger.debug(f'当前站点：{website}')
-                            if not website:
-                                logger.warning(f'还未支持此站点，站点ID：{sid}')
-                                continue
-                            website_id = website.id
-                            my_site = my_site_list.filter(site=website_id).first()
-                            logger.info(f'对应 我的站点：{my_site}')
-                            if not my_site:
-                                logger.warning(f'你尚未添加站点：{website.name}')
-                                continue
-                            logger.info(f'生成辅种数据')
-                            if info_hash in hash_lookup:
-                                repeat_torrent = hash_lookup[info_hash]
-                                repeat_params.setdefault(website_id, []).append({
-                                    "torrent": self.generate_magnet_url(sid, torrent, my_site, website),
-                                    "paused": True,
-                                    # "labels": repeat_torrent.labels,
-                                    "cookies": my_site.cookie,
-                                    "download_dir": repeat_torrent.download_dir,
-                                    "info_hash": torrent["hash_string"],
-                                })
-                        logger.info(f'本次辅种数据，共有：{len(repeat_params)}个站点的辅种数据')
-                    repeat_count = sum(len(values) for values in repeat_params.values())
-                    logger.info(f'本次辅种，共有：{repeat_count}条辅种数据')
+
                     # 从缓存中获取旧的params数据
                     params = cache.get(f"params_data_{downloader_id}")
 

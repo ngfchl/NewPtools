@@ -2563,29 +2563,36 @@ class PtSpider:
                 repeat_data = []
                 hash_lookup = {item["hash"]: item for item in torrents}
 
-                logger.info(f'随机抽取 {push_once} 条数据')
+                logger.info(f'{downloader_name} 随机抽取 {push_once} 条数据')
                 torrents = random.sample(torrents, min(len(torrents), push_once))
 
-                logger.info(f'开始上传本地种子信息到服务器')
                 try:
+                    logger.info(f'{downloader_name} 开始生成需要辅种的数据')
                     new_func = functools.partial(self.get_qb_repeat_info, client=client)
                     repeat_data = pool.map(new_func, torrents)
                     logger.debug(f'本次需要辅种的数据：{repeat_data}')
-                    res = requests.post(
-                        url=f"{os.getenv('REPEAT_SERVER')}/api/website/torrents/repeat",
-                        json={
-                            "data": repeat_data,
-                            "iyuu_token": iyuu_token,
-                        },
-                        headers={
-                            "content-type": "application/json",
-                            "AUTHORIZATION": os.getenv("TOKEN"),
-                            "EMAIL": os.getenv("DJANGO_SUPERUSER_EMAIL"),
-                        }).json()
-                    logger.info(res)
-                    if res.get("code") != 0:
-                        logger.info(res.get("msg"))
-                    logger.info(res.get("data"))
+                    try:
+                        logger.info(f'{downloader_name} 开始上传辅种信息到服务器')
+                        res = requests.post(
+                            url=f"{os.getenv('REPEAT_SERVER')}/api/website/torrents/repeat",
+                            json={
+                                "data": repeat_data,
+                                "iyuu_token": iyuu_token,
+                            },
+                            headers={
+                                "content-type": "application/json",
+                                "AUTHORIZATION": os.getenv("TOKEN"),
+                                "EMAIL": os.getenv("DJANGO_SUPERUSER_EMAIL"),
+                            })
+                        logger.info(f'{downloader_name} 辅种返回结果 {res.content.decode("utf8")}')
+                        res = res.json()
+                        if res.get("code") != 0:
+                            logger.info(res.get("msg"))
+                        logger.info(res.get("data"))
+                    except Exception as e:
+                        msg = f'{downloader_name} 上传辅种数据失败：{e}'
+                        logger.error(msg)
+                        return CommonResponse.error(msg=msg)
                     for info_hash, repeat_info in res.get("data").items():
                         logger.info(f'当前信息：{repeat_info}')
                         for torrent in repeat_info:
@@ -2688,22 +2695,23 @@ class PtSpider:
                     cache.set(f"params_data_{downloader_id}", new_params, cache_expire)
 
                 except Exception as e:
-                    msg = f'推送种子信息到服务器失败！'
+                    msg = f'{downloader_name} 推送种子信息到服务器失败！'
                     logger.error(msg)
                     logger.error(traceback.format_exc(5))
 
             if downloader_category == DownloaderCategory.Transmission:
-                logger.info(f'从下载器 {downloader_name} 获取所有已完成种子信息')
+                logger.info(f'正在从下载器 {downloader_name} 获取所有已完成种子信息')
                 all_torrents = client.get_torrents()
                 complete_torrents = [torrent for torrent in all_torrents if int(torrent.progress) == 100]
+                logger.info('获取种子列表信息完成！')
+                logger.info(f'生成 HASH 快搜信息')
                 hash_lookup = {item.hashString: item for item in complete_torrents}
 
                 logger.info(f'随机抽取 {push_once} 条数据')
                 torrents = random.sample(complete_torrents, min(len(complete_torrents), push_once))
 
-                logger.info(f'根据hash快速查找数据')
-                logger.info(f'开始上传本地种子信息到服务器')
                 try:
+                    logger.info(f'开始生成需要辅种的数据')
                     repeat_data = []
                     for t in torrents:
                         repeat_data.append({
@@ -2711,20 +2719,29 @@ class PtSpider:
                             "pieces_tr": toolbox.sha1_hash(t.pieces),
                             "files_count": len(t.get_files())
                         })
-                    res = requests.post(
-                        url=f"{os.getenv('REPEAT_SERVER')}/api/website/torrents/repeat",
-                        json={
-                            "data": repeat_data,
-                            "iyuu_token": iyuu_token,
-                        },
-                        headers={
-                            "content-type": "application/json",
-                            "AUTHORIZATION": os.getenv("TOKEN"),
-                            "EMAIL": os.getenv("DJANGO_SUPERUSER_EMAIL"),
-                        }).json()
-                    if res.get("code") != 0:
-                        logger.error(res.get("msg"))
-                    logger.info(res.get("data"))
+                    logger.info(f'{downloader_name} 需辅种数据 {repeat_data}')
+                    logger.info(f'开始上传辅种信息到服务器')
+                    try:
+                        res = requests.post(
+                            url=f"{os.getenv('REPEAT_SERVER')}/api/website/torrents/repeat",
+                            json={
+                                "data": repeat_data,
+                                "iyuu_token": iyuu_token,
+                            },
+                            headers={
+                                "content-type": "application/json",
+                                "AUTHORIZATION": os.getenv("TOKEN"),
+                                "EMAIL": os.getenv("DJANGO_SUPERUSER_EMAIL"),
+                            })
+                        logger.info(f'{downloader_name} 辅种返回结果 {res.content.decode("utf8")}')
+                        res = res.json()
+                        if res.get("code") != 0:
+                            logger.error(res.get("msg"))
+                        logger.info(res.get("data"))
+                    except Exception as e:
+                        msg = f'{downloader_name} 上传辅种数据失败：{e}'
+                        logger.error(msg)
+                        return CommonResponse.error(msg=msg)
                     for info_hash, repeat_info in res.get("data").items():
                         logger.info(f'当前信息：{repeat_info}')
                         for torrent in repeat_info:
@@ -2775,7 +2792,7 @@ class PtSpider:
 
                     params = repeat_params
                     for website_id, torrents in params.items():
-                        # 提取每个站点的前十条数据，如果不足十条，则获取所有数据
+                        # 提取每个站点前十条数据，如果不足十条，则获取所有数据
                         top_limit_torrents = torrents[:limit]
                         logger.info(
                             f'提取 {website_list.get(id=website_id).name}： {len(top_limit_torrents)}条辅种数据：')
@@ -2839,6 +2856,8 @@ class PtSpider:
     def start_torrent(self, downloader_id: int):
         logger.debug(f'当前下载器: {downloader_id}')
         client, downloader_category, downloader_name = toolbox.get_downloader_instance(downloader_id)
+        logger.debug(f'当前下载器: {downloader_name}')
+
         # 加载辅种配置项
         try:
             repeat = toolbox.parse_toml('repeat')

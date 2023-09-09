@@ -20,7 +20,7 @@ function WARN {
 function token_verification {
 
   if [ -z "$TOKEN" ]; then
-    ERROR "Authorization: No TOKEN received. Exiting..."
+    ERROR "授权失败，未检测到授权码TOKEN，正在退出..."
     exit 1
   fi
   # Get authorization response
@@ -30,10 +30,10 @@ function token_verification {
   AUTH_CODE=$(echo "$AUTH_RESPONSE" | jq -r '.code')
   INFO "$AUTH_CODE"
   if [ -z "$AUTH_CODE" ]; then
-    ERROR "Authorization: No AUTH_CODE received.  Exiting..."
+    ERROR "授权失败，访问授权服务器失败，正在退出..."
     exit 1
   elif [ "$AUTH_CODE" -ne 0 ]; then
-    ERROR "Authorization. Exiting..."
+    ERROR "授权失败，正在退出程序..."
     exit 1
   fi
 
@@ -168,14 +168,16 @@ init_supervisor
 
 CONTAINER_ALREADY_STARTED="CONTAINER_ALREADY_STARTED_PLACEHOLDER"
 if [ ! -e $CONTAINER_ALREADY_STARTED ]; then
-  INFO "First container startup"
+  INFO "首次启动，开始初始化"
   touch $CONTAINER_ALREADY_STARTED
   first_start
 else
-  INFO "Not first container startup"
+  INFO "非首次启动，跳过初始化"
 fi
 
-INFO "启动服务"
+INFO "同步数据库结构"
 python3 manage.py migrate
+INFO "启动supervisor服务"
 supervisord -c supervisor/prod.conf
+INFO "启动 Django 服务"
 exec dumb-init uvicorn auxiliary.asgi:application --reload --host 0.0.0.0 --port "$DJANGO_WEB_PORT"

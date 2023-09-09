@@ -1646,6 +1646,8 @@ class PtSpider:
                     # 获取用户等级信息
                     my_level_1 = ''.join(
                         details_html.xpath(site.my_level_rule)
+                    ).replace(
+                        'UserClass_Name', ''
                     ).replace('_Name', '').replace('fontBold', '').strip(" ").strip()
                     if 'hdcity' in site.url:
                         my_level = my_level_1.replace('[', '').replace(']', '').strip(" ").strip()

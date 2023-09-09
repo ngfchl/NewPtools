@@ -874,7 +874,8 @@ class PtSpider:
                                         method='post',
                                         url=url,
                                         data={'action': 'sign_in'}, )
-                if res.status_code == 200:
+                logger.info(res.text)
+                if res.status_code == 200 and res.text.index('已连续签到'):
                     signin_today.sign_in_today = True
                     signin_today.sign_in_info = res.text
                     signin_today.save()

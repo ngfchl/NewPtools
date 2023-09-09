@@ -15,7 +15,7 @@ logger = logging.getLogger('ptools')
 router = Router(tags=['monkey'])
 
 
-@router.get('get_site/{token}/{host}', response=CommonResponse[WebSiteMonkeySchemaOut])
+@router.get('get_site/{token}/{host}', response=CommonResponse[Optional[WebSiteMonkeySchemaOut]])
 def get_site_by_host(request, token: str, host: str):
     """根据油猴发来的站点host返回站点相关信息"""
     try:
@@ -28,8 +28,9 @@ def get_site_by_host(request, token: str, host: str):
         if len(site_list) == 1:
             # data = {'site_id': site.id, 'uid_xpath': site.my_uid_rule}
             # return site_list.first()
+            logger.info(site_list.first())
             return CommonResponse.success(data=site_list.first())
-        msg = f'{host} 站点信息获取失败！'
+        msg = f'{host} 站点信息获取失败，请检查网址是否正确！'
         return CommonResponse.error(msg=msg)
     except Exception as e:
         msg = f'站点信息获取失败！{e}'

@@ -875,7 +875,7 @@ class PtSpider:
                                         url=url,
                                         data={'action': 'sign_in'}, )
                 logger.info(res.text)
-                if res.status_code == 200 and res.text.index('已连续签到'):
+                if res.text.find('已连续签到') >= 0 or res.text.find('请不要重复签到哦！') >= 0:
                     signin_today.sign_in_today = True
                     signin_today.sign_in_info = res.text
                     signin_today.save()

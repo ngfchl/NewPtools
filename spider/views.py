@@ -968,12 +968,13 @@ class PtSpider:
                 if len(text) > 0:
                     location = toolbox.parse_school_location(text)
                     logger.debug(f'学校签到链接：{location}')
-                    if 'addbouns.php' in location:
+                    if 'index.php?action=addbonus' in location:
                         res = self.send_request(my_site=my_site, url=f'{mirror}{location.lstrip("/")}')
+                        logger.info(res.content)
                 # sign_in_text = self.parse(site, res, '//a[@href="index.php"]/font//text()')
                 # sign_in_stat = self.parse(site, res, '//a[contains(@href,"addbouns")]')
                 sign_in_text = self.parse(site, res, site.sign_info_content)
-                sign_in_stat = self.parse(site, res, '//a[contains(@href,"addbouns")]')
+                sign_in_stat = self.parse(site, res, '//a[contains(@href,"index.php?action=addbonus")]')
                 logger.info('{} 签到反馈：{}'.format(site.name, sign_in_text))
                 if res.status_code == 200 and len(sign_in_stat) <= 0:
                     message = ''.join(sign_in_text) if len(sign_in_text) >= 1 else '您已在其他地方签到，请勿重复操作！'

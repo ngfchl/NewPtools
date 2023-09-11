@@ -2557,6 +2557,7 @@ class PtSpider:
             push_once = repeat.get('push_once', 200)
             cache_expire = repeat.get('cache_expire', 604800)
             interval = repeat.get('interval', 1)
+            timeout = repeat.get('timeout', 120)
             auto_torrent_management = repeat.get('auto_torrent_management', False)
             content_layout = repeat.get('content_layout', "Original")
 
@@ -2694,6 +2695,7 @@ class PtSpider:
                                     skip_checking=torrent['is_skip_checking'],
                                     use_auto_torrent_management=auto_torrent_management,
                                     content_layout=content_layout,
+                                    timeout=timeout,
                                 )
                                 push_res.append({torrent['info_hash']: r})
                                 push_count += 1
@@ -2835,6 +2837,7 @@ class PtSpider:
                                     cookies=torrent['cookies'],
                                     # labels=torrent['labels'],
                                     download_dir=torrent['download_dir'],
+                                    timeout=timeout,
                                 )
                                 push_res.append({torrent['info_hash']: r.name})
                                 push_count += 1

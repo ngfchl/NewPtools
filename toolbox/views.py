@@ -465,7 +465,7 @@ def get_downloader_instance(downloader_id):
                 password=downloader.password,
                 SIMPLE_RESPONSES=True,
                 REQUESTS_ARGS={
-                    'timeout': (5, 30)
+                    'timeout': (5, 60)
                 }
             )
             client.auth_log_in()
@@ -475,7 +475,7 @@ def get_downloader_instance(downloader_id):
                 protocol=downloader.http,
                 username=downloader.username,
                 password=downloader.password,
-                timeout=30,
+                timeout=60,
             )
         return client, downloader.category, downloader.name
     except Exception as e:

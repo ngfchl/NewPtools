@@ -1158,7 +1158,7 @@ def get_torrents_hash_from_iyuu(hash_list: List[str]):
         # 由于json解析的原因，列表元素之间有空格，需要替换掉所有空格
         hash_list_json = json.dumps(hash_list).replace(' ', '')
         hash_list_sha1 = hashlib.sha1(hash_list_json.encode(encoding='utf-8')).hexdigest()
-        url = 'http://api.iyuu.cn/index.php?s=App.Api.Hash'
+        url = 'http://api.iyuu.cn/index.php?s=App.Api.Infohash'
         data = {
             # IYUU token
             'sign': iyuu_token,
@@ -1173,9 +1173,44 @@ def get_torrents_hash_from_iyuu(hash_list: List[str]):
         }
         res = requests.post(url=url, data=data).json()
         ret = res.get('ret')
-        logger.info(f'辅种返回消息码：{ret}，返回消息：{res.get("msg")}')
+        logger.info(f'辅种返回消息码：{ret}，返回消息：{res.get("msg")}，返回数据：{res.get("data")}')
         if ret == 200:
-            return CommonResponse.success(data=res.get('data'))
+            site_list = WebSite.objects.all()
+            iyuu_data = res.get('data')
+            repeat_info = {}
+            for hash_string, values in iyuu_data.items():
+                try:
+                    current_list = []
+
+                    for t in values.get("torrent"):
+                        info_hash = t.get('info_hash')
+                        if info_hash in hash_list:
+                            logger.warning(f'{info_hash} 本地已存在，跳过！')
+                            continue
+                        tid = t.get('torrent_id')
+                        sid = t.get('sid')
+                        try:
+                            site = site_list.filter(iyuu=sid).first()
+                            logger.info(f'当前站点：{site}')
+                            if not isinstance(site, WebSite):
+                                # 站点尚未支持，跳过
+                                logger.warning(f"尚未支持的IYUU站点：{sid}")
+                                continue
+                            base_dict = {
+                                "site_id": site.id,
+                                "tid": tid,
+                                "hash_string": info_hash,
+                            }
+                            current_list.append(base_dict)
+                        except Exception as e:
+                            logger.error(f' IYUU 数据: {info_hash} -tid: {tid} - iyuu: {sid} 解析出错了：{e}')
+                            logger.error(traceback.format_exc(5))
+                            continue
+                    repeat_info[hash_string] = current_list
+                except Exception as e:
+                    logger.error(f'解析 IYUU 数据出错了：{e}')
+                    logger.error(traceback.format_exc(5))
+            return CommonResponse.success(data=repeat_info)
         return CommonResponse.error(msg=res.get('msg'))
     except Exception as e:
         msg = f'从IYUU获取辅种数据失败！{e}'

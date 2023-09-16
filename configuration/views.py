@@ -15,7 +15,6 @@ from ninja import Router
 
 from auxiliary.settings import BASE_DIR
 from configuration.schema import UpdateSchemaOut, UserIn, SettingsIn
-from monkey.schema import CommonMessage
 from toolbox import views as toolbox
 from toolbox.schema import CommonResponse
 
@@ -78,7 +77,7 @@ def update_page(request):
         return CommonResponse.error(msg=msg)
 
 
-@router.get('update/migrate', response=CommonMessage, description='同步数据库')
+@router.get('update/migrate', response=CommonResponse, description='同步数据库')
 def do_xpath(request):
     """同步数据库，初始化Xpath规则"""
     migrate_commands = {
@@ -106,7 +105,7 @@ def do_xpath(request):
         return CommonResponse.error(msg=msg)
 
 
-@router.get('update/restart/{cid}', response=CommonMessage, description='重启容器')
+@router.get('update/restart/{cid}', response=CommonResponse, description='重启容器')
 def do_restart(request, cid: str):
     """重启容器"""
     try:

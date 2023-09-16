@@ -1,3 +1,4 @@
+import functools
 import logging
 import os
 import random
@@ -2518,6 +2519,8 @@ class PtSpider:
     @staticmethod
     def get_qb_repeat_info(torrent, client):
         hash_string = torrent.get("hash")
+        title = torrent.get("name")
+        size = torrent.get("size")
         # 获取种子块HASH列表，并生成种子块HASH列表字符串的sha1值，保存
         pieces_hash_list = client.torrents_piece_hashes(torrent_hash=hash_string)
         pieces_hash_string = ''.join(str(pieces_hash) for pieces_hash in pieces_hash_list)
@@ -2528,6 +2531,8 @@ class PtSpider:
         filelist = toolbox.sha1_hash(file_list_hash_string)
         files_count = len(file_list)
         return {
+            "title": title,
+            "size": size,
             "hash_string": hash_string,
             "filelist": filelist,
             "files_count": files_count,
@@ -2578,8 +2583,21 @@ class PtSpider:
 
                 try:
                     logger.info(f'{downloader_name} 开始生成需要辅种的数据')
-                    # new_func = functools.partial(self.get_qb_repeat_info, client=client)
-                    # repeat_data = pool.map(new_func, torrents)
+                    new_func = functools.partial(self.get_qb_repeat_info, client=client)
+                    to_server_data = pool.map(new_func, torrents)
+                    logger.info(to_server_data)
+                    for d in to_server_data:
+                        hash_string = d.get('hash_string')
+                        try:
+                            t, created = TorrentInfo.objects.update_or_create(
+                                hash_string=hash_string,
+                                defaults=d
+                            )
+                            logger.debug(f'{t.hash_string} => 新增：{created}')
+                        except Exception as e:
+                            logger.error(f'{hash_string} => 保存到数据库出错了！{e}')
+                            logger.error(traceback.format_exc(5))
+                            continue
                     repeat_data = [item["hash"] for item in torrents]
                     logger.debug(f'本次需要辅种的数据：{repeat_data}')
                     try:
@@ -2636,9 +2654,17 @@ class PtSpider:
                                                 "is_paused": True,
                                                 "info_hash": info_hash,
                                             })
+                                            t, created = TorrentInfo.objects.update_or_create(
+                                                hash_string=torrent_hash,
+                                                defaults={
+                                                    "site_id": sid,
+                                                    "tid": torrent.get("tid"),
+                                                })
+                                            logger.debug(f'{t.hash_string} => 新增：{created}')
                                         except Exception as e:
                                             msg = f'{info_hash} {sid} - {torrent["tid"]}生成辅种数据失败：{e}'
                                             logger.error(msg)
+                                            logger.error(traceback.format_exc(5))
                             logger.info(f'本次辅种数据，共有：{len(repeat_params)}个站点的辅种数据')
                             repeat_count = sum(len(values) for values in repeat_params.values())
                             logger.info(f'本次辅种，共有：{repeat_count}条辅种数据')
@@ -2731,12 +2757,27 @@ class PtSpider:
                 try:
                     logger.info(f'开始生成需要辅种的数据')
                     repeat_data = [item.hashString for item in torrents]
-                    # for t in torrents:
-                    #     repeat_data.append({
-                    #         "hash_string": t.hashString,
-                    #         "pieces_tr": toolbox.sha1_hash(t.pieces),
-                    #         "files_count": len(t.get_files())
-                    #     })
+                    to_server_data = [{
+                        "title": t.name,
+                        "size": t.size_when_done,
+                        "hash_string": t.hashString,
+                        "pieces_tr": toolbox.sha1_hash(t.pieces),
+                        "files_count": len(t.get_files())
+                    } for t in torrents]
+                    logger.info(to_server_data)
+
+                    for d in to_server_data:
+                        hash_string = d.get('hash_string')
+                        try:
+                            t, created = TorrentInfo.objects.update_or_create(
+                                hash_string=hash_string,
+                                defaults=d
+                            )
+                            logger.debug(f'{t.hash_string} => 新增：{created}')
+                        except Exception as e:
+                            logger.error(f'{hash_string} => 保存到数据库出错了！{e}')
+                            logger.error(traceback.format_exc(5))
+                            continue
                     logger.info(f'{downloader_name} 需辅种数据 {repeat_data}')
                     try:
                         logger.info(f'开始上传辅种信息到服务器')
@@ -2790,6 +2831,13 @@ class PtSpider:
                                                 "download_dir": repeat_torrent.download_dir,
                                                 "info_hash": torrent["hash_string"],
                                             })
+                                            t, created = TorrentInfo.objects.update_or_create(
+                                                hash_string=torrent_hash,
+                                                defaults={
+                                                    "site_id": sid,
+                                                    "tid": torrent.get("tid"),
+                                                })
+                                            logger.debug(f'{t.hash_string} => 新增：{created}')
                                         except Exception as e:
                                             msg = f'{info_hash} {sid} - {torrent["tid"]}生成辅种数据失败：{e}'
                                             logger.error(msg)

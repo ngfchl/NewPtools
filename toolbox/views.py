@@ -24,7 +24,6 @@ import toml as toml
 import transmission_rpc
 from django.conf import settings
 from django.core.cache import cache
-from django.db.models import Q
 from django.shortcuts import get_object_or_404
 from lxml import etree
 from pypushdeer import PushDeer
@@ -1871,10 +1870,8 @@ def push_torrents_to_sever(push_once: int):
     :return:
     """
     try:
-        # 从数据库读取一推送到下载器，未推送到服务器，且，hash 等信息已完善的种子
-        torrents = TorrentInfo.objects.filter(state__gte=1, state__lt=6).exclude(hash_string__exact='').exclude(
-            Q(pieces_qb__exact='') & Q(pieces_tr__exact='')
-        )
+        # 从数据库读取hash 不为空的种子
+        torrents = TorrentInfo.objects.filter(pushed=False).exclude(hash_string__exact='')
         logger.info(f'当前共有符合条件的种子：{len(torrents)}')
         if len(torrents) <= 0:
             return f"当前没有需要推送的种子！"
@@ -1887,7 +1884,7 @@ def push_torrents_to_sever(push_once: int):
                 logger.debug(torrent_list[0])
                 logger.debug(torrents)
                 res = requests.post(
-                    url=f"{os.getenv('REPEAT_SERVER', 'http://100.64.118.55:8081')}/api/website/torrents/multiple",
+                    url=f"{os.getenv('REPEAT_SERVER')}/api/website/torrents/multiple",
                     json=torrent_list,
                     headers={
                         "content-type": "application/json",
@@ -1900,7 +1897,7 @@ def push_torrents_to_sever(push_once: int):
                 logger.info(res.text)
                 if res.status_code == 200:
                     torrents = torrents[push_once:]
-                    TorrentInfo.objects.filter(id__in=[t.id for t in chunks]).update(state=6)
+                    TorrentInfo.objects.filter(id__in=[t.id for t in chunks]).update(pushed=True)
                     msg.append(f"成功上传 {len(chunks)} 条种子信息")
                 else:
                     msg.append(f"{len(chunks)} 条种子信息上传失败！")

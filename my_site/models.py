@@ -134,6 +134,7 @@ class TorrentInfo(BaseEntity):
                                    on_delete=models.SET_NULL,
                                    verbose_name='下载器',
                                    blank=True, null=True)
+    pushed = models.BooleanField(verbose_name='推送至服务器', default=False, help_text='推送至辅种服务器')
 
     class Meta:
         verbose_name = '种子管理'

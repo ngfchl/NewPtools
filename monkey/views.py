@@ -5,6 +5,7 @@ import traceback
 from ninja import Router, Form
 
 from my_site.models import MySite, TorrentInfo
+from spider.views import PtSpider
 from toolbox import views as toolbox
 from toolbox.schema import CommonResponse
 from .schema import *
@@ -13,6 +14,7 @@ from .schema import *
 logger = logging.getLogger('ptools')
 
 router = Router(tags=['monkey'])
+pt_spider = PtSpider()
 
 
 @router.get('get_site/{token}/{host}', response=CommonResponse[Optional[WebSiteMonkeySchemaOut]])
@@ -98,3 +100,49 @@ def get_torrents_from_monkey(request):
         logger.error(msg)
         logger.error(traceback.format_exc(3))
         return CommonResponse.error(msg=msg)
+
+
+@router.post('torrents/iyuu', response=CommonResponse[Optional[MonkeyRepeatTorrentListOut]])
+def get_torrents_list_from_iyuu(request, hash_string: str = Form(...), site_id: str = Form(...)):
+    res = toolbox.get_torrents_hash_from_iyuu([hash_string])
+    if res.code != 0:
+        logger.warning(res.msg)
+        return CommonResponse.error(msg=res.msg)
+    torrents = res.data.get(hash_string)
+    website_list = WebSite.objects.exclude(id=site_id)
+    mysite_list = MySite.objects.exclude(site=site_id)
+    had_list = []
+    url_list = []
+    if len(torrents) <= 0:
+        return CommonResponse.success(data={
+            "url_list": url_list,
+            "can_list": list(website_list),
+        })
+    for torrent in torrents:
+        sid = torrent.get('site_id')
+        try:
+            website = website_list.filter(id=sid).first()
+            if not website:
+                logger.info(f'不支持的站点：{sid}')
+                continue
+            my_site = mysite_list.filter(site=sid).first()
+            if not my_site:
+                logger.info(f'未添加的站点：{website.name}')
+                continue
+            had_list.append(sid)
+            url_list.append({
+                "download_url": pt_spider.generate_magnet_url(sid, torrent, my_site, website),
+                "details_url": f'{website.url}{website.page_detail.format(torrent.get("tid"))}',
+                "site": website
+            })
+        except Exception as e:
+            logger.error(f'{torrent.get("hash_string")} 解析失败！{e}')
+            continue
+    id_list = [site.site for site in mysite_list.exclude(site__in=had_list)]
+    can_list = list(website_list.filter(id__in=id_list))
+    logger.info(id_list)
+    logger.info(f"当前种子有{len(can_list)}个站点未发布！")
+    return CommonResponse.success(data={
+        "url_list": url_list,
+        "can_list": can_list,
+    })

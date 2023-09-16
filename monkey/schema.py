@@ -74,3 +74,23 @@ class TorrentInfoSchemaIn(Schema):
 class MonkeyTorrentsSchemaIn(Schema):
     site: int
     torrents: List[TorrentInfoSchemaIn]
+
+
+class RepeatWebsiteSchema(ModelSchema):
+    class Config:
+        model = WebSite
+        model_fields = [
+            'id', 'name', 'url',
+            'logo',
+        ]
+
+
+class RepeatedWebsiteSchemaOut(Schema):
+    download_url: str
+    details_url: str
+    site: RepeatWebsiteSchema
+
+
+class MonkeyRepeatTorrentListOut(Schema):
+    url_list: List[RepeatedWebsiteSchemaOut]
+    can_list: List[RepeatWebsiteSchema]

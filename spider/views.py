@@ -2647,7 +2647,7 @@ class PtSpider:
                                                 # "category": repeat_torrent.get("category"),
                                                 "save_path": repeat_torrent.get("save_path"),
                                                 "cookie": my_site.cookie,
-                                                "rename": torrent.get("name"),
+                                                "rename": repeat_torrent.get("name"),
                                                 "upload_limit": website.limit_speed * 1024,
                                                 "download_limit": 150 * 1024,
                                                 "is_skip_checking": False,
@@ -2715,6 +2715,7 @@ class PtSpider:
                                     save_path=torrent['save_path'],
                                     # category=torrent['category'],
                                     paused=torrent['is_paused'],
+                                    rename=torrent['rename'],
                                     cookie=torrent['cookie'],
                                     upload_limit=torrent['upload_limit'],
                                     download_limit=torrent['download_limit'],
@@ -2949,11 +2950,25 @@ class PtSpider:
                 paused_count = len(torrents)
 
                 logger.info('当前下载器: {downloader_name} 筛选进度为0且状态为暂停的种子')
+                recheck_torrents = [torrent for torrent in torrents if torrent.get("progress") == 0]
+                if len(recheck_torrents) > 0:
+                    for t in recheck_torrents:
+                        if t['name'] not in t['content_path']:
+                            try:
+                                client.torrents_rename_folder(
+                                    torrent_hash=t['hash'],
+                                    old_path=t['content_path'].split('/')[-1],
+                                    new_path=t['name'],
+                                )
+                            except Exception as e:
+                                logger.error(e)
+                                continue
                 recheck_hashes = [torrent.get("hash") for torrent in torrents if torrent.get("progress") == 0]
                 logger.info(f'当前下载器: {downloader_name} 等待校验的种子数量: {len(recheck_hashes)}')
                 recheck_count = len(recheck_hashes)
 
                 if len(recheck_hashes) > 0:
+
                     logger.info(f'当前下载器: {downloader_name} 开始校验，等待等待{verify_timeout}秒')
                     client.torrents.recheck(torrent_hashes=recheck_hashes)
                     time.sleep(verify_timeout)

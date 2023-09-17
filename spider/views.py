@@ -2953,7 +2953,7 @@ class PtSpider:
                 recheck_torrents = [torrent for torrent in torrents if torrent.get("progress") == 0]
                 if len(recheck_torrents) > 0:
                     for t in recheck_torrents:
-                        if t['name'] not in t['content_path']:
+                        if t['name'] != t['content_path'].split('/')[-1]:
                             try:
                                 client.torrents_rename_folder(
                                     torrent_hash=t['hash'],

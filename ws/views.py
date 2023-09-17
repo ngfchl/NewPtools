@@ -1,6 +1,5 @@
 import asyncio
 import logging
-import ssl
 import traceback
 
 import aiohttp
@@ -25,30 +24,21 @@ async def send_request(my_site: MySite,
                        json: dict = None,
                        timeout: int = 75,
                        delay: int = 15,
-                       header: dict = {}):
-    ssl_context = ssl.SSLContext(ssl.PROTOCOL_TLSv1_2)
-    _RESTRICTED_SERVER_CIPHERS = 'ALL'
-    ssl_context.set_ciphers(_RESTRICTED_SERVER_CIPHERS)
-    ssl_context.check_hostname = False
-    ssl_context.verify_mode = ssl.CERT_NONE
-
+                       header: dict = dict()):
     headers = {
         'User-Agent': my_site.user_agent,
     }
-    proxy = my_site.custom_server
-    proxies = {
-        'http': proxy if proxy else None,
-        'https': proxy if proxy else None,
-    } if proxy else None
     headers.update(header)
+    proxy = my_site.custom_server
 
     timeout = aiohttp.ClientTimeout(total=timeout)
-    async with aiohttp.ClientSession(headers=headers, timeout=timeout,
+    con = aiohttp.TCPConnector(verify_ssl=False)
+    async with aiohttp.ClientSession(headers=headers, timeout=timeout, connector=con,
                                      cookies=toolbox.cookie2dict(my_site.cookie)) as session:
         if method.lower() == "get":
-            response = await session.get(url, params=params, ssl=ssl_context, proxies=proxies)
+            response = await session.get(url, params=params, proxy=proxy)
         elif method.lower() == "post":
-            response = await session.post(url, data=data, json=json, ssl=ssl_context, proxies=proxies)
+            response = await session.post(url, data=data, json=json, proxy=proxy)
         else:
             # Handle other HTTP methods if necessary
             pass
@@ -79,7 +69,10 @@ async def search_and_parse_torrents(my_site: MySite, key: str):
                 logger.info(f"{site.name} 开始解析搜索结果")
                 html_text = await response.text()
                 trs = parse(html_text, site.torrents_rule)
-                logger.info(f'{my_site.nickname} 共发现{len(trs)}条种子记录')
+                msg = f'{my_site.nickname} 共发现{len(trs)}条种子记录'
+                logger.info(msg)
+                if len(trs) <= 0:
+                    return CommonResponse.error(msg=msg)
                 logger.info('=' * 50)
                 for tr in trs:
                     logger.debug(tr)

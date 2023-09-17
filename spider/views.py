@@ -2648,7 +2648,7 @@ class PtSpider:
                                                 "save_path": repeat_torrent.get("save_path"),
                                                 "cookie": my_site.cookie,
                                                 "rename": repeat_torrent.get("name"),
-                                                "upload_limit": website.limit_speed * 1024,
+                                                "upload_limit": website.limit_speed * 1024 * 1024 * 0.92,
                                                 "download_limit": 150 * 1024,
                                                 "is_skip_checking": False,
                                                 "is_paused": True,
@@ -2832,6 +2832,7 @@ class PtSpider:
                                                 "cookies": my_site.cookie,
                                                 "download_dir": repeat_torrent.download_dir,
                                                 "info_hash": torrent["hash_string"],
+                                                "upload_limit": website.limit_speed * 1024 * 0.92,
                                             })
                                             t, created = TorrentInfo.objects.update_or_create(
                                                 hash_string=torrent_hash,
@@ -2893,6 +2894,13 @@ class PtSpider:
                                     timeout=timeout,
                                 )
                                 push_res.append({torrent['info_hash']: r.name})
+                                logger.debug(f'{r.hashString} 打开上传限速：{torrent["upload_limit"] / 1024} MB/S')
+                                client.change_torrent(
+                                    ids=r.hashString,
+                                    upload_limited=True,
+                                    upload_limit=int(torrent["upload_limit"]),
+                                    timeout=timeout,
+                                )
                                 push_count += 1
                                 path, name = client.rename_torrent_path(
                                     torrent_id=r.hashString,

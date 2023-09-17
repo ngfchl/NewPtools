@@ -2561,7 +2561,7 @@ class PtSpider:
             push_once = repeat.get('push_once', 200)
             cache_expire = repeat.get('cache_expire', 604800)
             interval = repeat.get('interval', 1)
-            timeout = repeat.get('timeout', 120)
+            timeout = repeat.get('timeout', 60)
             auto_torrent_management = repeat.get('auto_torrent_management', False)
             content_layout = repeat.get('content_layout', "Original")
 
@@ -2828,6 +2828,7 @@ class PtSpider:
                                                 "torrent": self.generate_magnet_url(sid, torrent, my_site, website),
                                                 "paused": True,
                                                 # "labels": repeat_torrent.labels,
+                                                "rename": repeat_torrent.name,
                                                 "cookies": my_site.cookie,
                                                 "download_dir": repeat_torrent.download_dir,
                                                 "info_hash": torrent["hash_string"],
@@ -2893,6 +2894,12 @@ class PtSpider:
                                 )
                                 push_res.append({torrent['info_hash']: r.name})
                                 push_count += 1
+                                path, name = client.rename_torrent_path(
+                                    torrent_id=r.hashString,
+                                    location=r.name,
+                                    name=torrent['rename']
+                                )
+                                logger.debug(f'{r.name} 修改默认存储路径结果，path: {path} - name：{name}')
                             except TransmissionError as e:
                                 logger.error(f'推送种子到下载器 {downloader_name} 失败:{e.message}')
                                 logger.error(f'推送失败的种子信息：{torrent}')

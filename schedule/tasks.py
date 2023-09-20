@@ -1121,7 +1121,7 @@ def auto_repeat_torrent(self):
         logger.info(f'result2: {result2}')
 
         if result1.code == 0 and result2.code == 0:
-            repeat_count, cached_count, push_count = result1.data
+            repeat_count, cached_count, push_count, pushed_hash = result1.data
 
             paused_count, recheck_count, resume_count = result2.data
 

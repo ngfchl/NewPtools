@@ -2573,6 +2573,7 @@ class PtSpider:
             cached_count = 0
             push_count = 0
             repeat_params = {}
+            pushed_hash = []
 
             if downloader_category == DownloaderCategory.qBittorrent:
                 logger.info(f'从下载器 {downloader_name} 获取所有已完成种子信息')
@@ -2644,17 +2645,18 @@ class PtSpider:
                                     if info_hash in hash_lookup:
                                         repeat_torrent = hash_lookup[info_hash]
                                         try:
+                                            upload_limit = website.limit_speed * 1024 * 1024 * 0.92
                                             repeat_params.setdefault(website_id, []).append({
                                                 "urls": self.generate_magnet_url(sid, torrent, my_site, website),
                                                 # "category": repeat_torrent.get("category"),
                                                 "save_path": repeat_torrent.get("save_path"),
                                                 "cookie": my_site.cookie,
                                                 "rename": repeat_torrent.get("name"),
-                                                "upload_limit": website.limit_speed * 1024 * 1024 * 0.92,
+                                                "upload_limit": int(upload_limit),
                                                 "download_limit": 150 * 1024,
                                                 "is_skip_checking": False,
                                                 "is_paused": True,
-                                                "info_hash": info_hash,
+                                                "info_hash": torrent_hash,
                                             })
                                             t, created = TorrentInfo.objects.update_or_create(
                                                 hash_string=torrent_hash,
@@ -2662,7 +2664,8 @@ class PtSpider:
                                                     "site_id": sid,
                                                     "tid": torrent.get("tid"),
                                                 })
-                                            logger.debug(f'{t.hash_string} => 新增：{created}')
+                                            logger.debug(
+                                                f'{t.hash_string} => 新增：{created}，限速：{upload_limit / 1024 / 1024}MB/S')
                                         except Exception as e:
                                             msg = f'{info_hash} {sid} - {torrent["tid"]}生成辅种数据失败：{e}'
                                             logger.error(msg)
@@ -2728,6 +2731,7 @@ class PtSpider:
                                 )
                                 push_res.append({torrent['info_hash']: r})
                                 push_count += 1
+                                pushed_hash.append(torrent['info_hash'])
                             except Exception as e:
                                 logger.error(f'推送种子到下载器 {downloader_name} 失败:{e}')
                                 remaining_torrents.append(torrent)
@@ -2822,7 +2826,7 @@ class PtSpider:
                                     if not my_site:
                                         logger.warning(f'你尚未添加站点：{website.name}')
                                         continue
-                                    logger.info(f'生成辅种数据')
+                                    logger.info(f'{info_hash} 生成辅种数据')
                                     if info_hash in hash_lookup:
                                         repeat_torrent = hash_lookup[info_hash]
                                         try:
@@ -2904,6 +2908,7 @@ class PtSpider:
                                     timeout=timeout,
                                 )
                                 push_count += 1
+                                pushed_hash.append(torrent['info_hash'])
                                 path, name = client.rename_torrent_path(
                                     torrent_id=r.hashString,
                                     location=r.name,
@@ -2940,7 +2945,7 @@ class PtSpider:
                     logger.error(traceback.format_exc(5))
             # 把剩余的数据继续放入缓存
             cache.set(f"params_data_{downloader_id}", new_params, cache_expire)
-            return CommonResponse.success(data=(repeat_count, cached_count, push_count))
+            return CommonResponse.success(data=(repeat_count, cached_count, push_count, pushed_hash))
         except Exception as e:
             msg = f'下载器 {downloader_name} 辅种失败：{e}'
             logger.error(msg)

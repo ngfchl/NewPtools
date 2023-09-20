@@ -1818,7 +1818,7 @@ def sync_cookie_from_cookie_cloud(server: str, key: str, password: str):
         count_failed = 0
         for domain, cookie in res.data.items():
             try:
-                website = website_list.get(url__contains=domain)
+                website = website_list.filter(alive=True).get(url__contains=domain)
                 mysite, created = MySite.objects.update_or_create(site=website.id, defaults={"cookie": cookie})
 
                 if created:
@@ -1852,10 +1852,10 @@ def sync_cookie_from_cookie_cloud(server: str, key: str, password: str):
                 logger.info(msg)
                 msg_list.append(msg)
             except Exception as e:
-                logger.error(f'尚不支持此站点：{domain} ')
+                logger.error(f'尚不支持或此站点已关闭：{domain} ')
                 count_failed += 1
                 continue
-        msg = f'> 本次同步任务共添加站点：{count_created}, 更新站点：{count_updated}, 失败站点：{count_created}'
+        msg = f'> 本次同步任务共添加站点：{count_created}, 更新站点：{count_updated}, 失败站点：{count_created}\n'
         logger.info(msg)
         msg_list.insert(0, msg)
         return CommonResponse.success(msg=''.join(msg_list))

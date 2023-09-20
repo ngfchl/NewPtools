@@ -2987,7 +2987,10 @@ class PtSpider:
                 if len(recheck_hashes) > 0:
                     logger.info(f'当前下载器: {downloader_name} 开始校验，等待等待{verify_timeout}秒')
                     client.torrents.recheck(torrent_hashes=recheck_hashes)
-                    while len(client.torrents.info.checking()) > 0:
+                    if client.app.web_api_version >= '2.8.4':
+                        while len(client.torrents.info.checking()) > 0:
+                            time.sleep(verify_timeout)
+                    else:
                         time.sleep(verify_timeout)
                 else:
                     logger.info(f'当前下载器 {downloader_name} 没有需要校验的种子！')

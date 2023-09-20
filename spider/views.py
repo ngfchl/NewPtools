@@ -2508,6 +2508,8 @@ class PtSpider:
             pass
         if '海豚':
             pass
+        if 'hdcity.city' in website.url:
+            f'{website.url}{website.page_download.format(torrent_id, my_site.passkey)}'
         if "hdchina.org" in website.url:
             # 如果是瓷器，就从种子详情页获取下载链接
             torrent_details = self.get_torrent_detail(torrent_id, my_site, website)
@@ -2953,7 +2955,7 @@ class PtSpider:
         # 加载辅种配置项
         try:
             repeat = toolbox.parse_toml('repeat')
-            verify_timeout = repeat.get('verify_timeout', 300)
+            verify_timeout = repeat.get('verify_timeout', 60)
 
             paused_count = 0
             recheck_count = 0
@@ -2983,10 +2985,10 @@ class PtSpider:
                 recheck_count = len(recheck_hashes)
 
                 if len(recheck_hashes) > 0:
-
                     logger.info(f'当前下载器: {downloader_name} 开始校验，等待等待{verify_timeout}秒')
                     client.torrents.recheck(torrent_hashes=recheck_hashes)
-                    time.sleep(verify_timeout)
+                    while len(client.torrents.info.checking()) > 0:
+                        time.sleep(verify_timeout)
                 else:
                     logger.info(f'当前下载器 {downloader_name} 没有需要校验的种子！')
 
@@ -3007,10 +3009,12 @@ class PtSpider:
                                   torrent.status == 'stopped' and torrent.progress == 0]
                 logger.info(f'当前下载器: {downloader_name} 等待校验的种子数量: {len(recheck_hashes)}')
                 paused_count = len(recheck_hashes)
-                if len(recheck_hashes) > 0:
+                while len(recheck_hashes) > 0:
                     logger.info(f'当前下载器: {downloader_name} 开始校验，等待{verify_timeout}秒')
                     client.verify_torrent(ids=recheck_hashes)
                     time.sleep(verify_timeout)
+                    recheck_hashes = [torrent.hashString for torrent in torrents if
+                                      torrent.status == 'check_pending' or torrent.status == 'checking']
                 recheck_count = len(recheck_hashes)
 
                 torrents = client.get_torrents()

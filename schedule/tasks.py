@@ -332,15 +332,15 @@ def auto_get_torrents(self, *site_list: List[int]):
                     if len(torrents) <= 0:
                         continue
                     # 解析刷流推送规则,筛选符合条件的种子并推送到下载器
-                    torrents = toolbox.filter_torrent_by_rules(my_site, torrents)
-                    msg = f'> ✅ {my_site.nickname} 站点共有{len(res.data)}条种子未推送,有符合条件的种子：{len(torrents)} 个！  \n\n'
+                    to_push_torrents = toolbox.filter_torrent_by_rules(my_site, torrents)
+                    msg = f'> ✅ {my_site.nickname} 站点共有{len(res.data)}条种子未推送,有符合条件的种子：{len(to_push_torrents)} 个！  \n\n'
                     logger.debug(msg)
                     downloader = my_site.downloader
                     client, downloader_category, _ = toolbox.get_downloader_instance(my_site.downloader_id)
                     if not client:
                         logger.warning(f'{my_site.downloader.name} 链接出错了')
                         continue
-                    for torrent in torrents:
+                    for torrent in to_push_torrents:
                         # 限速到站点限速的92%。以防超速
                         main_data = client.sync_maindata()
                         free_space = main_data.get('server_state').get('free_space_on_disk')
@@ -353,7 +353,10 @@ def auto_get_torrents(self, *site_list: List[int]):
                             break
                         count_torrents = len(client.torrents.info.downloading())
                         if count_torrents >= downloader.count_torrents:
-                            logger.warning(f'{my_site.downloader.name} 正在下载的种子数量已达到设定的上限！')
+                            count_torrents_msg = f'{downloader.name} 正在下载的种子数量 {count_torrents} 已达到设定的上限！'
+                            logger.warning(count_torrents_msg)
+                            if notice_category_enable.get('count_torrents', False):
+                                toolbox.send_text(count_torrents_msg)
                             break
                         category = f'{site.nickname}-{torrent.tid}' if not torrent.hash_string else site.nickname
                         magnet_url = f'{site.url}{site.page_download.format(torrent.tid)}&passkey={my_site.passkey}'
@@ -381,7 +384,7 @@ def auto_get_torrents(self, *site_list: List[int]):
                         # 30秒等待种子下载到下载器
                         time.sleep(30)
                         hash_list = []
-                        for hash_string in [torrent.hash_string for torrent in torrents]:
+                        for hash_string in [torrent.hash_string for torrent in to_push_torrents]:
                             try:
                                 toolbox.package_files(
                                     client=client, hash_string=hash_string,

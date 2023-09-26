@@ -723,6 +723,8 @@ def filter_torrent_by_rules(mysite: MySite, torrents: List[TorrentInfo]):
                 if all(rule not in torrent.title for rule in excludes):
                     logger.info(f'排除关键字未命中，跳过')
                     excluded_torrents.append(torrent)
+                    torrent.state = 5
+                    torrent.save()
                     # 跳过该种子的处理，继续下一个种子的判断
                     continue
 
@@ -737,23 +739,29 @@ def filter_torrent_by_rules(mysite: MySite, torrents: List[TorrentInfo]):
                     f'当前：{int(torrent.size) / 1024 / 1024 / 1024} GB'
                 )
                 if not int(min_size) < int(torrent.size) < int(max_size):
+                    logger.warning('🈲 触发种子大小规则，排除')
                     excluded_torrents.append(torrent)
-                    # 跳过该种子的处理，继续下一个种子的判断
+                    torrent.state = 5
+                    torrent.save()
                     continue
             # 剩余免费时间命中
             sale_expire = rules.get('sale_expire')
             if sale_expire:
-                logger.debug(f'设定剩余免费时间：{sale_expire}，当前种子剩余免费时间：{torrent.sale_expire}')
+                logger.debug(
+                    f'设定剩余免费时间：{sale_expire}，当前种子免费到期时间：{torrent.sale_status}: {torrent.sale_expire}')
                 exp = torrent.sale_expire
                 if not exp:
-                    logger.warning(f'当前种子优惠到期时间：{exp}, 跳过')
+                    logger.warning(f'🈲 当前种子优惠到期时间：{exp}, 跳过')
                 else:
                     if isinstance(exp, str):
                         exp = datetime.strptime(exp, "%Y-%m-%d %H:%M:%S")
                     # 如果种子有到期时间，且到期时间小于设定值，排除
                     if isinstance(exp, datetime) and (datetime.now() - exp).total_seconds() < sale_expire:
+                        logger.warning('🈲 触发剩余免费时间规则，排除')
                         excluded_torrents.append(torrent)
                         # 跳过该种子的处理，继续下一个种子的判断
+                        torrent.state = 5
+                        torrent.save()
                         continue
             # 发种时间命中
             published = rules.get('published')
@@ -763,14 +771,18 @@ def filter_torrent_by_rules(mysite: MySite, torrents: List[TorrentInfo]):
                     torrent.published, str) else torrent.published
                 logger.info(f'当前种子发种时间检查：{torrent_published}')
                 if (datetime.now() - torrent_published).total_seconds() > published:
+                    logger.warning('🈲 触发发种时间规则，排除')
                     excluded_torrents.append(torrent)
                     # 跳过该种子的处理，继续下一个种子的判断
+                    torrent.state = 5
+                    torrent.save()
                     continue
             # 做种人数命中
             seeders = rules.get('seeders')
             if seeders:
                 logger.debug(f'设定做种人数：{seeders}，当前种子做种人数：{torrent.seeders}')
                 if torrent.seeders > seeders:
+                    logger.warning('🈲 触发当前做种人数规则，排除')
                     excluded_torrents.append(torrent)
                     # 跳过该种子的处理，继续下一个种子的判断
                     continue
@@ -779,6 +791,7 @@ def filter_torrent_by_rules(mysite: MySite, torrents: List[TorrentInfo]):
             if leechers:
                 logger.debug(f'设定下载人数：{leechers}，当前种子下载人数：{torrent.leechers}')
                 if torrent.leechers < leechers:
+                    logger.warning('🈲 触发当前下载人数规则，排除')
                     excluded_torrents.append(torrent)
                     # 跳过该种子的处理，继续下一个种子的判断
                     continue
@@ -788,9 +801,9 @@ def filter_torrent_by_rules(mysite: MySite, torrents: List[TorrentInfo]):
             continue
 
     # 一次性保存所有不符合规则的种子
-    for excluded_torrent in excluded_torrents:
-        excluded_torrent.state = 5
-        excluded_torrent.save()
+    # for excluded_torrent in excluded_torrents:
+    #     excluded_torrent.state = 5
+    #     excluded_torrent.save()
 
     # 返回符合规则的种子列表
     return list(set(torrents) - set(excluded_torrents))
@@ -891,7 +904,7 @@ def remove_torrent_by_site_rules(mysite: MySite):
                 for rule in rules.get('exclude'):
                     if torrent.get('title').find(rule) > 0:
                         delete_flag = True
-                        logger.info(f"{mysite.nickname} {torrent.get('tid')} 排除关键字命中：{delete_flag}")
+                        logger.info(f"🚫{mysite.nickname} {torrent.get('tid')} 排除关键字命中：{delete_flag}")
                         break
             if delete_flag:
                 # 遇到要排除的关键字的种子，直接跳过，不再继续执行删种
@@ -909,7 +922,7 @@ def remove_torrent_by_site_rules(mysite: MySite):
                 if torrent_sale_expire - time.time() <= expire_time and (prop.get('completion_date') < 0 or (
                         prop.get('completion_date') > 0 and delete_flag)):
                     expire_hashes.append(hash_string)
-                    logger.debug(f'{torrent_info.title} 免费即将到期 命中')
+                    logger.debug(f'🚫{torrent_info.title} 免费即将到期 命中')
                     continue
             # 指定时间段内平均速度
             logger.info(f'指定时间段内平均速度: {hash_string}')
@@ -924,7 +937,7 @@ def remove_torrent_by_site_rules(mysite: MySite):
                     uploaded_avg = uploaded_eta / time_delta
                     logger.debug(f'{torrent_info.title} 上传速度 {uploaded_avg / 1024} ')
                     if uploaded_avg < upload_speed_avg.get("upload_speed") * 1024:
-                        logger.debug(f'< {upload_speed_avg.get("upload_speed")} 不达标删种 命中')
+                        logger.debug(f'🚫 {upload_speed_avg.get("upload_speed")} 不达标删种 命中')
                         hashes.append(hash_string)
                         continue
                     else:
@@ -946,7 +959,7 @@ def remove_torrent_by_site_rules(mysite: MySite):
                     tracker_checked = True
                     break
             if tracker_checked:
-                logger.debug(f'{hash_string} -- {torrent_info.title} 站点删种 命中')
+                logger.debug(f'🚫{hash_string} -- {torrent_info.title} 站点删种 命中')
                 torrent_info.state = 4
                 torrent_info.save()
                 continue
@@ -964,7 +977,7 @@ def remove_torrent_by_site_rules(mysite: MySite):
                 logger.debug(f'当前种子上传速度：{torrent.get("upspeed")} -- 设定速度：{upspeed}')
                 if num_complete > completers and torrent.get("upspeed") < upspeed:
                     logger.debug(
-                        f'{torrent_info.title} 完成人数 {num_complete} 超标,'
+                        f'🚫{torrent_info.title} 完成人数 {num_complete} 超标,'
                         f'当前速度 {torrent.get("upspeed")} 不达标 命中'
                     )
                     hashes.append(hash_string)
@@ -978,7 +991,7 @@ def remove_torrent_by_site_rules(mysite: MySite):
                 num_incomplete = torrent.get('num_incomplete')
                 logger.debug(f'{hash_string} -- {torrent_info.title} 正在下载完成人数不达标: {num_incomplete}')
                 if num_incomplete < torrent_num_incomplete:
-                    logger.debug(f'{hash_string} -- {torrent_info.title} 正在下载人数 低于设定值 命中')
+                    logger.debug(f'🚫{hash_string} -- {torrent_info.title} 正在下载人数 低于设定值 命中')
                     hashes.append(hash_string)
                     continue
                 logger.debug(f'{hash_string} -- {torrent_info.title} 正在下载人数 高于设定值 未命中')
@@ -989,7 +1002,7 @@ def remove_torrent_by_site_rules(mysite: MySite):
                 last_activity = torrent.get('last_activity')
                 logger.debug(f'{hash_string} -- {torrent_info.title} 最后活动时间: {time.time() - last_activity}')
                 if time.time() - last_activity > rules.get("timeout"):
-                    logger.debug(f'{hash_string} -- {torrent_info.title} 无活动超时 命中')
+                    logger.debug(f'🚫{hash_string} -- {torrent_info.title} 无活动超时 命中')
                     hashes.append(hash_string)
                     continue
                 logger.debug(f'{hash_string} -- {torrent_info.title} 无活动超时 未命中')
@@ -1010,7 +1023,7 @@ def remove_torrent_by_site_rules(mysite: MySite):
                         hashes.append(hash_string)
                         progress_checked = True
                         logger.debug(
-                            f'{hash_string} -- {torrent_info.title} 指定进度与平均上传速度达标检测 低于设定值 命中')
+                            f'🚫{hash_string}-{torrent_info.title} 指定进度与平均上传速度达标检测低于设定值 命中')
                         break
                 if progress_checked:
                     continue
@@ -1024,7 +1037,7 @@ def remove_torrent_by_site_rules(mysite: MySite):
                     logger.debug(f'{hash_string} -- {torrent_info.title} 尚未下载完毕！ 未命中')
                 elif ratio >= rules.get("max_ratio"):
                     hashes.append(hash_string)
-                    logger.debug(f'{hash_string} -- {torrent_info.title} 已达到指定分享率 命中')
+                    logger.debug(f'🚫{hash_string} -- {torrent_info.title} 已达到指定分享率 命中')
                     continue
                 else:
                     logger.debug(f'{hash_string} -- {torrent_info.title} 未达到指定分享率 未命中')
@@ -1042,8 +1055,8 @@ def remove_torrent_by_site_rules(mysite: MySite):
                     if time_active < float(key):
                         logger.debug(f'活动时间：{time_active / 60}分钟 尚未达到指定下载时长：{float(key)}')
                         continue
-                    elif ratio < value:
-                        logger.debug(f'{hash_string} -- {torrent_info.title} 指定时间段内分享率不达标 低于设定值 命中')
+                    if ratio < value:
+                        logger.debug(f'🚫{hash_string} -- {torrent_info.title} 指定时间段内分享率不达标 低于设定值 命中')
                         hashes.append(hash_string)
                         ratio_checked = True
                         break
@@ -1061,14 +1074,14 @@ def remove_torrent_by_site_rules(mysite: MySite):
             logger.error(msg)
             continue
     logger.info(
-        f'{mysite.nickname}-本次运行完善{count}个种子信息！删种规则命中任务:{len(hashes)}个，免费即将到期命中：{len(expire_hashes)}个')
+        f'🚫{mysite.nickname}-本次运行完善{count}个种子信息！删种规则命中任务:{len(hashes)}个，免费即将到期命中：{len(expire_hashes)}个')
     try:
         count = 0
         if len(hashes) + len(expire_hashes) > 0:
             client.torrents_reannounce(torrent_hashes=hashes)
             # 单次最多删种数量, 不填写默认所有被筛选的, 免费到期的不算在内
-            num_delete = rules.get("num_delete", None)
-            if not num_delete:
+            num_delete = rules.get("num_delete", 0)
+            if num_delete > 0:
                 random.shuffle(hashes)
                 hashes = hashes[:num_delete]
             hashes.extend(expire_hashes)

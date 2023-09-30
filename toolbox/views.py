@@ -929,20 +929,44 @@ def remove_torrent_by_site_rules(mysite: MySite):
             upload_speed_avg = rules.get("upload_speed_avg")
             logger.debug(f'指定时间段内平均速度检测: {upload_speed_avg}')
             if upload_speed_avg:
-                time_delta = time.time() - torrent_info.updated_at.timestamp()
+                # 从缓存获取指定时间段平均速度检测数据
+                upload_speed_avg_list = cache.get(f'{hash_string}__update_uploaded', [])
+                # 如果数据为空，则添加初始化数据
+                if len(upload_speed_avg_list) <= 0:
+                    cache.set(f'{hash_string}_update_uploaded', [{
+                        "check_time": prop.get("addition_date"),
+                        "uploaded": 0
+                    }])
+                # 获取当前数据并添加到检测数据中
+                now = time.time()
+                now_uploaded = prop.get("total_uploaded")
+                upload_speed_avg_list.append({
+                    "check_time": now,
+                    "uploaded": now_uploaded
+                })
+                # 获取列表中最早的一条数据
+                earliest_uploaded_info = upload_speed_avg_list[0]
+                # 计算当前数据与最早一条数据的时间差
+                time_delta = now - earliest_uploaded_info.get("check_time")
                 if time_delta < upload_speed_avg.get("time"):
+                    # 若时间差未达到检测时间，跳过
                     logger.info(f'当前种子运行时间未达到检测时间：{time_delta} < {upload_speed_avg.get("time")}')
                 else:
-                    uploaded_eta = prop.get('total_uploaded') - torrent_info.uploaded
+                    # 达到检测标准的，获取数据的上传量信息，计算这时间段内的平均速度
+                    earliest_uploaded = earliest_uploaded_info.get("uploaded")
+                    uploaded_eta = now_uploaded - earliest_uploaded
                     uploaded_avg = uploaded_eta / time_delta
                     logger.debug(f'{torrent_info.title} 上传速度 {uploaded_avg / 1024} ')
                     if uploaded_avg < upload_speed_avg.get("upload_speed") * 1024:
+                        # 如果平均速度不达标，删种
+                        cache.remove(f'{hash_string}_update_uploaded')
                         logger.debug(f'🚫 {upload_speed_avg.get("upload_speed")} 不达标删种 命中')
                         hashes.append(hash_string)
                         continue
                     else:
-                        torrent_info.uploaded = prop.get('total_uploaded')
-                        torrent_info.save()
+                        # 达标的，删除最早的数据，并将新数据存入缓存
+                        upload_speed_avg_list.pop(0)
+                        cache.set(f'{hash_string}_update_uploaded', upload_speed_avg_list)
             logger.debug(f'{hash_string} -- {torrent_info.title} 上传速度不达标删种 未命中')
             logger.debug(f'站点删种检测')
             not_registered_msg = [

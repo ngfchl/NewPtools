@@ -23,8 +23,17 @@ function token_verification {
     ERROR "授权失败，未检测到授权码TOKEN，正在退出..."
     exit 1
   fi
+
+    if [ ! -f db/encrypted_key.bin ];then
+        INFO "未检测到授权文件，开始从服务器申请授权信息..."
+        AUTH_RESPONSE=$(curl -s -G -d "token=$TOKEN&email=$DJANGO_SUPERUSER_EMAIL" http://repeat.ptools.fun/api/user/verify)
+    else
+        INFO "检测到授权文件，正在解析..."
+        AUTH_RESPONSE=$(./encrypt_tool/$(uname -m)/main.bin)
+    fi
+
   # Get authorization response
-  AUTH_RESPONSE=$(curl -s -G -d "token=$TOKEN&email=$DJANGO_SUPERUSER_EMAIL" http://repeat.ptools.fun/api/user/verify)
+#  AUTH_RESPONSE=$(curl -s -G -d "token=$TOKEN&email=$DJANGO_SUPERUSER_EMAIL" http://repeat.ptools.fun/api/user/verify)
   INFO "$AUTH_RESPONSE"
   # Extract 'code' from the response
   AUTH_CODE=$(echo "$AUTH_RESPONSE" | jq -r '.code')

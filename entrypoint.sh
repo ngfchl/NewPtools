@@ -26,7 +26,7 @@ function token_verification {
 
     if [ ! -f db/encrypted_key.bin ];then
         INFO "未检测到授权文件，开始从服务器申请授权信息..."
-        AUTH_RESPONSE=$(curl -s -G -d "token=$TOKEN&email=$DJANGO_SUPERUSER_EMAIL" http://repeat.ptools.fun/api/user/verify)
+        AUTH_RESPONSE=$(curl -s -k -G -d "token=$TOKEN&email=$DJANGO_SUPERUSER_EMAIL" https://repeat.ptools.fun/api/user/verify)
     else
         INFO "检测到授权文件，正在解析..."
         AUTH_RESPONSE=$(./encrypt_tool/$(uname -m)/main.bin)

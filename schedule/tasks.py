@@ -359,7 +359,8 @@ def auto_get_torrents(self, *site_list: List[int]):
                                 toolbox.send_text(count_torrents_msg)
                             break
                         category = f'{site.nickname}-{torrent.tid}' if not torrent.hash_string else site.nickname
-                        magnet_url = f'{site.url}{site.page_download.format(torrent.tid)}&passkey={my_site.passkey}'
+                        # magnet_url = f'{site.url}{site.page_download.format(torrent.tid)}&passkey={my_site.passkey}'
+                        magnet_url = f'{site.url}{site.page_download.format(torrent.tid)}'
                         logger.info(f'正在推送种子：{torrent.title}')
                         logger.info(f'种子链接magnet_url：{magnet_url}')
                         res = toolbox.push_torrents_to_downloader(

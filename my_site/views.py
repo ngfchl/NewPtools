@@ -1,6 +1,7 @@
 import json
 import logging
 import traceback
+from math import inf
 
 import demjson3
 from django.core.paginator import Paginator
@@ -215,6 +216,98 @@ def get_newest_status_list(request):
         }
         logger.debug(info)
         info_list.append(info)
+    print(len(info_list))
+    return CommonResponse.success(data=info_list)
+
+
+@router.get('/status/new', response=CommonResponse[List], description='更新最新状态-列表')
+def get_newest_status_list_new(request):
+    my_site_list = MySite.objects.all()
+    id_list = [SiteStatus.objects.filter(site=my_site.id).order_by('-created_at').first().id for my_site in
+               my_site_list if SiteStatus.objects.filter(site=my_site.id).order_by('created_at').first()]
+    status_list = SiteStatus.objects.filter(id__in=id_list)
+    # my_site_id_list = [my_site.id for my_site in my_site_list]
+    site_id_list = [my_site.site for my_site in my_site_list]
+    site_list = WebSite.objects.all()
+    sign_list = SignIn.objects.all()
+    level_list = UserLevelRule.objects.filter(site_id__in=site_id_list)
+    info_list = []
+    for my_site in my_site_list:
+        site = site_list.filter(id=my_site.site).first()
+        status = status_list.filter(site=my_site).first()
+        level = level_list.filter(site_id=my_site.site, level=status.my_level).first() if status else None
+        sign = sign_list.filter(site=my_site, created_at__date=datetime.today().date()).first()
+        next_level = None
+        if level and level.level != 0:
+            next_level = level_list.filter(site_id=my_site.site, level_id=level.level_id + 1).first() if level else None
+            levels = level_list.filter(
+                site_id=my_site.site, level_id__lte=level.level_id,
+                level_id__gt=0) if level else None
+            if levels and len(levels) > 0:
+                # logger.info(len(levels))
+                rights = [l.rights for l in levels]
+                level.rights = '||'.join(rights)
+        info = {
+            "site_name": site.name,
+            "site_url": site.url,
+            "site_logo": site.logo,
+            "support_sign_in": site.sign_in,
+            "site_get_info": site.get_info,
+            # "site_upgrade_day": site.upgrade_day,
+            "site_sp_full": site.sp_full,
+            "site_page_message": site.page_message,
+
+            "my_site_id": my_site.id,
+            "my_site_sort_id": my_site.sort_id,
+            "my_site_nickname": my_site.nickname,
+            "my_site_get_info": my_site.get_info,
+            "my_site_sign_in": my_site.sign_in,
+            "my_site_joined": my_site.time_join,
+        }
+        if status:
+            logger.debug(status.created_at)
+            logger.debug(status.ratio)
+            logger.debug(status.ratio == inf)
+
+            info.update({
+                # "status_torrents": status.torrents,
+                "status_seed": status.seed,
+                "status_uploaded": status.uploaded,
+                "status_mail": status.mail,
+                "status_my_hr": status.my_hr,
+                "status_seed_volume": status.seed_volume,
+                "status_my_bonus": float(status.my_bonus),
+                "status_downloaded": status.downloaded,
+                "status_bonus_hour": status.bonus_hour,
+                "status_invitation": status.invitation,
+                "status_my_score": float(status.my_score),
+                "status_leech": status.leech,
+                "status_my_level": status.my_level,
+                "status_updated_at": status.updated_at,
+
+                "status_ratio": float(0) if status.ratio == inf else float(status.ratio),
+
+                "sign_sign_in_today": sign.sign_in_today if sign else False,
+            })
+        if level:
+            info.update({
+                "level_level": level.level,
+                "level_rights": level.rights,
+            })
+        if next_level:
+            info.update({
+                "next_level_level": next_level.level,
+                "next_level_downloaded": next_level.downloaded,
+                "next_level_torrents": next_level.torrents,
+                "next_level_uploaded": next_level.uploaded,
+                "next_level_rights": next_level.rights,
+                "next_level_score": float(next_level.score),
+                "next_level_bonus": float(next_level.bonus),
+                "next_level_ratio": float(next_level.ratio),
+            })
+        logger.debug(info)
+        info_list.append(info)
+    print(len(info_list))
     return CommonResponse.success(data=info_list)
 
 

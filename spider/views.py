@@ -1340,7 +1340,9 @@ class PtSpider:
             # my_site.expires = datetime.now() + timedelta(minutes=30)
             # my_site.cookie = cookies
             # my_site.save()
-        self.parse_userinfo_html(my_site=my_site, details_html=details_html)
+        res = self.parse_userinfo_html(my_site=my_site, details_html=details_html)
+        if res.code != 0:
+            return res
         return CommonResponse.success(data=details_html)
 
     def get_seeding_html(self, my_site: MySite, headers: dict, details_html=None):

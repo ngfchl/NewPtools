@@ -2,6 +2,7 @@ import hashlib
 import json
 import logging
 import os
+import platform
 import random
 import re
 import subprocess
@@ -196,9 +197,15 @@ def exec_command(commands):
 def verify_token():
     token = os.getenv("TOKEN", None)
     if not token:
-        result = subprocess.run(['supervisorctl', 'shutdown'], check=True, text=True, capture_output=True)
-        logger.debug(f'Successfully executed command: {result.stdout}')
-        return '您的软件未经授权，如果您喜欢本软件，欢迎付费购买授权或申请临时授权。'
+        res = subprocess.run([f"encrypt_tool/{platform.uname().machine}/main.bin"], stdout=subprocess.PIPE)
+        res_json = json.loads(res.stdout)
+        if res_json['code'] == 0:
+            return res_json['msg']
+        else:
+            result = subprocess.run(['supervisorctl', 'stop', 'celery-beat'], check=True, text=True,
+                                    capture_output=True)
+            logger.debug(f'Successfully executed command: {result.stdout}')
+            return '您的软件未经授权，如果您喜欢本软件，欢迎付费购买授权或申请临时授权。'
     res = requests.get('http://repeat.ptools.fun/api/user/verify', params={
         "token": token,
         "email": os.getenv("DJANGO_SUPERUSER_EMAIL", None)
@@ -206,10 +213,9 @@ def verify_token():
     if res.status_code == 200 and res.json().get('code') == 0:
         return res.json().get('msg')
     else:
-        msg = f'您的软件使用授权到期，或连接授权服务器失败！{res.json().get("msg")}'
+        msg = f'您的软件未授权，或连接授权服务器失败！{res.json().get("msg")}'
         logger.error(msg)
-        # result = subprocess.run(['supervisorctl', 'shutdown'], check=True, text=True, capture_output=True)
-        # logger.error(f'Successfully executed command: {result.stdout}')
+        subprocess.run(['supervisorctl', 'stop', 'celery-beat'], check=True, text=True, capture_output=True)
         return msg
 
 

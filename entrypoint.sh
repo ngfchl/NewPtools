@@ -18,32 +18,28 @@ function WARN {
 }
 
 function token_verification {
-
-  if [ -z "$TOKEN" ]; then
-    ERROR "授权失败，未检测到授权码TOKEN，正在退出..."
-    exit 1
-  fi
-
-    if [ ! -f db/encrypted_key.bin ];then
-        INFO "未检测到授权文件，开始从服务器申请授权信息..."
-        AUTH_RESPONSE=$(curl -s -k -G -d "token=$TOKEN&email=$DJANGO_SUPERUSER_EMAIL" https://repeat.ptools.fun/api/user/verify)
+    if [ -z "$TOKEN" ]; then
+        WARN "未检测到授权码TOKEN，正在进入未授权模式"
+        AUTH_RESPONSE='{"code":-1,"msg":"未授权模式","data":null}'
     else
-        INFO "检测到授权文件，正在解析..."
-        AUTH_RESPONSE=$(./encrypt_tool/$(uname -m)/main.bin)
+      if [ ! -f db/encrypted_key.bin ];then
+          WARN "未检测到授权文件，开始从服务器申请授权信息..."
+          AUTH_RESPONSE=$(curl -s -k -G -d "token=$TOKEN&email=$DJANGO_SUPERUSER_EMAIL" https://repeat.ptools.fun/api/user/verify)
+      else
+          INFO "检测到授权文件，正在解析..."
+          AUTH_RESPONSE=$(./encrypt_tool/$(uname -m)/main.bin)
+      fi
     fi
-
   # Get authorization response
-#  AUTH_RESPONSE=$(curl -s -G -d "token=$TOKEN&email=$DJANGO_SUPERUSER_EMAIL" http://repeat.ptools.fun/api/user/verify)
   INFO "$AUTH_RESPONSE"
-  # Extract 'code' from the response
   AUTH_CODE=$(echo "$AUTH_RESPONSE" | jq -r '.code')
   INFO "$AUTH_CODE"
-  if [ -z "$AUTH_CODE" ]; then
-    ERROR "授权失败，访问授权服务器失败，正在退出..."
-    exit 1
-  elif [ "$AUTH_CODE" -ne 0 ]; then
-    ERROR "授权失败，正在退出程序..."
-    exit 1
+  if [ ! -z "$AUTH_CODE" ] && [ "$AUTH_CODE" -eq 0 ]; then
+      # 在 if 语句块中，你可以添加处理 AUTH_CODE 不为空且等于 0 的情况的代码
+      INFO "获取授权信息成功，开始启动所有服务..."
+  else
+      WARN "授权失败或访问授权服务器失败，将进入未授权模式..."
+      mv /ptools/supervisor/product/supervisor_celery_beat.ini /ptools/supervisor/product/supervisor_celery_beat.bak
   fi
 
 }
@@ -87,9 +83,6 @@ function first_start {
 
 
   INFO "创建超级用户"
-#  DJANGO_SUPERUSER_USERNAME=$DJANGO_SUPERUSER_USERNAME
-#  DJANGO_SUPERUSER_EMAIL=$DJANGO_SUPERUSER_EMAIL
-#  DJANGO_SUPERUSER_PASSWORD=$DJANGO_SUPERUSER_PASSWORD
   python3 manage.py createsuperuser --noinput
   INFO "初始化完成"
 

@@ -197,6 +197,8 @@ def exec_command(commands):
 def verify_token():
     token = os.getenv("TOKEN", None)
     if not token:
+        return '您的软件未经授权，如果您喜欢本软件，欢迎付费购买授权或申请临时授权。'
+    if os.path.exists(f"db/encrypted_key.bin"):
         res = subprocess.run([f"encrypt_tool/{platform.uname().machine}/main.bin"], stdout=subprocess.PIPE)
         res_json = json.loads(res.stdout)
         if res_json['code'] == 0:

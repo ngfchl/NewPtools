@@ -1683,7 +1683,7 @@ class PtSpider:
                     # 获取HR信息
                     hr = ''.join(
                         details_html.xpath(site.my_hr_rule)
-                    ).replace('H&R:', '').strip()
+                    ).replace('H&R:', '').replace("  ", "").strip()
                     if site.url in [
                         'https://monikadesign.uk/',
                         'https://pt.hdpost.top/',

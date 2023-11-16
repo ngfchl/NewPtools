@@ -1610,7 +1610,7 @@ class PtSpider:
                     leech_status = details_html.xpath(site.my_leech_rule)
                     seed_status = details_html.xpath(site.my_seed_rule)
                     msg = f'下载数目字符串：{leech_status} \n  上传数目字符串：{seed_status}'
-                    if len(leech_status) + len(seed_status) <= 0:
+                    if len(leech_status) + len(seed_status) <= 0 and site.url.find('hd-space') < 0:
                         err_msg = f'{my_site.nickname} 获取用户数据失败：{msg}'
                         logger.error(err_msg)
                         return CommonResponse.error(msg=err_msg)
@@ -1619,10 +1619,7 @@ class PtSpider:
                     logger.debug(f'当前下载数：{leech}')
                     seed = ''.join(details_html.xpath(site.my_seed_rule)).strip()
                     logger.debug(f'当前做种数：{seed}')
-                    if not leech and not seed:
-                        return CommonResponse.error(
-                            msg='请检查Cookie是否过期？'
-                        )
+                 
                     # seed = len(seed_vol_list)
                     downloaded = ''.join(
                         details_html.xpath(site.my_downloaded_rule)

@@ -204,9 +204,13 @@ def verify_token():
         if res_json['code'] == 0:
             return res_json['msg']
         else:
-            result = subprocess.run(['supervisorctl', 'stop', 'celery-beat'], check=True, text=True,
-                                    capture_output=True)
-            logger.debug(f'Successfully executed command: {result.stdout}')
+            try:
+                result = subprocess.run(['supervisorctl', 'stop', 'celery-beat'], check=True, text=True,
+                                        capture_output=True)
+                logger.debug(f'Successfully executed command: {result.stdout}')
+            except Exception as e:
+                logger.debug(f'Failed executed command')
+
             return '您的软件未经授权，如果您喜欢本软件，欢迎付费购买授权或申请临时授权。'
     res = requests.get('http://repeat.ptools.fun/api/user/verify', params={
         "token": token,

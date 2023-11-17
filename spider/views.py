@@ -2219,9 +2219,7 @@ class PtSpider:
                 # 发布时间
                 on_release = ''.join(tr.xpath(site.torrent_release_rule))
 
-                if site.url in [
-                    'https://totheglory.im/',
-                ]:
+                if site.url.find("totheglory") > 0:
                     # javascript: alert('Freeleech将持续到2022年09月20日13点46分,加油呀~')
                     # 获取时间数据
                     time_array = re.findall(r'\d+', ''.join(sale_expire))

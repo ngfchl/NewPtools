@@ -1619,7 +1619,7 @@ class PtSpider:
                     logger.debug(f'当前下载数：{leech}')
                     seed = ''.join(details_html.xpath(site.my_seed_rule)).strip()
                     logger.debug(f'当前做种数：{seed}')
-                 
+
                     # seed = len(seed_vol_list)
                     downloaded = ''.join(
                         details_html.xpath(site.my_downloaded_rule)
@@ -2216,6 +2216,8 @@ class PtSpider:
                     """
                     sale_expire = ''.join(
                         re.findall(r'\d{4}\D\d{2}\D\d{2}\D\d{2}\D\d{2}\D', ''.join(sale_expire)))
+                # 发布时间
+                on_release = ''.join(tr.xpath(site.torrent_release_rule))
 
                 if site.url in [
                     'https://totheglory.im/',
@@ -2230,14 +2232,14 @@ class PtSpider:
                         "%Y-%m-%d %H:%M:%S",
                         time.struct_time(tuple([int(x) for x in time_array]))
                     )
+                    on_release = ' '.join(tr.xpath(site.torrent_release_rule))
                 logger.debug(sale_expire)
                 if sale_expire.endswith(':'):
                     sale_expire = sale_expire + '00'
                 # 如果促销结束时间为空，则为无限期
                 sale_expire = None if not sale_expire else sale_expire
                 # logger.debug(torrent_info.sale_expire)
-                # 发布时间
-                on_release = ''.join(tr.xpath(site.torrent_release_rule))
+
                 # 做种人数
                 seeders = ''.join(tr.xpath(site.torrent_seeders_rule)).replace(',', '')
                 # 下载人数

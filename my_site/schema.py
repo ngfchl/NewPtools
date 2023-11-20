@@ -122,6 +122,7 @@ class MySiteSortSchemaIn(ModelSchema):
 class SiteStatusSchemaOut(ModelSchema):
     """    站点基本信息及信息抓取规则    """
     updated: str
+    updated_date: str
     updated_at: Optional[datetime]
 
     class Config:
@@ -133,6 +134,12 @@ class SiteStatusSchemaOut(ModelSchema):
             self.updated_at,
             '%Y年%m月%d日%H:%M:%S'
         ) if self.updated_at else datetime.now().strftime('%Y年%m月%d日%H:%M:%S')
+
+    def resolve_updated_date(self, obj):
+        return datetime.strftime(
+            self.updated_at,
+            '%Y-%m-%d'
+        ) if self.updated_at else datetime.now().strftime('%Y-%m-%d')
 
 
 class SiteStatusSchemaIn(ModelSchema):
@@ -216,3 +223,12 @@ class SearchResultSchema(Schema):
 class SearchParamsSchema(Schema):
     key: str
     site_list: List[int] = []
+
+
+class SiteDataToChart(Schema):
+    site: MySiteSchemaOut
+    data: List[SiteStatusSchemaOut]
+
+# class SiteDataToChart(Schema):
+#     status_list: List[SiteStatusSchemaOut]
+#     date_list: List[datetime]

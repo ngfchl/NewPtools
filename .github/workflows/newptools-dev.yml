@@ -3,7 +3,7 @@ name: Build new ptools image
 on:
   push:
     branches:
-      - build
+      - build-dev
   workflow_dispatch:
 
 jobs:
@@ -13,7 +13,9 @@ jobs:
 
 
       - name: Checkout
-        uses: actions/checkout@master
+        uses: actions/checkout@v2
+        with:
+          ref: dev
 
       - name: Docker meta
         id: meta
@@ -48,6 +50,5 @@ jobs:
             linux/arm64/v8
           push: true
           tags: |
-            ${{ secrets.NEW_PTOOLS_DOCKER_USERNAME }}/ptools:latest
-            ${{ secrets.NEW_PTOOLS_DOCKER_USERNAME }}/ptools:v${{steps.date.outputs.date}}
+            ${{ secrets.NEW_PTOOLS_DOCKER_USERNAME }}/ptools:dev
           labels: ${{ steps.meta.outputs.labels }}

@@ -515,20 +515,20 @@ def generate_date_list(num_days):
     today = datetime.now().date()
 
     # Generate a list of dates for the specified number of days
-    date_list = [today - timedelta(days=i) for i in range(num_days - 1, -1, -1)]
+    date_list = [today - timedelta(days=i) for i in range(num_days, -1, -1)]
 
     return date_list
 
 
 @router.get('/status/chart/v2', response=CommonResponse[List[SiteDataToChart]], description='站点数据展示')
-def get_site_data_to_chart(request, site_id: int = 0, days: int = -7):
+def get_site_data_to_chart(request, site_id: int = 0, days: int = 7):
     site_status_list = []
-    date_list = generate_date_list(-days)
+    date_list = generate_date_list(days)
     if int(site_id) == 0:
         my_site_list = MySite.objects.all()
         for my_site in my_site_list:
             status_list = list(
-                my_site.sitestatus_set.filter(updated_at__date__in=date_list).order_by('created_at'))[days:]
+                my_site.sitestatus_set.filter(updated_at__date__in=date_list).order_by('created_at'))
             for status in status_list:
                 if status.downloaded == 0:
                     status.ratio = 0

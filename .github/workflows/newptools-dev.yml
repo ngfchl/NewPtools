@@ -50,6 +50,5 @@ jobs:
             linux/arm64/v8
           push: true
           tags: |
-            ${{ secrets.NEW_PTOOLS_DOCKER_USERNAME }}/ptools:latest
-            ${{ secrets.NEW_PTOOLS_DOCKER_USERNAME }}/ptools:v${{steps.date.outputs.date}}
+            ${{ secrets.NEW_PTOOLS_DOCKER_USERNAME }}/ptools:dev
           labels: ${{ steps.meta.outputs.labels }}

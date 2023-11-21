@@ -162,6 +162,8 @@ if [ "${AUTO_UPDATE}" == true ]; then
   upgrade
 fi
 
+chmod -R 0755 /ptools
+
 token_verification
 
 cloudflarespeedtest_host

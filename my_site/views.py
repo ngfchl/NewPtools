@@ -290,6 +290,25 @@ def get_newest_status_list_new(request):
 
                 "sign_sign_in_today": sign.sign_in_today if sign else False,
             })
+        else:
+            info.update({
+                # "status_torrents": status.torrents,
+                "status_seed": 0,
+                "status_uploaded": 0,
+                "status_mail": 0,
+                "status_my_hr": '',
+                "status_seed_volume": 0,
+                "status_my_bonus": 0,
+                "status_downloaded": 0,
+                "status_bonus_hour": 0,
+                "status_invitation": 0,
+                "status_my_score": 0,
+                "status_leech": 0,
+                "status_my_level": '',
+                "status_updated_at": '',
+                "status_ratio": 0,
+                "sign_sign_in_today": sign.sign_in_today if sign else False,
+            })
         if level:
             info.update({
                 "level_level": level.level,

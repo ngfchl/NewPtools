@@ -1422,11 +1422,11 @@ class PtSpider:
             else:
                 seeding_detail_res = self.send_request(my_site=my_site, url=seeding_detail_url, header=headers,
                                                        delay=25)
-            logger.debug('做种信息：{}'.format(seeding_detail_res.text))
+            # logger.debug('做种信息：{}'.format(seeding_detail_res.text))
             if seeding_detail_res.status_code != 200:
                 return CommonResponse.error(
                     msg=f'{site.name} 做种信息访问错误，错误码：{seeding_detail_res.status_code}')
-            if 'kp.m-team.cc' in site.url:
+            if site.url.find('m-team'):
                 seeding_text = self.get_m_team_seeding(my_site, seeding_detail_res)
                 seeding_html = etree.HTML(seeding_text)
             else:
@@ -1442,9 +1442,17 @@ class PtSpider:
             f'//p[1]/font[2]/following-sibling::'
             f'a[contains(@href,"?type=seeding&userid={my_site.user_id}&page=")]/@href'
         )
+        if len(url_list) > 0:
+            pages = re.search(r'page=(\d+)', url_list[-1]).group(1)
+            logger.info(pages)
+            url_list = [
+                f"?type=seeding&userid={my_site.user_id}&page={page}"
+                for page in list(range(2, int(pages) + 1))
+            ]
+        logger.info(url_list)
         seeding_text = seeding_detail_res.text.encode('utf8')
         for url in url_list:
-            seeding_url = f'https://kp.m-team.cc/getusertorrentlist.php{url}'
+            seeding_url = f'{site.url}getusertorrentlist.php{url}'
             seeding_res = self.send_request(my_site=my_site, url=seeding_url)
             seeding_text += seeding_res.text.encode('utf8')
         return seeding_text
@@ -1784,7 +1792,7 @@ class PtSpider:
         with lock:
             try:
                 if 'greatposterwall' in site.url or 'dicmusic' in site.url:
-                    logger.debug(seeding_html)
+                    # logger.debug(seeding_html)
                     mail_str = seeding_html.get("notifications").get("messages")
                     notice_str = seeding_html.get("notifications").get("notifications")
                     mail = int(mail_str) + int(notice_str)
@@ -1829,7 +1837,6 @@ class PtSpider:
                         })
                     return CommonResponse.success(data=res_gpw)
                 else:
-                    logger.info(f'开始解析做种信息1825，{site.url}')
                     try:
                         seed_vol_list = seeding_html.xpath(site.my_seed_vol_rule)
                         logger.debug('做种数量seeding_vol：{}'.format(seed_vol_list))
@@ -1883,7 +1890,7 @@ class PtSpider:
                         'https://ubits.club/',
                     ]:
                         # 获取到的是整段，需要解析
-                        logger.debug('做种体积：{}'.format(seed_vol_list))
+                        logger.debug('做种体积：{}'.format(len(seed_vol_list)))
                         if len(seed_vol_list) < 1:
                             seed_vol_all = 0
                         else:
@@ -2401,9 +2408,7 @@ class PtSpider:
             else:
                 sale_expire = None
             on_release = ' '.join(tr.xpath(site.torrent_release_rule))
-        if site.url in [
-            'https://kp.m-team.cc/',
-        ]:
+        if site.url.find('m-team') > 0:
             # 限時：1時39分
             try:
                 sale_expire = toolbox.calculate_expiry_time_from_string(sale_expire).strftime(

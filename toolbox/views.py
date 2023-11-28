@@ -1794,8 +1794,7 @@ def get_time_join(my_site, details_html):
             my_site.latest_active = stats.get('lastAccess')
             my_site.save()
         elif 'zhuque.in' in site.url:
-            userdata = details_html.get('data')
-            my_site.time_join = datetime.fromtimestamp(userdata.get(site.my_time_join_rule))
+            my_site.time_join = datetime.fromtimestamp(details_html.get(site.my_time_join_rule))
             my_site.save()
         else:
             logger.debug(f'注册时间：{details_html.xpath(site.my_time_join_rule)}')

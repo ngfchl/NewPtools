@@ -1491,11 +1491,14 @@ class PtSpider:
             # 解析注册时
             toolbox.get_time_join(my_site, details_html.data)
             # 发送请求，请求做种信息页面
-            seeding_html = self.get_seeding_html(my_site, headers=headers, details_html=details_html.data)
-            if seeding_html.code != 0:
-                seeding_msg = f'做种页面访问失败!'
-                err_msg.append(seeding_msg)
-                logger.warning(f'{my_site.nickname} {seeding_msg}')
+            if site.url not in [
+                'https://zhuque.in/',
+            ]:
+                seeding_html = self.get_seeding_html(my_site, headers=headers, details_html=details_html.data)
+                if seeding_html.code != 0:
+                    seeding_msg = f'做种页面访问失败!'
+                    err_msg.append(seeding_msg)
+                    logger.warning(f'{my_site.nickname} {seeding_msg}')
             # 请求时魔页面,信息写入数据库
             hour_bonus = self.get_hour_sp(my_site, headers=headers)
             if hour_bonus.code != 0:

@@ -315,8 +315,10 @@ class PtSpider:
         #     my_site=my_site,
         #     url=url,
         # )
+        cookie_dict = toolbox.cookie2dict(my_site.cookie)
+        cookie_dict.pop('PHPSESSID', None)
         result = requests.get(url=url, verify=False,
-                              cookies=toolbox.cookie2dict(my_site.cookie),
+                              cookies=cookie_dict,
                               headers={
                                   'user-agent': my_site.user_agent
                               })
@@ -1349,7 +1351,12 @@ class PtSpider:
         """请求做种数据相关页面"""
         site = get_object_or_404(WebSite, id=my_site.site)
         mirror = my_site.mirror if my_site.mirror_switch else site.url
-        seeding_detail_url = mirror + site.page_seeding.lstrip('/').format(my_site.user_id)
+        if site.url in [
+            'https://hdchina.org/'
+        ]:
+            seeding_detail_url = mirror + site.page_seeding.lstrip('/')
+        else:
+            seeding_detail_url = mirror + site.page_seeding.lstrip('/').format(my_site.user_id)
         logger.info(f'{site.name} 开始抓取站点做种信息，网址：{seeding_detail_url}')
         if site.url in [
             'https://greatposterwall.com/', 'https://dicmusic.com/'
@@ -1773,6 +1780,7 @@ class PtSpider:
     def parse_seeding_html(self, my_site, seeding_html):
         """解析做种页面"""
         site = get_object_or_404(WebSite, id=my_site.site)
+        logger.info(f'开始解析做种信息，{site.url}')
         with lock:
             try:
                 if 'greatposterwall' in site.url or 'dicmusic' in site.url:
@@ -1821,6 +1829,7 @@ class PtSpider:
                         })
                     return CommonResponse.success(data=res_gpw)
                 else:
+                    logger.info(f'开始解析做种信息1825，{site.url}')
                     try:
                         seed_vol_list = seeding_html.xpath(site.my_seed_vol_rule)
                         logger.debug('做种数量seeding_vol：{}'.format(seed_vol_list))
@@ -1832,6 +1841,10 @@ class PtSpider:
                         'https://xingtan.one/',
                         'https://piggo.me/',
                         'http://hdmayi.com/',
+                        'https://hdmayi.com/',
+                        'https://hdvideo.one/',
+                        'https://ptchina.org/',
+                        'https://oldtoons.world/',
                         'https://pt.0ff.cc/',
                         'https://1ptba.com/',
                         'https://hdtime.org/',
@@ -1849,6 +1862,7 @@ class PtSpider:
                         'https://www.nicept.net/',
                         'https://u2.dmhy.org/',
                         'https://hdpt.xyz/',
+                        'https://carpt.net/',
                         'https://www.icc2022.com/',
                         'http://leaves.red/',
                         'https://leaves.red/',
@@ -1857,6 +1871,10 @@ class PtSpider:
                         'https://azusa.wiki/',
                         'https://pt.2xfree.org/',
                         'http://www.oshen.win/',
+                        'https://www.oshen.win/',
+                        'https://ptvicomo.net/',
+                        'https://star-space.net/',
+                        'https://www.hdkyl.in/',
                         'https://sharkpt.net/',
                         'https://pt.soulvoice.club/',
                         'https://dajiao.cyou/',
@@ -1891,7 +1909,7 @@ class PtSpider:
                         'https://hd-space.org/',
                         'https://filelist.io/',
                         'https://www.pttime.org/',
-                        'https://totheglory.im/',
+                        # 'https://totheglory.im/',
                         'https://pt.keepfrds.com/',
                         'https://springsunday.net/',
                     ]:
@@ -1909,7 +1927,10 @@ class PtSpider:
                         seed_vol_all = toolbox.FileSizeConvert.parse_2_byte(seed_vol_size)
                         logger.debug(f'白兔做种信息：{seed_vol_all}')
                     else:
-                        if len(seed_vol_list) > 0 and site.url not in ['https://nextpt.net/']:
+                        if len(seed_vol_list) > 0 and site.url not in [
+                            'https://nextpt.net/',
+                            'https://totheglory.im/',
+                        ]:
                             seed_vol_list.pop(0)
                         logger.debug('做种数量seeding_vol：{}'.format(len(seed_vol_list)))
                         # 做种体积
@@ -2435,6 +2456,7 @@ class PtSpider:
             'leechers': int(leechers) if leechers else 0,
             'completers': int(completers) if completers else 0,
         }
+        logger.info(torrent)
         return CommonResponse.success(data=torrent)
 
     def get_torrent_info_list(self, my_site: MySite, response: Response):

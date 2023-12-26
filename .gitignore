@@ -6,5 +6,7 @@ supervisor/supervisord.pid
 supervisor/supervisord.sock
 .idea/
 */tests.py
-/deploy/
 /templates/
+/templates/*
+**/__pycache__
+**/.DS_Store

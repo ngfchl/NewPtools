@@ -1,6 +1,7 @@
 from typing import Union, Optional, Any
 
 from django_celery_beat.models import PeriodicTask, CrontabSchedule, cronexp
+from django_celery_results.models import TaskResult
 from ninja import Schema, ModelSchema
 
 
@@ -8,6 +9,14 @@ class TaskSchemaOut(Schema):
     """任务及描述"""
     task: str
     desc: str
+
+
+class TaskResultSchemaOut(ModelSchema):
+    """任务及描述"""
+
+    class Config:
+        model = TaskResult
+        model_exclude = ['worker']
 
 
 class CrontabSchemaIn(Schema):

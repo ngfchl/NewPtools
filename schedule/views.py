@@ -5,12 +5,11 @@ from typing import List
 import demjson3
 import pytz
 from django.core.exceptions import ValidationError
-from django_celery_beat.models import PeriodicTask, CrontabSchedule
 from ninja import Router
 
 from auxiliary.celery import app as celery_app
 from schedule.models import Task
-from schedule.schema import TaskSchemaOut, CrontabTaskSchemaIn, PeriodicTaskSchemaOut, CrontabSchemaOut, CrontabSchemaIn
+from schedule.schema import *
 from toolbox.schema import CommonResponse
 
 # Create your views here.
@@ -22,6 +21,19 @@ router = Router(tags=['schedule'])
 def get_schedule_list(request):
     data = [{'task': task, 'desc': desc} for (task, desc) in Task.choices]
     return CommonResponse.success(data=data)
+
+
+@router.get('/tasks/list', response=CommonResponse[Optional[List[TaskResultSchemaOut]]], description='任务结果列表')
+def get_schedule_list(request):
+    try:
+        data = TaskResult.objects.all()
+        logger.info(data)
+        return CommonResponse.success(data=list(data))
+    except Exception as e:
+        msg = f'任务执行失败！{e}'
+        logger.error(msg)
+        logger.error(traceback.format_exc(5))
+        return CommonResponse.error(msg=msg)
 
 
 @router.get('/exec', response=CommonResponse, description='任务列表')

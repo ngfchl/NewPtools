@@ -25,6 +25,7 @@ from auxiliary.base import DownloaderCategory
 from my_site.models import MySite, SignIn, SiteStatus, TorrentInfo
 from toolbox import views as toolbox
 from toolbox.schema import CommonResponse
+from toolbox.tools import extract_storage_size
 from website.models import WebSite
 
 # Create your views here.
@@ -1888,6 +1889,8 @@ class PtSpider:
                         'https://www.okpt.net/',
                         'https://pandapt.net/',
                         'https://ubits.club/',
+                        'https://abroad.agsvpt.com/',
+                        'https://www.agsvpt.com/agsvpt',
                     ]:
                         # 获取到的是整段，需要解析
                         logger.debug('做种体积：{}'.format(len(seed_vol_list)))
@@ -1898,14 +1901,15 @@ class PtSpider:
                                 seed_vol_list
                             ).replace('\xa0', ':').replace('i', '')
                             logger.debug('做种信息字符串：{}'.format(seeding_str))
-                            if ':' in seeding_str:
-                                seed_vol_size = seeding_str.split(':')[-1].strip()
-                            if '：' in seeding_str:
-                                seed_vol_size = seeding_str.split('：')[-1].strip()
-                            if '&nbsp;' in seeding_str:
-                                seed_vol_size = seeding_str.split('&nbsp;')[-1].strip()
-                            if 'No record' in seeding_str:
-                                seed_vol_size = 0
+                            # if ':' in seeding_str:
+                            #     seed_vol_size = seeding_str.split(':')[-1].strip()
+                            # if '：' in seeding_str:
+                            #     seed_vol_size = seeding_str.split('：')[-1].strip()
+                            # if '&nbsp;' in seeding_str:
+                            #     seed_vol_size = seeding_str.split('&nbsp;')[-1].strip()
+                            # if 'No record' in seeding_str:
+                            #     seed_vol_size = 0
+                            seed_vol_size = extract_storage_size(seeding_str)
                             seed_vol_all = toolbox.FileSizeConvert.parse_2_byte(seed_vol_size)
                     elif site.url in [
                         'https://monikadesign.uk/',

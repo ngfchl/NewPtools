@@ -1427,8 +1427,11 @@ class PtSpider:
             if seeding_detail_res.status_code != 200:
                 return CommonResponse.error(
                     msg=f'{site.name} 做种信息访问错误，错误码：{seeding_detail_res.status_code}')
-            if site.url.find('m-team'):
+            if site.url.find('m-team') > 0:
                 seeding_text = self.get_m_team_seeding(my_site, seeding_detail_res)
+                seeding_html = etree.HTML(seeding_text)
+            elif site.url.find('jpopsuki.eu') > 0:
+                seeding_text = self.get_jpop_seeding(my_site, seeding_detail_res)
                 seeding_html = etree.HTML(seeding_text)
             else:
                 seeding_html = etree.HTML(seeding_detail_res.text)
@@ -1455,6 +1458,23 @@ class PtSpider:
         for url in url_list:
             seeding_url = f'{site.url}getusertorrentlist.php{url}'
             seeding_res = self.send_request(my_site=my_site, url=seeding_url)
+            seeding_text += seeding_res.text.encode('utf8')
+        return seeding_text
+
+    def get_jpop_seeding(self, my_site, seeding_detail_res):
+        site = get_object_or_404(WebSite, id=my_site.site)
+        url_list = self.parse(
+            site,
+            seeding_detail_res,
+            f'//div[@id="ajax_torrents"]/div[@class="linkbox"][1]/a/@href'
+        )[:-2]
+        if len(url_list) > 0:
+            url_list = [''.join(url) for url in url_list]
+            logger.info(url_list)
+
+        seeding_text = seeding_detail_res.text.encode('utf8')
+        for url in url_list:
+            seeding_res = self.send_request(my_site=my_site, url=url)
             seeding_text += seeding_res.text.encode('utf8')
         return seeding_text
 
@@ -1674,7 +1694,8 @@ class PtSpider:
                         details_html.xpath(site.my_level_rule)
                     ).replace(
                         'UserClass_Name', ''
-                    ).replace('_Name', '').replace('fontBold', '').strip(" ").strip()
+                    ).replace('_Name', '').replace('fontBold', '').replace(
+                        'Class: ', '').strip(" ").strip()
                     if 'hdcity' in site.url:
                         my_level = my_level_1.replace('[', '').replace(']', '').strip(" ").strip()
                     else:
@@ -1688,6 +1709,8 @@ class PtSpider:
                     logger.debug('魔力：{}'.format(details_html.xpath(site.my_bonus_rule)))
                     if my_bonus:
                         my_bonus = toolbox.get_decimals(my_bonus)
+                    if site.url.find('jpopsuki.eu') > 0:
+                        pass
                     # 获取做种积分
                     my_score_1 = ''.join(
                         details_html.xpath(site.my_score_rule)

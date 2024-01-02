@@ -1823,6 +1823,13 @@ def get_time_join(my_site, details_html):
                     '%B %d, %Y,%H:%M:%S'
                 )
             elif site.url in [
+                'https://jpopsuki.eu/',
+            ]:
+                my_site.time_join = datetime.strptime(
+                    ''.join(details_html.xpath(site.my_time_join_rule)).replace('\xa0', ''),
+                    '%b %d %Y, %H:%M'
+                )
+            elif site.url in [
                 'https://www.torrentleech.org/',
             ]:
                 my_site.time_join = dateutil.parser.parse(''.join(details_html.xpath(site.my_time_join_rule)))

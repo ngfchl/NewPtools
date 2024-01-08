@@ -1913,7 +1913,8 @@ class PtSpider:
                         'https://pandapt.net/',
                         'https://ubits.club/',
                         'https://abroad.agsvpt.com/',
-                        'https://www.agsvpt.com/agsvpt',
+                        'https://www.agsvpt.com/',
+                        'https://public.ecustpt.eu.org/',
                     ]:
                         # 获取到的是整段，需要解析
                         logger.debug('做种体积：{}'.format(len(seed_vol_list)))

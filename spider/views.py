@@ -1944,6 +1944,7 @@ class PtSpider:
                         'https://hd-space.org/',
                         'https://filelist.io/',
                         'https://www.pttime.org/',
+                        'https://www.pttime.top/',
                         # 'https://totheglory.im/',
                         'https://pt.keepfrds.com/',
                         'https://springsunday.net/',
@@ -1951,7 +1952,7 @@ class PtSpider:
                         # 无需解析字符串
                         seed_vol_size = ''.join(
                             seeding_html.xpath(site.my_seed_vol_rule)
-                        ).replace('i', '').replace('&nbsp;', ' ')
+                        ).replace('i', '').replace('&nbsp;', ' ').replace('\xa0', ' ')
                         logger.debug('做种信息字符串：{}'.format(seed_vol_size))
                         seed_vol_all = toolbox.FileSizeConvert.parse_2_byte(seed_vol_size)
                         logger.debug(f'做种信息: {seed_vol_all}')

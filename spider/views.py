@@ -1915,6 +1915,10 @@ class PtSpider:
                         'https://abroad.agsvpt.com/',
                         'https://www.agsvpt.com/',
                         'https://public.ecustpt.eu.org/',
+                        'https://www.ptlsp.com/',
+                        'https://ptcafe.club/',
+                        'https://hdvbits.com/',
+                        'https://pt.gtk.pw/',
                     ]:
                         # 获取到的是整段，需要解析
                         logger.debug('做种体积：{}'.format(len(seed_vol_list)))
@@ -1945,7 +1949,6 @@ class PtSpider:
                         'https://filelist.io/',
                         'https://www.pttime.org/',
                         'https://www.pttime.top/',
-                        # 'https://totheglory.im/',
                         'https://pt.keepfrds.com/',
                         'https://springsunday.net/',
                     ]:

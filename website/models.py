@@ -26,6 +26,7 @@ class WebSite(BaseEntity):
     sign_in = models.BooleanField(verbose_name="签到支持", default=True)
     get_info = models.BooleanField(verbose_name="站点数据", default=True)
     repeat_torrents = models.BooleanField(verbose_name="辅种支持", default=False)
+    pieces_repeat = models.BooleanField(verbose_name="Pieces辅种", default=False)
     brush_free = models.BooleanField(verbose_name="Free刷流", default=True)
     brush_rss = models.BooleanField(verbose_name="RSS刷流", default=False)
     hr_discern = models.BooleanField(verbose_name="HR识别", default=False)
@@ -60,6 +61,9 @@ class WebSite(BaseEntity):
     page_viewfilelist = models.CharField(verbose_name='文件列表链接',
                                          default='viewfilelist.php?id={}',
                                          max_length=64)
+    page_pieces_hash_api = models.CharField(verbose_name='Pieces 辅种链接',
+                                            default='api/pieces-hash',
+                                            max_length=64)
     # 签到信息
     sign_info_title = models.CharField(verbose_name='签到消息标题',
                                        default='//td[@id="outer"]//td[@class="embedded"]/h2/text()',

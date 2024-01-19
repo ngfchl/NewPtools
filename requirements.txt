@@ -39,6 +39,7 @@ docker==7.0.0
 eventlet==0.34.2
 exceptiongroup==1.2.0
 feedparser==6.0.11
+flatbencode==0.2.1
 flatten-dict==0.4.2
 flower==2.0.1
 frozenlist==1.4.1
@@ -89,6 +90,7 @@ sqlparse==0.4.4
 supervisor==4.2.5
 toml==0.10.2
 tomli==2.0.1
+torf==4.2.4
 tornado==6.4
 transmission-rpc==7.0.3
 trio==0.23.2

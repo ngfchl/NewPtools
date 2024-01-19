@@ -1206,7 +1206,7 @@ def get_torrents_hash_from_iyuu(hash_list: List[str]):
         # 由于json解析的原因，列表元素之间有空格，需要替换掉所有空格
         hash_list_json = json.dumps(hash_list).replace(' ', '')
         hash_list_sha1 = hashlib.sha1(hash_list_json.encode(encoding='utf-8')).hexdigest()
-        url = 'http://api.iyuu.cn/index.php?s=App.Api.Infohash'
+        url = f'{os.getenv("IYUU_SERVER")}/index.php?s=App.Api.Infohash'
         data = {
             # IYUU token
             'sign': iyuu_token,

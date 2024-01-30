@@ -1112,7 +1112,8 @@ class PtSpider:
             if mail > 0:
                 title = f'{site.name}有{mail}条新消息！'
                 toolbox.send_text(title=title, message=title)
-        logger.info(f' 短消息：{mail_check}')
+                return
+        logger.info(f' 短消息 mail_check：{mail_check}')
         res = SiteStatus.objects.update_or_create(
             site=my_site,
             created_at__date__gte=datetime.today(),
@@ -1123,6 +1124,7 @@ class PtSpider:
 
             if 'torrentleech' in site.url:
                 mail_count = int(''.join(details_html.xpath(site.my_mailbox_rule)))
+                logger.info(f' 短消息 mail_count：{mail_count}')
                 if mail_count <= 0:
                     status.mail = 0
                     status.save()
@@ -1172,7 +1174,7 @@ class PtSpider:
                 message_list += message
             status.mail = len(mail_list)
             status.save()
-            title = f'{site.name}有{len(mail_list)}条新消息！'
+            title = f'{site.name}有新消息！{len(mail_list) if len(mail_list) > 0 else ""}'
             toolbox.send_text(title=title, message=message_list)
         else:
             status.mail = 0

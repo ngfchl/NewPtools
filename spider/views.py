@@ -1921,6 +1921,8 @@ class PtSpider:
                         'https://ptcafe.club/',
                         'https://hdvbits.com/',
                         'https://pt.gtk.pw/',
+                        'https://www.tjupt.org/',
+                        'https://tjupt.org/',
                     ]:
                         # 获取到的是整段，需要解析
                         logger.debug('做种体积：{}'.format(len(seed_vol_list)))

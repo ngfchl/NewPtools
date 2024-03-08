@@ -57,9 +57,13 @@ def parse_toml(cmd) -> dict:
 
 
 def check_token(token) -> bool:
-    own_token = parse_toml('token').get('token')
-    logger.info(f'{own_token}=={token}')
-    return own_token == token
+    try:
+        own_token = parse_toml('token').get('token')
+        logger.info(f'{own_token}=={token}')
+        return own_token == token
+    except Exception as e:
+        logger.error(e)
+        return False
 
 
 def cookie2dict(source_str: str) -> dict:

@@ -64,7 +64,7 @@ class PtSpider:
                      json: dict = None,
                      timeout: int = 75,
                      delay: int = 15,
-                     header: dict = {}):
+                     header: dict = None):
         scraper = self.get_scraper(delay=delay)
         ssl_context = ssl.SSLContext(ssl.PROTOCOL_TLSv1_2)
         _RESTRICTED_SERVER_CIPHERS = 'ALL'
@@ -72,20 +72,28 @@ class PtSpider:
         ssl_context.check_hostname = False
         ssl_context.verify_mode = ssl.CERT_NONE
         scraper.ssl_context = ssl_context
-        headers = {
+        headers = header or {}
+        headers.update({
             'User-Agent': my_site.user_agent,
-        }
+        })
+        site = get_object_or_404(WebSite, id=my_site.site)
+        cookie = my_site.cookie
+        mirror = my_site.mirror if my_site.mirror_switch else site.url
+        if "m-team" in mirror:
+            headers.update({
+                "x-api-key": my_site.api_key
+            })
+            cookie = None
         proxy = my_site.custom_server
         proxies = {
             'http': proxy if proxy else None,
             'https': proxy if proxy else None,
         } if proxy else None
-        headers.update(header)
         return scraper.request(
             url=url,
             method=method,
             headers=headers,
-            cookies=toolbox.cookie2dict(my_site.cookie),
+            cookies=toolbox.cookie2dict(cookie),
             data=data,
             timeout=timeout,
             proxies=proxies,
@@ -1103,7 +1111,6 @@ class PtSpider:
         """获取站点短消息"""
         site = get_object_or_404(WebSite, id=my_site.site)
         mirror = my_site.mirror if my_site.mirror_switch else site.url
-        mail_check = len(details_html.xpath(site.my_mailbox_rule))
         if 'zhuque.in' in site.url:
             mail_res = self.send_request(my_site=my_site, url=f'{mirror}api/user/getMainInfo', header=header)
             logger.debug(f'新消息: {mail_res.text}')
@@ -1113,6 +1120,36 @@ class PtSpider:
                 title = f'{site.name}有{mail}条新消息！'
                 toolbox.send_text(title=title, message=title)
                 return
+        elif 'm-team' in mirror:
+            params = {
+                "keyword": '',
+                "box": -2,
+                "pageNumber": 1,
+                "pageSize": 100,
+            }
+            response = self.send_request(url=mirror + site.page_message, method='POST', data=params, my_site=my_site)
+            if response.status_code != 200:
+                logger.error(f'{site.name} 短消息检查失败！')
+                return
+            response_json = response.json()
+            logger.debug(response_json)
+            if response_json.get('code') == '0':
+                message_list = response_json.get('data').get('data')
+                message_list = [f'{item.get("createdDate")} - {item.get("title")}<br /> '
+                                + item.get("context").replace("\n", "<br />") for item in
+                                message_list if item.get("unread")]
+                mail = len(message_list)
+                logger.debug(message_list)
+                if mail > 0:
+                    title = f'{site.name}有{mail}条新消息！'
+                    message = '<br /><br />'.join(message_list)
+                    logger.debug(message)
+                    my_site.mail = mail
+                    my_site.save()
+                    toolbox.send_text(title=title, message=message)
+            return
+        mail_check = len(details_html.xpath(site.my_mailbox_rule))
+
         logger.info(f' 短消息 mail_check：{mail_check}')
         res = SiteStatus.objects.update_or_create(
             site=my_site,
@@ -1190,6 +1227,9 @@ class PtSpider:
             'https://reelflix.xyz/',
         ]:
             pass
+        elif 'm-team' in mirror:
+            logger.info(f'{my_site.nickname} 跳过公告检查开发中。。。')
+            return
         else:
             notice_check = len(details_html.xpath(site.my_notice_rule))
             logger.debug(f'{site.name} 公告：{notice_check} ')
@@ -1271,7 +1311,8 @@ class PtSpider:
                                            headers={
                                                'user-agent': my_site.user_agent
                                            })
-
+        elif "m-team" in mirror:
+            user_detail_res = self.send_request(my_site=my_site, url=mirror + site.page_user, method="post")
         else:
             user_detail_res = self.send_request(my_site=my_site, url=user_detail_url, header=headers)
         logger.info(f"个人信息页面：{user_detail_res.status_code}")
@@ -1310,6 +1351,14 @@ class PtSpider:
                 return CommonResponse.error(
                     msg=f'{site.name} 个人主页访问错误，错误：{user_detail.get("status")}')
             details_html = user_detail.get('data')
+        elif "m-team" in mirror:
+            user_detail_json = user_detail_res.json()
+            if int(user_detail_json.get('code')) != 0:
+                logger.error(user_detail_json)
+                msg = f"获取个人信息失败，错误信息：{user_detail_json.get('msg')}"
+                logger.error(msg)
+                return CommonResponse.error(msg=msg)
+            details_html = user_detail_json.get('data')
         elif site.url in [
             'https://totheglory.im/',
         ]:
@@ -1352,116 +1401,139 @@ class PtSpider:
 
     def get_seeding_html(self, my_site: MySite, headers: dict, details_html=None):
         """请求做种数据相关页面"""
+        try:
+            site = get_object_or_404(WebSite, id=my_site.site)
+            mirror = my_site.mirror if my_site.mirror_switch else site.url
+            if site.url in [
+                'https://hdchina.org/'
+            ] or "m-team" in mirror:
+                seeding_detail_url = mirror + site.page_seeding.lstrip('/')
+            else:
+                seeding_detail_url = mirror + site.page_seeding.lstrip('/').format(my_site.user_id)
+            logger.info(f'{site.name} 开始抓取站点做种信息，网址：{seeding_detail_url}')
+            if site.url in [
+                'https://greatposterwall.com/', 'https://dicmusic.com/'
+            ]:
+                seeding_detail_res = self.send_request(my_site=my_site, url=mirror + site.page_mybonus).json()
+                if seeding_detail_res.get('status') != 'success':
+                    return CommonResponse.error(
+                        msg=f'{site.name} 做种信息访问错误，错误：{seeding_detail_res.get("status")}')
+                seeding_html = seeding_detail_res.get('response')
+            elif site.url in [
+                'https://lemonhd.org/',
+                'https://www.htpt.cc/',
+                'https://pt.btschool.club/',
+                'https://pt.keepfrds.com/',
+                'https://pterclub.com/',
+                'https://monikadesign.uk/',
+                'https://pt.hdpost.top/',
+                'https://reelflix.xyz/',
+                'https://totheglory.im/',
+            ]:
+                logger.info(site.url)
+                seeding_html = details_html
+            elif 'hdchina.org' in site.url:
+                # logger.info(details_html.content)
+                # details_html = etree.HTML(details_html.text)
+                csrf = details_html.xpath('//meta[@name="x-csrf"]/@content')
+                logger.debug(f'CSRF Token：{csrf}')
+
+                seeding_detail_res = requests.post(
+                    url=seeding_detail_url, verify=False,
+                    cookies=toolbox.cookie2dict(my_site.cookie),
+                    headers={
+                        'user-agent': my_site.user_agent
+                    },
+                    data={
+                        'userid': my_site.user_id,
+                        'type': 'seeding',
+                        'csrf': ''.join(csrf)
+                    })
+                logger.debug(f'cookie: {my_site.cookie}')
+                logger.debug(f'做种列表：{seeding_detail_res.text}')
+                seeding_html = etree.HTML(seeding_detail_res.text)
+            elif 'club.hares.top' in site.url:
+                seeding_detail_res = self.send_request(my_site=my_site, url=seeding_detail_url, header={
+                    'Accept': 'application/json'
+                })
+                logger.debug(f'白兔做种信息：{seeding_detail_res.text}')
+                seeding_html = seeding_detail_res.json()
+                logger.debug(f'白兔做种信息：{seeding_html}')
+            elif "m-team" in mirror:
+                params = {
+                    "pageNumber": 1,
+                    "pageSize": 200,
+                    "userid": my_site.user_id,
+                    "type": "SEEDING"
+                }
+                seeding_detail_res = self.send_request(
+                    my_site=my_site, url=mirror + site.page_seeding.lstrip('/'), method='POST', json=params)
+                logger.info(seeding_detail_res.status_code)
+                logger.info(seeding_detail_res.headers)
+                logger.info(seeding_detail_res.text)
+                seeding_detail_json = seeding_detail_res.json()
+                seeding_html = self.get_m_team_seeding(my_site, seeding_detail_json.get('data'))
+            else:
+                if site.url in [
+                    'https://wintersakura.net/',
+                    'https://hudbt.hust.edu.cn/',
+                ]:
+                    logger.info(f"{site.name} 抓取做种信息")
+                    # 单独发送请求，解决冬樱签到问题
+                    seeding_detail_res = requests.get(url=seeding_detail_url, verify=False,
+                                                      cookies=toolbox.cookie2dict(my_site.cookie),
+                                                      headers={
+                                                          'user-agent': my_site.user_agent
+                                                      })
+
+                else:
+                    seeding_detail_res = self.send_request(my_site=my_site, url=seeding_detail_url, header=headers,
+                                                           delay=25)
+                # logger.debug('做种信息：{}'.format(seeding_detail_res.text))
+                if seeding_detail_res.status_code != 200:
+                    return CommonResponse.error(
+                        msg=f'{site.name} 做种信息访问错误，错误码：{seeding_detail_res.status_code}')
+                if site.url.find('jpopsuki.eu') > 0:
+                    seeding_text = self.get_jpop_seeding(my_site, seeding_detail_res)
+                    seeding_html = etree.HTML(seeding_text)
+                else:
+                    seeding_html = etree.HTML(seeding_detail_res.text)
+            self.parse_seeding_html(my_site=my_site, seeding_html=seeding_html)
+            return CommonResponse.success(data=seeding_html)
+        except Exception as e:
+            message = f'🆘 {my_site.nickname} 统计做种数据失败！原因：{e}'
+            logger.error(message)
+            logger.error(traceback.format_exc(limit=3))
+            return CommonResponse.error(msg=message)
+
+    async def get_m_team_seeding(self, my_site, seeding_detail_res):
+        url = 'api/tracker/myPeerStatus'
         site = get_object_or_404(WebSite, id=my_site.site)
         mirror = my_site.mirror if my_site.mirror_switch else site.url
-        if site.url in [
-            'https://hdchina.org/'
-        ]:
-            seeding_detail_url = mirror + site.page_seeding.lstrip('/')
-        else:
-            seeding_detail_url = mirror + site.page_seeding.lstrip('/').format(my_site.user_id)
-        logger.info(f'{site.name} 开始抓取站点做种信息，网址：{seeding_detail_url}')
-        if site.url in [
-            'https://greatposterwall.com/', 'https://dicmusic.com/'
-        ]:
-            seeding_detail_res = self.send_request(my_site=my_site, url=mirror + site.page_mybonus).json()
-            if seeding_detail_res.get('status') != 'success':
-                return CommonResponse.error(
-                    msg=f'{site.name} 做种信息访问错误，错误：{seeding_detail_res.get("status")}')
-            seeding_html = seeding_detail_res.get('response')
-        elif site.url in [
-            'https://lemonhd.org/',
-            'https://www.htpt.cc/',
-            'https://pt.btschool.club/',
-            'https://pt.keepfrds.com/',
-            'https://pterclub.com/',
-            'https://monikadesign.uk/',
-            'https://pt.hdpost.top/',
-            'https://reelflix.xyz/',
-            'https://totheglory.im/',
-        ]:
-            logger.info(site.url)
-            seeding_html = details_html
-        elif 'hdchina.org' in site.url:
-            # logger.info(details_html.content)
-            # details_html = etree.HTML(details_html.text)
-            csrf = details_html.xpath('//meta[@name="x-csrf"]/@content')
-            logger.debug(f'CSRF Token：{csrf}')
-
-            seeding_detail_res = requests.post(
-                url=seeding_detail_url, verify=False,
-                cookies=toolbox.cookie2dict(my_site.cookie),
-                headers={
-                    'user-agent': my_site.user_agent
-                },
-                data={
-                    'userid': my_site.user_id,
-                    'type': 'seeding',
-                    'csrf': ''.join(csrf)
-                })
-            logger.debug(f'cookie: {my_site.cookie}')
-            logger.debug(f'做种列表：{seeding_detail_res.text}')
-            seeding_html = etree.HTML(seeding_detail_res.text)
-        elif 'club.hares.top' in site.url:
-            seeding_detail_res = self.send_request(my_site=my_site, url=seeding_detail_url, header={
-                'Accept': 'application/json'
-            })
-            logger.debug(f'白兔做种信息：{seeding_detail_res.text}')
-            seeding_html = seeding_detail_res.json()
-            logger.debug(f'白兔做种信息：{seeding_html}')
-        else:
-            if site.url in [
-                'https://wintersakura.net/',
-                'https://hudbt.hust.edu.cn/',
-            ]:
-                logger.info(f"{site.name} 抓取做种信息")
-                # 单独发送请求，解决冬樱签到问题
-                seeding_detail_res = requests.get(url=seeding_detail_url, verify=False,
-                                                  cookies=toolbox.cookie2dict(my_site.cookie),
-                                                  headers={
-                                                      'user-agent': my_site.user_agent
-                                                  })
-
-            else:
-                seeding_detail_res = self.send_request(my_site=my_site, url=seeding_detail_url, header=headers,
-                                                       delay=25)
-            # logger.debug('做种信息：{}'.format(seeding_detail_res.text))
-            if seeding_detail_res.status_code != 200:
-                return CommonResponse.error(
-                    msg=f'{site.name} 做种信息访问错误，错误码：{seeding_detail_res.status_code}')
-            if site.url.find('m-team') > 0:
-                seeding_text = self.get_m_team_seeding(my_site, seeding_detail_res)
-                seeding_html = etree.HTML(seeding_text)
-            elif site.url.find('jpopsuki.eu') > 0:
-                seeding_text = self.get_jpop_seeding(my_site, seeding_detail_res)
-                seeding_html = etree.HTML(seeding_text)
-            else:
-                seeding_html = etree.HTML(seeding_detail_res.text)
-        self.parse_seeding_html(my_site=my_site, seeding_html=seeding_html)
-        return CommonResponse.success(data=seeding_html)
-
-    def get_m_team_seeding(self, my_site, seeding_detail_res):
-        site = get_object_or_404(WebSite, id=my_site.site)
-        url_list = self.parse(
-            site,
-            seeding_detail_res,
-            f'//p[1]/font[2]/following-sibling::'
-            f'a[contains(@href,"?type=seeding&userid={my_site.user_id}&page=")]/@href'
-        )
-        if len(url_list) > 0:
-            pages = re.search(r'page=(\d+)', url_list[-1]).group(1)
-            logger.info(pages)
-            url_list = [
-                f"?type=seeding&userid={my_site.user_id}&page={page}"
-                for page in list(range(2, int(pages) + 1))
-            ]
-        logger.info(url_list)
-        seeding_text = seeding_detail_res.text.encode('utf8')
-        for url in url_list:
-            seeding_url = f'{site.url}getusertorrentlist.php{url}'
-            seeding_res = self.send_request(my_site=my_site, url=seeding_url)
-            seeding_text += seeding_res.text.encode('utf8')
-        return seeding_text
+        my_peer_status = await self.send_request(my_site=my_site, url=mirror + url, method='POST')
+        my_peer_status_json = my_peer_status.json()
+        seed = int(my_peer_status_json['data']['seeder'])
+        leech = int(my_peer_status_json['data']['leecher'])
+        page_size = 200
+        pages = -(-seed // page_size)  # 进行向上取整计算
+        params_list = [{
+            "pageNumber": i,
+            "pageSize": page_size,
+            "userid": my_site.user_id,
+            "type": "SEEDING"
+        } for i in range(1, pages + 1)]
+        seed_list = []
+        for param in params_list:
+            result = self.send_request(my_site=my_site, url=mirror + site.page_seeding, method='POST', json=param)
+            res = await result.json()
+            if res.get('code') == '0':
+                seed_list.extend(res.get('data').get('data'))
+        seed_list = [t.get('torrent') for t in seed_list]
+        return {
+            "seed": seed,
+            "leech": leech,
+            "seed_list": seed_list
+        }
 
     def get_jpop_seeding(self, my_site, seeding_detail_res):
         site = get_object_or_404(WebSite, id=my_site.site)
@@ -1647,6 +1719,38 @@ class PtSpider:
                             'seed_days': seed_days
                         })
                     return CommonResponse.success(data=res_zhuque)
+                elif "m-team" in mirror:
+                    logger.debug(details_html)
+                    member_count = details_html.get('memberCount')
+                    invitation = details_html.get('invites')
+                    my_level = details_html.get('role')
+                    my_bonus = member_count.get('bonus')
+                    uploaded = member_count.get('uploaded')
+                    downloaded = member_count.get('downloaded')
+                    ratio = member_count.get('shareRate')
+                    seed_time = int(details_html.get('seedtime')) // 3600 / 24
+                    if 0 < float(ratio) < 1:
+                        msg = f'{site.name} 分享率 {ratio} 过低，请注意'
+                        logger.warning(msg)
+                        toolbox.send_text(title=msg, message=msg)
+                    params = {
+                        'ratio': ratio,
+                        'downloaded': downloaded,
+                        'uploaded': uploaded,
+                        'my_bonus': my_bonus,
+                        'my_score': 0,
+                        'invitation': invitation,
+                        'my_level': my_level,
+                        # 'seed_volume': seeding_size,
+                        'seed_days': seed_time,
+                        'updated_at': str(datetime.now()),
+                    }
+                    res_mt = SiteStatus.objects.update_or_create(
+                        site=my_site,
+                        created_at__date__gte=datetime.today(),
+                        defaults=params
+                    )
+                    return CommonResponse.success(data=res_mt)
                 else:
                     leech_status = details_html.xpath(site.my_leech_rule)
                     seed_status = details_html.xpath(site.my_seed_rule)
@@ -1814,6 +1918,7 @@ class PtSpider:
     def parse_seeding_html(self, my_site, seeding_html):
         """解析做种页面"""
         site = get_object_or_404(WebSite, id=my_site.site)
+        mirror = my_site.mirror if my_site.mirror_switch else site.url
         logger.info(f'开始解析做种信息，{site.url}')
         with lock:
             try:
@@ -1862,6 +1967,17 @@ class PtSpider:
                             'mail': mail,
                         })
                     return CommonResponse.success(data=res_gpw)
+                elif "m-team" in mirror:
+                    seeding_size = sum(int(t.get('size')) for t in seeding_html.get("seed_list"))
+                    res = SiteStatus.objects.update_or_create(
+                        site=my_site,
+                        created_at__date__gte=datetime.today(),
+                        defaults={
+                            "seed": seeding_html.get('seed'),
+                            "leech": seeding_html.get('leech'),
+                            'seed_volume': seeding_size,
+                        })
+                    return CommonResponse.success(data=res)
                 else:
                     try:
                         seed_vol_list = seeding_html.xpath(site.my_seed_vol_rule)
@@ -2088,8 +2204,18 @@ class PtSpider:
             url = url.format(my_site.user_id)
         logger.info(f'魔力页面链接：{url}')
         try:
-            if 'iptorrents' in site.url:
+            if 'm-team' in mirror:
+                logger.error(site.page_mybonus)
+                response = self.send_request(my_site=my_site, url=mirror + site.page_mybonus, method='POST')
+                response = response.json()
                 bonus_hour = 0
+                logger.error(response)
+                if response.get('code') == '0':
+                    formula_params = response.get('data', {}).get('formulaParams', {})
+                    all_bonus = formula_params.get('allBonus')
+                    class_up = all_bonus * formula_params.get('classUp') * 0.01
+                    call_bonus = formula_params.get('callBonus')
+                    bonus_hour = all_bonus + class_up + call_bonus
             else:
                 if site.url in [
                     'https://hdchina.org/',

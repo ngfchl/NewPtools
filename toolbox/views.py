@@ -70,6 +70,8 @@ def cookie2dict(source_str: str) -> dict:
     """
     cookies字符串转为字典格式,传入参数必须为cookies字符串
     """
+    if not source_str:
+        return {}
     dist_dict = {}
     list_mid = source_str.strip().split(';')
     for i in list_mid:
@@ -1789,6 +1791,7 @@ def cnlang_sign(
 
 def get_time_join(my_site, details_html):
     site = get_object_or_404(WebSite, id=my_site.site)
+    mirror = my_site.mirror if my_site.mirror_switch else site.url
     try:
         if 'greatposterwall' in site.url or 'dicmusic' in site.url:
             logger.debug(details_html)
@@ -1797,6 +1800,8 @@ def get_time_join(my_site, details_html):
             my_site.time_join = stats.get('joinedDate')
             my_site.latest_active = stats.get('lastAccess')
             my_site.save()
+        elif "m-team" in mirror:
+            pass
         elif 'zhuque.in' in site.url:
             my_site.time_join = datetime.fromtimestamp(details_html.get(site.my_time_join_rule))
             my_site.save()

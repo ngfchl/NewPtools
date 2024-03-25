@@ -51,6 +51,7 @@ class MySiteSchemaIn(Schema):
     mirror_switch: bool
     nickname: Optional[str]
     passkey: Optional[str]
+    api_key: Optional[str]
     get_info: bool
     sign_in: bool
     brush_rss: bool

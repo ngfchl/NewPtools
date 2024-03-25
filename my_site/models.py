@@ -20,6 +20,7 @@ class MySite(BaseEntity):
                                help_text='请填写<font color="orangered">数字UID</font>，'
                                          '<font color="orange">* az,cz,ez,莫妮卡、普斯特请填写用户名</font>')
     passkey = models.CharField(max_length=128, verbose_name='PassKey', blank=True, null=True)
+    api_key = models.CharField(max_length=128, verbose_name='ApiKey', blank=True, null=True)
     cookie = models.TextField(verbose_name='COOKIE', help_text='与UA搭配使用效果更佳，请和UA在同一浏览器提取')
     user_agent = models.TextField(verbose_name='User-Agent', help_text='请填写你获取cookie的浏览器的User-Agent',
                                   default='Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 '

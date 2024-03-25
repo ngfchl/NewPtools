@@ -1506,11 +1506,11 @@ class PtSpider:
             logger.error(traceback.format_exc(limit=3))
             return CommonResponse.error(msg=message)
 
-    async def get_m_team_seeding(self, my_site, seeding_detail_res):
+    def get_m_team_seeding(self, my_site, seeding_detail_res):
         url = 'api/tracker/myPeerStatus'
         site = get_object_or_404(WebSite, id=my_site.site)
         mirror = my_site.mirror if my_site.mirror_switch else site.url
-        my_peer_status = await self.send_request(my_site=my_site, url=mirror + url, method='POST')
+        my_peer_status = self.send_request(my_site=my_site, url=mirror + url, method='POST')
         my_peer_status_json = my_peer_status.json()
         seed = int(my_peer_status_json['data']['seeder'])
         leech = int(my_peer_status_json['data']['leecher'])
@@ -1525,7 +1525,7 @@ class PtSpider:
         seed_list = []
         for param in params_list:
             result = self.send_request(my_site=my_site, url=mirror + site.page_seeding, method='POST', json=param)
-            res = await result.json()
+            res = result.json()
             if res.get('code') == '0':
                 seed_list.extend(res.get('data').get('data'))
         seed_list = [t.get('torrent') for t in seed_list]

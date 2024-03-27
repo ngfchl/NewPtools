@@ -1754,8 +1754,13 @@ class PtSpider:
                 else:
                     leech_status = details_html.xpath(site.my_leech_rule)
                     seed_status = details_html.xpath(site.my_seed_rule)
+                    if 'pt.sjtu.edu.cn' in mirror:
+                        response = self.send_request(
+                            my_site=my_site, url=mirror + 'viewpeerstatus.php')
+                        leech_status = self.parse(site, response, site.my_leech_rule)
+                        seed_status = self.parse(site, response, site.my_seed_rule)
                     msg = f'下载数目字符串：{leech_status} \n  上传数目字符串：{seed_status}'
-                    if len(leech_status) + len(seed_status) <= 0 and site.url.find('hd-space') < 0:
+                    if len(leech_status) + len(seed_status) <= 0 and mirror.find('hd-space') < 0:
                         err_msg = f'{my_site.nickname} 获取用户数据失败：{msg}'
                         logger.error(err_msg)
                         return CommonResponse.error(msg=err_msg)

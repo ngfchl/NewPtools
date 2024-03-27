@@ -2,6 +2,7 @@ import json
 import logging
 import traceback
 
+from django.core.cache import cache
 from ninja import Router, Form
 
 from my_site.models import MySite, TorrentInfo
@@ -78,6 +79,9 @@ def get_torrents_from_monkey(request):
             try:
                 torrent = {key: value for key, value in torrent.items() if value}
                 torrent['size'] = toolbox.FileSizeConvert.parse_2_byte(torrent['size'].strip())
+                sale_expire = torrent["sale_expire"]
+                if '限时' in sale_expire:
+                    torrent["sale_expire"] = toolbox.parse_and_calculate_expiry(sale_expire)
                 logger.info(torrent)
                 t, created = TorrentInfo.objects.update_or_create(
                     site_id=torrent.get('site_id'),
@@ -104,45 +108,52 @@ def get_torrents_from_monkey(request):
 
 @router.post('torrents/iyuu', response=CommonResponse[Optional[MonkeyRepeatTorrentListOut]])
 def get_torrents_list_from_iyuu(request, hash_string: str = Form(...), site_id: str = Form(...)):
-    res = toolbox.get_torrents_hash_from_iyuu([hash_string])
-    if res.code != 0:
-        logger.warning(res.msg)
-        return CommonResponse.error(msg=res.msg)
-    torrents = res.data.get(hash_string)
-    website_list = WebSite.objects.exclude(id=site_id)
-    mysite_list = MySite.objects.exclude(site=site_id)
-    had_list = []
-    url_list = []
-    if len(torrents) <= 0:
-        return CommonResponse.success(data={
-            "url_list": url_list,
-            "can_list": list(website_list),
-        })
-    for torrent in torrents:
-        sid = torrent.get('site_id')
-        try:
-            website = website_list.filter(id=sid).first()
-            if not website:
-                logger.info(f'不支持的站点：{sid}')
-                continue
-            my_site = mysite_list.filter(site=sid).first()
-            if not my_site:
-                logger.info(f'未添加的站点：{website.name}')
-                continue
-            had_list.append(sid)
-            url_list.append({
-                "download_url": pt_spider.generate_magnet_url(sid, torrent, my_site, website),
-                "details_url": f'{website.url}{website.page_detail.format(torrent.get("tid"))}',
-                "site": website
+    """从IYUU获取种子辅种信息"""
+    monkey_iyuu_data = cache.get("monkey_iyuu_data", {})
+    data = monkey_iyuu_data.get(hash_string)
+    if not data:
+        res = toolbox.get_torrents_hash_from_iyuu([hash_string])
+        if res.code != 0:
+            logger.warning(res.msg)
+            return CommonResponse.error(msg=res.msg)
+        torrents = res.data.get(hash_string)
+        website_list = WebSite.objects.exclude(id=site_id)
+        mysite_list = MySite.objects.exclude(site=site_id)
+        had_list = []
+        url_list = []
+        if len(torrents) <= 0:
+            return CommonResponse.success(data={
+                "url_list": url_list,
+                "can_list": list(website_list),
             })
-        except Exception as e:
-            logger.error(f'{torrent.get("hash_string")} 解析失败！{e}')
-            continue
-    id_list = [site.site for site in mysite_list.exclude(site__in=had_list)]
-    can_list = list(website_list.filter(id__in=id_list))
-    logger.info(id_list)
-    logger.info(f"当前种子有{len(can_list)}个站点未发布！")
-    return CommonResponse.success(data={
-        "url_list": url_list,
-        "can_list": can_list,
-    })
+        for torrent in torrents:
+            sid = torrent.get('site_id')
+            try:
+                website = website_list.filter(id=sid).first()
+                if not website:
+                    logger.info(f'不支持的站点：{sid}')
+                    continue
+                my_site = mysite_list.filter(site=sid).first()
+                if not my_site:
+                    logger.info(f'未添加的站点：{website.name}')
+                    continue
+                had_list.append(sid)
+                url_list.append({
+                    "download_url": pt_spider.generate_magnet_url(sid, torrent, my_site, website),
+                    "details_url": f'{website.url}{website.page_detail.format(torrent.get("tid"))}',
+                    "site": website
+                })
+            except Exception as e:
+                logger.error(f'{torrent.get("hash_string")} 解析失败！{e}')
+                continue
+        id_list = [site.site for site in mysite_list.exclude(site__in=had_list)]
+        can_list = list(website_list.filter(id__in=id_list))
+        logger.info(id_list)
+        logger.info(f"当前种子有{len(can_list)}个站点未发布！")
+        data = {
+            "url_list": url_list,
+            "can_list": can_list,
+        }
+        monkey_iyuu_data[hash_string] = data
+        cache.set("monkey_iyuu_data", monkey_iyuu_data)
+    return CommonResponse.success(data=data)

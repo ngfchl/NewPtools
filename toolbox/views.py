@@ -2024,3 +2024,27 @@ def calculate_expiry_time_from_string(time_str):
     expiry_time = calculate_expiry_time(days, hours, minutes)
 
     return expiry_time
+
+
+def parse_and_calculate_expiry(full_str):
+    try:
+        # 使用正则表达式从字符串中提取小时和分钟部分
+        match = re.match(r"限时：(\d+) 小时 (\d+) 分", full_str)
+        if match:
+            hours = int(match.group(1))
+            minutes = int(match.group(2))
+
+            # 获取当前时间
+            current_time = datetime.now()
+
+            # 计算到期时间
+            time_limit = timedelta(hours=hours, minutes=minutes)
+            expiry_time = current_time + time_limit
+
+            return expiry_time
+        else:
+            print("无法解析时间字符串")
+            return None
+    except ValueError:
+        print("无效的时间字符串格式")
+        return None

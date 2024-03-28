@@ -765,13 +765,13 @@ class PtSpider:
                     signin_today.sign_in_info = result.msg
                     signin_today.save()
                 return result
-            if 'hd4fans' in site.url:
-                result = self.sign_in_hd4fans(my_site)
-                if result.code == 0:
-                    signin_today.sign_in_today = True
-                    signin_today.sign_in_info = result.msg
-                    signin_today.save()
-                return result
+            # if 'hd4fans' in site.url:
+            #     result = self.sign_in_hd4fans(my_site)
+            #     if result.code == 0:
+            #         signin_today.sign_in_today = True
+            #         signin_today.sign_in_info = result.msg
+            #         signin_today.save()
+            #     return result
             # if 'leaves.red' in site.url:
             # 红叶签到，暂不支持
             #     result = self.sign_in_leaves(my_site)
@@ -780,7 +780,7 @@ class PtSpider:
             #     signin_today.sign_in_info = result.msg
             #     signin_today.save()
             # return result
-            if 'zhuque.in' in site.url:
+            elif 'zhuque.in' in site.url:
                 result = self.sign_in_zhuque(my_site)
                 if result.code == 0 and result.data.get('status') == 200:
                     data = result.data.get("data")
@@ -792,14 +792,14 @@ class PtSpider:
                     #     signin_today.save()
                     result.msg = message
                 return result
-            if 'hdupt.com' in site.url:
+            elif 'hdupt.com' in site.url:
                 result = self.sign_in_hdupt(my_site)
                 if result.code == 0:
                     signin_today.sign_in_today = True
                     signin_today.sign_in_info = result.msg
                     signin_today.save()
                 return result
-            if 'hdchina' in site.url:
+            elif 'hdchina' in site.url:
                 result = self.sign_in_hdc(my_site)
                 if result.code == 0:
                     signin_today.sign_in_today = True
@@ -813,7 +813,7 @@ class PtSpider:
                     signin_today.sign_in_info = result.msg
                     signin_today.save()
                 return result
-            if 'u2.dmhy.org' in site.url:
+            elif 'u2.dmhy.org' in site.url:
                 result = self.sign_in_u2(my_site)
                 if result.code == 0:
                     logger.debug(result.data)
@@ -821,7 +821,7 @@ class PtSpider:
                     signin_today.sign_in_info = result.msg
                     signin_today.save()
                 return result
-            if 'hdsky.me' in site.url:
+            elif 'hdsky.me' in site.url:
                 result = self.sign_in_hdsky(my_site=my_site)
                 if result.code == 0:
                     res_json = result.data
@@ -850,7 +850,7 @@ class PtSpider:
                 else:
                     # 签到失败
                     return result
-            if 'open.cd' in site.url:
+            elif 'open.cd' in site.url:
                 result = self.sign_in_opencd(my_site=my_site)
                 logger.info(f'皇后签到结果：{result.to_dict()}')
                 if result.code == 0:
@@ -880,7 +880,7 @@ class PtSpider:
                 else:
                     # 签到失败
                     return result
-            if 'hdarea' in site.url:
+            elif 'hdarea' in site.url:
                 res = self.send_request(my_site=my_site,
                                         method='post',
                                         url=url,
@@ -895,7 +895,7 @@ class PtSpider:
                     return CommonResponse.error(msg='网站访问失败！')
                 else:
                     return CommonResponse.error(msg='签到失败！')
-            if 'hares.top' in site.url:
+            elif 'hares.top' in site.url:
                 res = self.send_request(my_site=my_site, method='post', url=url, header={"accept": "application/json"})
                 logger.debug(res.text)
                 code = res.json().get('code')
@@ -932,7 +932,7 @@ class PtSpider:
                     return CommonResponse.success(msg=message)
                 else:
                     return CommonResponse.error(msg='签到失败！')
-            if site.url in [
+            elif site.url in [
                 'https://wintersakura.net/',
                 'https://hudbt.hust.edu.cn/',
             ]:

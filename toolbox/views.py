@@ -1795,8 +1795,7 @@ def get_time_join(my_site, details_html):
     try:
         if 'greatposterwall' in site.url or 'dicmusic' in site.url:
             logger.debug(details_html)
-            details_response = details_html.get('response')
-            stats = details_response.get('stats')
+            stats = details_html.get('stats')
             my_site.time_join = stats.get('joinedDate')
             my_site.latest_active = stats.get('lastAccess')
             my_site.save()

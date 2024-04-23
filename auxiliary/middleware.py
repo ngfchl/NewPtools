@@ -20,7 +20,7 @@ class AuthenticateMiddleware(MiddlewareMixin):
             '/api/docs',
             '/api/openapi.json',
             '/api/mysite/push_to_server',
-        ] or path.startswith('/api/monkey') or path.startswith('/admin'):
+        ] or path.startswith('/api/monkey') or path.startswith('/admin') or path.startswith('/static'):
             return None
         token = request.META.get("HTTP_AUTHORIZATION")
         if not token:

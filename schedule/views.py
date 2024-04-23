@@ -18,7 +18,7 @@ router = Router(tags=['schedule'])
 
 
 @router.get('/tasks', response=CommonResponse[List[TaskSchemaOut]], description='任务列表')
-def get_schedule_list(request):
+def get_task_list(request):
     data = [{'task': task, 'desc': desc} for (task, desc) in Task.choices]
     return CommonResponse.success(data=data)
 

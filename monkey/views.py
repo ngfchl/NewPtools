@@ -28,6 +28,12 @@ def get_site_by_host(request, token: str, host: str):
             return CommonResponse.error(msg='Token认证失败！')
         # logger.info(url)
         site_list = WebSite.objects.filter(url__contains=host)
+        if not site_list:
+            my_site = MySite.objects.filter(mirror__contains=host).first()
+            if not my_site:
+                msg = f'{host} 站点信息获取失败，请检查网址是否正确！'
+                return CommonResponse.error(msg=msg)
+            return CommonResponse.success(data=WebSite.objects.get(id=my_site.site))
         if len(site_list) == 1:
             # data = {'site_id': site.id, 'uid_xpath': site.my_uid_rule}
             # return site_list.first()
